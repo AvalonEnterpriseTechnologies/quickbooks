@@ -1,6 +1,6 @@
 {
     'name': 'United States - Payroll: Kansas Withholding (K-4)',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Human Resources/Payroll',
     'summary': 'Kansas state income tax withholding from K-4 inputs and configurable KW-100-style tables',
     'description': """
