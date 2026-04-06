@@ -94,11 +94,20 @@ class HrEmployee(models.Model):
     # ------------------------------------------------------------------
     # Helpers for the salary rule
     # ------------------------------------------------------------------
-    def _l10n_ks_pay_periods(self, contract):
-        """Return pay periods per year from the contract schedule."""
+    @staticmethod
+    def _l10n_ks_get_version(payslip):
+        """Return the contract/version record from a payslip (Odoo 19 compat)."""
+        for attr in ('version_id', 'contract_id'):
+            rec = getattr(payslip, attr, None)
+            if rec:
+                return rec
+        return None
+
+    def _l10n_ks_pay_periods(self, version):
+        """Return pay periods per year from the contract/version schedule."""
         self.ensure_one()
-        if contract and contract.schedule_pay:
-            return _PERIODS_PER_YEAR.get(contract.schedule_pay, 12)
+        if version and hasattr(version, 'schedule_pay') and version.schedule_pay:
+            return _PERIODS_PER_YEAR.get(version.schedule_pay, 12)
         return 12
 
     def _l10n_ks_period_gross(self, payslip, categories):
@@ -106,7 +115,7 @@ class HrEmployee(models.Model):
 
         ``categories`` is a BrowsableObject — use attribute access, not dict.
         Prefers the GROSS category total already computed by upstream salary
-        rules. Falls back to the contract wage (assumed per-period).
+        rules. Falls back to the version/contract wage (assumed per-period).
         """
         self.ensure_one()
         try:
@@ -117,12 +126,12 @@ class HrEmployee(models.Model):
             _logger.debug('KS_SIT: categories.GROSS returned falsy value: %r', gross)
         except (AttributeError, KeyError) as exc:
             _logger.debug('KS_SIT: categories.GROSS access failed: %s', exc)
-        contract = payslip.contract_id
-        if not contract:
-            _logger.debug('KS_SIT: no contract on payslip — gross = 0')
+        version = self._l10n_ks_get_version(payslip)
+        if not version:
+            _logger.debug('KS_SIT: no version/contract on payslip — gross = 0')
             return 0.0
-        wage = float(contract.wage or 0.0)
-        _logger.debug('KS_SIT: falling back to contract.wage = %.2f', wage)
+        wage = float(version.wage or 0.0)
+        _logger.debug('KS_SIT: falling back to version.wage = %.2f', wage)
         return wage
 
     def _l10n_ks_map_filing(self):
@@ -161,8 +170,8 @@ class HrEmployee(models.Model):
             _logger.info('KS_SIT: employee %s — no filing status set. Skipping.', emp.id)
             return 0.0
 
-        contract = payslip.contract_id
-        periods = self._l10n_ks_pay_periods(contract)
+        version = self._l10n_ks_get_version(payslip)
+        periods = self._l10n_ks_pay_periods(version)
 
         period_gross = self._l10n_ks_period_gross(payslip, categories)
         alloc_pct = emp.l10n_ks_nonresident_allocation_pct
