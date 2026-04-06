@@ -116,9 +116,6 @@ def _create_menus(env):
         _logger.warning('%s: no payroll config menu found — skipping menu creation.', MODULE)
         return
 
-    manager_group = env.ref('hr_payroll.group_hr_payroll_manager', raise_if_not_found=False)
-    group_ids = [(6, 0, [manager_group.id])] if manager_group else []
-
     bracket_action = env.ref(f'{MODULE}.action_l10n_ks_bracket', raise_if_not_found=False)
     params_action = env.ref(f'{MODULE}.action_l10n_ks_params', raise_if_not_found=False)
 
@@ -134,7 +131,6 @@ def _create_menus(env):
                 'parent_id': parent.id,
                 'action': f'ir.actions.act_window,{bracket_action.id}',
                 'sequence': 92,
-                'groups_id': group_ids,
             })
             _register_xmlid(env, 'menu_l10n_ks_bracket', 'ir.ui.menu', menu.id)
 
@@ -148,7 +144,6 @@ def _create_menus(env):
                 'parent_id': parent.id,
                 'action': f'ir.actions.act_window,{params_action.id}',
                 'sequence': 93,
-                'groups_id': group_ids,
             })
             _register_xmlid(env, 'menu_l10n_ks_params', 'ir.ui.menu', menu.id)
 
