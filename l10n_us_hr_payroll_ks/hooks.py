@@ -61,10 +61,19 @@ def _find_us_structure(env):
         except Exception:
             pass
 
-    struct = Structure.search([('country_id.code', '=', 'US')], limit=1)
+    struct = Structure.search(
+        [('country_id.code', '=', 'US'), ('name', 'ilike', 'united states')],
+        limit=1,
+    )
     if struct:
         return struct
-    return Structure.search([('name', 'ilike', 'united states')], limit=1)
+    struct = Structure.search(
+        [('country_id.code', '=', 'US'), ('name', 'ilike', 'regular pay')],
+        order='name desc', limit=1,
+    )
+    if struct:
+        return struct
+    return Structure.search([('country_id.code', '=', 'US')], limit=1)
 
 
 def _register_xmlid(env, name, model, res_id):
