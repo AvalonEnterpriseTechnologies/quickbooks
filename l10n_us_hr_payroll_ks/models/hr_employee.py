@@ -159,26 +159,60 @@ class HrEmployee(models.Model):
     def _l10n_ks_period_gross(self, payslip, categories):
         """Current-period gross wages subject to KS withholding.
 
-        ``categories`` is a BrowsableObject — use attribute access, not dict.
-        Prefers the GROSS category total already computed by upstream salary
-        rules. Falls back to the version/contract wage (assumed per-period).
+        Tries multiple sources in order of reliability:
+        1. categories BrowsableObject (GROSS, then BASIC).
+        2. Payslip computed line_ids with a GROSS/BASIC category code.
+        3. Worked-days hours × hourly wage from the version/contract.
+        4. version/contract wage field (zero for hourly contracts).
         """
         self.ensure_one()
+
+        for code in ('GROSS', 'BASIC', 'gross', 'basic'):
+            try:
+                val = getattr(categories, code, None)
+                if val:
+                    _logger.info('KS_SIT: gross from categories.%s = %.2f', code, float(val))
+                    return float(val)
+            except Exception:
+                pass
+
         try:
-            gross = categories.GROSS
-            if gross:
-                _logger.debug('KS_SIT: got GROSS from categories = %.2f', float(gross))
-                return float(gross)
-            _logger.debug('KS_SIT: categories.GROSS returned falsy value: %r', gross)
-        except (AttributeError, KeyError) as exc:
-            _logger.debug('KS_SIT: categories.GROSS access failed: %s', exc)
+            for line in payslip.line_ids:
+                if line.category_id.code in ('GROSS', 'BASIC'):
+                    if line.total:
+                        _logger.info('KS_SIT: gross from payslip line %s = %.2f',
+                                     line.category_id.code, float(line.total))
+                        return float(line.total)
+        except Exception as exc:
+            _logger.debug('KS_SIT: payslip line_ids lookup failed: %s', exc)
+
         version = self._l10n_ks_get_version(payslip)
-        if not version:
-            _logger.debug('KS_SIT: no version/contract on payslip — gross = 0')
-            return 0.0
-        wage = float(version.wage or 0.0)
-        _logger.debug('KS_SIT: falling back to version.wage = %.2f', wage)
-        return wage
+        if version:
+            hourly = 0.0
+            for attr in ('hourly_wage', 'hourly_rate'):
+                hourly = float(getattr(version, attr, 0) or 0)
+                if hourly:
+                    break
+            if hourly:
+                total_hours = 0.0
+                try:
+                    for wd in payslip.worked_days_line_ids:
+                        total_hours += float(getattr(wd, 'number_of_hours', 0) or 0)
+                except Exception:
+                    pass
+                if total_hours:
+                    gross = hourly * total_hours
+                    _logger.info('KS_SIT: gross from hours(%.2f) × rate(%.2f) = %.2f',
+                                 total_hours, hourly, gross)
+                    return gross
+
+            wage = float(version.wage or 0.0)
+            if wage:
+                _logger.info('KS_SIT: gross from version.wage = %.2f', wage)
+                return wage
+
+        _logger.warning('KS_SIT: could not determine period gross — returning 0')
+        return 0.0
 
     def _l10n_ks_map_filing(self):
         """Map the employee selection to the bracket filing_status key."""
