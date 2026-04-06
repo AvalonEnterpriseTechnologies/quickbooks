@@ -5,8 +5,12 @@ computation called by the KS_SIT salary rule.
 Formula source: NFC Bulletin NFC-24-1722617728 / Kansas KW-100 (eff. PP15 2024).
 """
 
+import logging
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 _PERIODS_PER_YEAR = {
     'annually': 1,
@@ -108,13 +112,18 @@ class HrEmployee(models.Model):
         try:
             gross = categories.GROSS
             if gross:
+                _logger.debug('KS_SIT: got GROSS from categories = %.2f', float(gross))
                 return float(gross)
-        except (AttributeError, KeyError):
-            pass
+            _logger.debug('KS_SIT: categories.GROSS returned falsy value: %r', gross)
+        except (AttributeError, KeyError) as exc:
+            _logger.debug('KS_SIT: categories.GROSS access failed: %s', exc)
         contract = payslip.contract_id
         if not contract:
+            _logger.debug('KS_SIT: no contract on payslip — gross = 0')
             return 0.0
-        return float(contract.wage or 0.0)
+        wage = float(contract.wage or 0.0)
+        _logger.debug('KS_SIT: falling back to contract.wage = %.2f', wage)
+        return wage
 
     def _l10n_ks_map_filing(self):
         """Map the employee selection to the bracket filing_status key."""
@@ -138,58 +147,71 @@ class HrEmployee(models.Model):
         """
         self.ensure_one()
 
-        state = self.address_id.state_id if self.address_id else False
+        emp = self.sudo()
+
+        state = emp.address_id.state_id if emp.address_id else False
         if not state or state.code != 'KS':
+            _logger.info('KS_SIT: employee %s — work state is %s, not KS. Skipping.',
+                         emp.id, state.code if state else 'unset')
             return 0.0
-        if self.l10n_ks_exempt or self.l10n_ks_filing_status == 'exempt':
+        if emp.l10n_ks_exempt or emp.l10n_ks_filing_status == 'exempt':
+            _logger.info('KS_SIT: employee %s — exempt. Skipping.', emp.id)
             return 0.0
-        if not self.l10n_ks_filing_status:
+        if not emp.l10n_ks_filing_status:
+            _logger.info('KS_SIT: employee %s — no filing status set. Skipping.', emp.id)
             return 0.0
 
         contract = payslip.contract_id
         periods = self._l10n_ks_pay_periods(contract)
 
-        # 1. Annualize
         period_gross = self._l10n_ks_period_gross(payslip, categories)
-        alloc_pct = self.l10n_ks_nonresident_allocation_pct
+        alloc_pct = emp.l10n_ks_nonresident_allocation_pct
         if alloc_pct and 0 < alloc_pct < 100.0:
             period_gross *= (alloc_pct / 100.0)
 
         annual_gross = period_gross * periods
 
-        # 2. Exemptions
-        pay_date = payslip.date_to or payslip.date_from or fields.Date.context_today(self)
+        pay_date = payslip.date_to or payslip.date_from or fields.Date.context_today(emp)
         if isinstance(pay_date, str):
             pay_date = fields.Date.from_string(pay_date)
         tax_year = pay_date.year
 
-        Params = self.env['l10n.ks.tax.year.params']
+        Params = self.env['l10n.ks.tax.year.params'].sudo()
         params = Params.get_params(tax_year, company=payslip.company_id)
         if not params:
             params = Params.get_params(tax_year - 1, company=payslip.company_id)
         total_exemption = 0.0
         if params:
-            filing = self._l10n_ks_map_filing()
+            filing = emp._l10n_ks_map_filing()
             total_exemption = params.compute_total_exemption(
-                filing, self.l10n_ks_total_allowances or 0
+                filing, emp.l10n_ks_total_allowances or 0
             )
+        else:
+            _logger.warning('KS_SIT: no tax year params found for year %s or %s.',
+                            tax_year, tax_year - 1)
 
         annual_taxable = max(0.0, annual_gross - total_exemption)
 
-        # 3. Brackets -> annual tax
-        Bracket = self.env['l10n.ks.withholding.bracket']
+        Bracket = self.env['l10n.ks.withholding.bracket'].sudo()
         annual_tax = Bracket.compute_annual_tax(
             tax_year,
-            self._l10n_ks_map_filing(),
+            emp._l10n_ks_map_filing(),
             annual_taxable,
             company=payslip.company_id,
         )
 
-        # 4. De-annualize
         per_period = annual_tax / periods if periods else 0.0
 
-        # 5. Extra withholding
-        extra = float(self.l10n_ks_additional_withholding or 0.0)
+        extra = float(emp.l10n_ks_additional_withholding or 0.0)
         total = per_period + extra
 
-        return -round(total, 2) if total else 0.0
+        _logger.info(
+            'KS_SIT: emp=%s filing=%s allowances=%s gross/period=%.2f '
+            'periods=%s annual_gross=%.2f exemption=%.2f annual_taxable=%.2f '
+            'annual_tax=%.2f per_period=%.2f extra=%.2f total=%.2f',
+            emp.id, emp.l10n_ks_filing_status, emp.l10n_ks_total_allowances,
+            period_gross, periods, annual_gross, total_exemption,
+            annual_taxable, annual_tax, per_period, extra, total,
+        )
+
+        return -round(total, 2)
