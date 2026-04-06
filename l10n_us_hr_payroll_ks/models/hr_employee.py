@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Kansas K-4 fields on hr.employee and the percentage-method withholding
 computation called by the KS_SIT salary rule.
@@ -66,10 +65,6 @@ class HrEmployee(models.Model):
         string='K-4 effective date',
         groups='hr_payroll.group_hr_payroll_user',
     )
-    currency_id = fields.Many2one(
-        related='company_id.currency_id',
-        readonly=True,
-    )
     l10n_ks_is_kansas_work_state = fields.Boolean(
         compute='_compute_l10n_ks_is_kansas_work_state',
     )
@@ -105,13 +100,17 @@ class HrEmployee(models.Model):
     def _l10n_ks_period_gross(self, payslip, categories):
         """Current-period gross wages subject to KS withholding.
 
-        Prefers the ``GROSS`` rule-category total already computed by upstream
-        salary rules.  Falls back to the contract wage (assumed per-period).
+        ``categories`` is a BrowsableObject — use attribute access, not dict.
+        Prefers the GROSS category total already computed by upstream salary
+        rules. Falls back to the contract wage (assumed per-period).
         """
         self.ensure_one()
-        gross = categories.get('GROSS')
-        if gross is not None and gross != 0:
-            return float(gross)
+        try:
+            gross = categories.GROSS
+            if gross:
+                return float(gross)
+        except (AttributeError, KeyError):
+            pass
         contract = payslip.contract_id
         if not contract:
             return 0.0
@@ -133,13 +132,12 @@ class HrEmployee(models.Model):
         Implements the NFC / KW-100 percentage method:
           1. Annualize period gross.
           2. Subtract personal + dependent exemptions.
-          3. Walk progressive brackets → annual tax.
-          4. De-annualize → per-period tax.
+          3. Walk progressive brackets -> annual tax.
+          4. De-annualize -> per-period tax.
           5. Add flat extra withholding.
         """
         self.ensure_one()
 
-        # Gate: must be a Kansas work-state employee with a valid filing status
         state = self.address_id.state_id if self.address_id else False
         if not state or state.code != 'KS':
             return 0.0
@@ -151,7 +149,7 @@ class HrEmployee(models.Model):
         contract = payslip.contract_id
         periods = self._l10n_ks_pay_periods(contract)
 
-        # --- 1. Annualize ---------------------------------------------------
+        # 1. Annualize
         period_gross = self._l10n_ks_period_gross(payslip, categories)
         alloc_pct = self.l10n_ks_nonresident_allocation_pct
         if alloc_pct and 0 < alloc_pct < 100.0:
@@ -159,7 +157,7 @@ class HrEmployee(models.Model):
 
         annual_gross = period_gross * periods
 
-        # --- 2. Exemptions ---------------------------------------------------
+        # 2. Exemptions
         pay_date = payslip.date_to or payslip.date_from or fields.Date.context_today(self)
         if isinstance(pay_date, str):
             pay_date = fields.Date.from_string(pay_date)
@@ -178,7 +176,7 @@ class HrEmployee(models.Model):
 
         annual_taxable = max(0.0, annual_gross - total_exemption)
 
-        # --- 3. Brackets → annual tax ----------------------------------------
+        # 3. Brackets -> annual tax
         Bracket = self.env['l10n.ks.withholding.bracket']
         annual_tax = Bracket.compute_annual_tax(
             tax_year,
@@ -187,10 +185,10 @@ class HrEmployee(models.Model):
             company=payslip.company_id,
         )
 
-        # --- 4. De-annualize -------------------------------------------------
+        # 4. De-annualize
         per_period = annual_tax / periods if periods else 0.0
 
-        # --- 5. Extra withholding --------------------------------------------
+        # 5. Extra withholding
         extra = float(self.l10n_ks_additional_withholding or 0.0)
         total = per_period + extra
 

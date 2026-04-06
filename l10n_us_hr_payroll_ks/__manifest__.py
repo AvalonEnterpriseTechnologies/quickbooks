@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 {
     'name': 'United States - Payroll: Kansas Withholding (K-4)',
     'version': '19.0.1.0.0',

@@ -15,14 +15,14 @@
                     <group>
                         <group string="Kansas withholding (K-4)">
                             <field name="l10n_ks_is_kansas_work_state" invisible="1"/>
-                            <field name="currency_id" invisible="1"/>
                             <field name="l10n_ks_filing_status"/>
                             <field name="l10n_ks_exempt"/>
                             <field name="l10n_ks_total_allowances"
                                    invisible="l10n_ks_exempt or l10n_ks_filing_status == 'exempt'"/>
                             <field name="l10n_ks_additional_withholding"
                                    invisible="l10n_ks_exempt or l10n_ks_filing_status == 'exempt'"/>
-                            <field name="l10n_ks_nonresident_allocation_pct" optional="hide"/>
+                            <field name="l10n_ks_nonresident_allocation_pct"
+                                   invisible="l10n_ks_exempt or l10n_ks_filing_status == 'exempt'"/>
                             <field name="l10n_ks_form_effective_date"/>
                         </group>
                     </group>

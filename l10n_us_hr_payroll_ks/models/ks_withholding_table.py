@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Kansas withholding data models — percentage-method brackets and per-year
 parameters transcribed from the KW-100 / NFC bulletin (SB 1, eff. 2024+).

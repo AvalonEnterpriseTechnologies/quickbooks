@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Post-install hook: create the KS_SIT salary rule and attach it to the first
 U.S. payroll structure found.  We do this in Python (not XML) because Odoo 19
@@ -7,8 +6,6 @@ XML ID varies across builds.
 """
 
 import logging
-
-from odoo import SUPERUSER_ID, api
 
 _logger = logging.getLogger(__name__)
 
@@ -44,8 +41,8 @@ def _find_us_structure(env):
     return struct
 
 
-def post_init_hook(cr, registry):
-    env = api.Environment(cr, SUPERUSER_ID, {})
+def post_init_hook(env):
+    """Odoo 17+ hook signature: receives ``env`` directly."""
 
     us_struct = _find_us_structure(env)
     if not us_struct:
