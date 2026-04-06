@@ -15,12 +15,19 @@ _logger = logging.getLogger(__name__)
 _PERIODS_PER_YEAR = {
     'annually': 1,
     'semi-annually': 2,
+    'semi_annually': 2,
     'quarterly': 4,
     'monthly': 12,
     'semi-monthly': 24,
+    'semi_monthly': 24,
     'bi-weekly': 26,
+    'bi_weekly': 26,
+    'biweekly': 26,
+    'bi-monthly': 6,
     'bi_monthly': 6,
+    'bimonthly': 6,
     'weekly': 52,
+    'daily': 260,
 }
 
 
@@ -106,8 +113,16 @@ class HrEmployee(models.Model):
     def _l10n_ks_pay_periods(self, version):
         """Return pay periods per year from the contract/version schedule."""
         self.ensure_one()
-        if version and hasattr(version, 'schedule_pay') and version.schedule_pay:
-            return _PERIODS_PER_YEAR.get(version.schedule_pay, 12)
+        if version:
+            sched = getattr(version, 'schedule_pay', None)
+            if sched:
+                periods = _PERIODS_PER_YEAR.get(sched)
+                if periods:
+                    return periods
+                _logger.warning(
+                    'KS_SIT: unrecognised schedule_pay value %r — '
+                    'defaulting to 12. Add it to _PERIODS_PER_YEAR.', sched)
+                return 12
         return 12
 
     def _l10n_ks_period_gross(self, payslip, categories):

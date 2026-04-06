@@ -112,7 +112,7 @@ def _create_salary_rule(env):
     rule = env['hr.salary.rule'].create({
         'name': 'Kansas State Income Tax',
         'code': RULE_CODE,
-        'sequence': 350,
+        'sequence': 155,
         'category_id': category.id,
         'struct_id': us_struct.id,
         'condition_select': 'none',
