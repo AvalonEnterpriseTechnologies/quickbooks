@@ -24,7 +24,6 @@ add rule **KS_SIT** to those structures manually.
     'license': 'LGPL-3',
     'depends': [
         'hr_payroll',
-        'hr_contract',
         'l10n_us_hr_payroll',
     ],
     'data': [
