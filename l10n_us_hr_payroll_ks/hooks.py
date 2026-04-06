@@ -11,6 +11,12 @@ _logger = logging.getLogger(__name__)
 
 MODULE = 'l10n_us_hr_payroll_ks'
 CAT_XMLID = f'{MODULE}.hr_salary_rule_category_ks_sit'
+
+_DEDUCTION_CAT_CANDIDATES = [
+    'hr_payroll.DED',
+    'hr_payroll.hr_salary_rule_category_deduction',
+    'hr_payroll.categ_ded',
+]
 RULE_CODE = 'KS_SIT'
 RULE_PYTHON = 'result = employee._l10n_ks_compute_sit_line(payslip, categories)\n'
 
@@ -77,9 +83,16 @@ def _create_salary_rule(env):
         _logger.warning('%s: no US payroll structure found — KS_SIT rule NOT created.', MODULE)
         return
 
-    category = env.ref(CAT_XMLID, raise_if_not_found=False)
+    category = _resolve_first(env, _DEDUCTION_CAT_CANDIDATES)
     if not category:
-        _logger.warning('%s: KS_SIT category not found — aborting rule creation.', MODULE)
+        Category = env['hr.salary.rule.category']
+        category = Category.search([('code', '=', 'DED')], limit=1)
+    if not category:
+        category = Category.search([('name', 'ilike', 'deduction')], limit=1)
+    if not category:
+        category = env.ref(CAT_XMLID, raise_if_not_found=False)
+    if not category:
+        _logger.warning('%s: no Deduction category found — aborting rule creation.', MODULE)
         return
 
     existing = env['hr.salary.rule'].search([('code', '=', RULE_CODE)], limit=1)
