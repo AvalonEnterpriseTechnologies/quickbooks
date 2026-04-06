@@ -110,20 +110,51 @@ class HrEmployee(models.Model):
                 return rec
         return None
 
-    def _l10n_ks_pay_periods(self, version):
-        """Return pay periods per year from the contract/version schedule."""
+    def _l10n_ks_pay_periods(self, version, payslip=None):
+        """Return pay periods per year.
+
+        Priority:
+        1. version/contract ``schedule_pay`` field (if present and recognised).
+        2. Derive from payslip date range length.
+        3. Default 26 (bi-weekly) — the most common US payroll cycle.
+        """
         self.ensure_one()
         if version:
             sched = getattr(version, 'schedule_pay', None)
             if sched:
                 periods = _PERIODS_PER_YEAR.get(sched)
                 if periods:
+                    _logger.debug('KS_SIT: schedule_pay=%r → %s periods', sched, periods)
                     return periods
                 _logger.warning(
-                    'KS_SIT: unrecognised schedule_pay value %r — '
-                    'defaulting to 12. Add it to _PERIODS_PER_YEAR.', sched)
-                return 12
-        return 12
+                    'KS_SIT: unrecognised schedule_pay=%r on version %s',
+                    sched, version.id)
+
+        if payslip and payslip.date_from and payslip.date_to:
+            d_from = payslip.date_from
+            d_to = payslip.date_to
+            if isinstance(d_from, str):
+                d_from = fields.Date.from_string(d_from)
+            if isinstance(d_to, str):
+                d_to = fields.Date.from_string(d_to)
+            span = (d_to - d_from).days + 1
+            if span <= 7:
+                p = 52
+            elif span <= 16:
+                p = 26
+            elif span <= 20:
+                p = 24
+            elif span <= 35:
+                p = 12
+            elif span <= 95:
+                p = 4
+            else:
+                p = 1
+            _logger.debug('KS_SIT: derived %s periods from %s-day pay span', p, span)
+            return p
+
+        _logger.warning('KS_SIT: no schedule_pay and no payslip dates — defaulting to 26')
+        return 26
 
     def _l10n_ks_period_gross(self, payslip, categories):
         """Current-period gross wages subject to KS withholding.
@@ -186,7 +217,7 @@ class HrEmployee(models.Model):
             return 0.0
 
         version = self._l10n_ks_get_version(payslip)
-        periods = self._l10n_ks_pay_periods(version)
+        periods = self._l10n_ks_pay_periods(version, payslip=payslip)
 
         period_gross = self._l10n_ks_period_gross(payslip, categories)
         alloc_pct = emp.l10n_ks_nonresident_allocation_pct
