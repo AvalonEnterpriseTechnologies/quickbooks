@@ -100,21 +100,8 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <!-- ===== Menu items under Payroll > Configuration ===== -->
-    <menuitem
-        id="menu_l10n_ks_bracket"
-        name="Kansas Withholding Brackets"
-        parent="hr_payroll.menu_hr_payroll_configuration"
-        action="action_l10n_ks_bracket"
-        sequence="92"
-        groups="hr_payroll.group_hr_payroll_manager"
-    />
-    <menuitem
-        id="menu_l10n_ks_params"
-        name="Kansas Tax Year Parameters"
-        parent="hr_payroll.menu_hr_payroll_configuration"
-        action="action_l10n_ks_params"
-        sequence="93"
-        groups="hr_payroll.group_hr_payroll_manager"
-    />
+    <!--
+        Menu items are created by the post_init_hook (hooks.py) because
+        the Payroll configuration menu XML ID varies across Odoo builds.
+    -->
 </odoo>
