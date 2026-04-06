@@ -5,7 +5,7 @@
         <field name="name">l10n.ks.withholding.bracket.tree</field>
         <field name="model">l10n.ks.withholding.bracket</field>
         <field name="arch" type="xml">
-            <tree string="Kansas Withholding Brackets" editable="bottom">
+            <list string="Kansas Withholding Brackets" editable="bottom">
                 <field name="tax_year"/>
                 <field name="filing_status"/>
                 <field name="income_from"/>
@@ -13,8 +13,8 @@
                 <field name="base_tax"/>
                 <field name="marginal_rate"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="active" optional="hide"/>
-            </tree>
+                <field name="active" column_invisible="1"/>
+            </list>
         </field>
     </record>
 
@@ -50,7 +50,7 @@
     <record id="action_l10n_ks_bracket" model="ir.actions.act_window">
         <field name="name">Kansas Withholding Brackets</field>
         <field name="res_model">l10n.ks.withholding.bracket</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <!-- ===== Tax Year Parameters ===== -->
@@ -58,14 +58,14 @@
         <field name="name">l10n.ks.tax.year.params.tree</field>
         <field name="model">l10n.ks.tax.year.params</field>
         <field name="arch" type="xml">
-            <tree string="Kansas Tax Year Parameters" editable="bottom">
+            <list string="Kansas Tax Year Parameters" editable="bottom">
                 <field name="tax_year"/>
                 <field name="personal_exemption_single"/>
                 <field name="personal_exemption_married"/>
                 <field name="dependent_exemption"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="notes" optional="hide"/>
-            </tree>
+                <field name="notes" column_invisible="1"/>
+            </list>
         </field>
     </record>
 
@@ -97,7 +97,7 @@
     <record id="action_l10n_ks_params" model="ir.actions.act_window">
         <field name="name">Kansas Tax Year Parameters</field>
         <field name="res_model">l10n.ks.tax.year.params</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <!-- ===== Menu items under Payroll > Configuration ===== -->
