@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_l10n_ks_k4" model="ir.ui.view">
+        <field name="name">hr.employee.form.l10n.ks.k4</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page
+                    string="Kansas K-4"
+                    name="l10n_ks_k4"
+                    groups="hr_payroll.group_hr_payroll_user"
+                    invisible="not l10n_ks_is_kansas_work_state"
+                >
+                    <group>
+                        <group string="Kansas withholding (K-4)">
+                            <field name="l10n_ks_is_kansas_work_state" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="l10n_ks_filing_status"/>
+                            <field name="l10n_ks_exempt"/>
+                            <field name="l10n_ks_total_allowances"
+                                   invisible="l10n_ks_exempt or l10n_ks_filing_status == 'exempt'"/>
+                            <field name="l10n_ks_additional_withholding"
+                                   invisible="l10n_ks_exempt or l10n_ks_filing_status == 'exempt'"/>
+                            <field name="l10n_ks_nonresident_allocation_pct" optional="hide"/>
+                            <field name="l10n_ks_form_effective_date"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

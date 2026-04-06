@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="config_l10n_ks_kw100_reminder" model="ir.config_parameter">
+        <field name="key">l10n_us_hr_payroll_ks.kw100_reminder</field>
+        <field name="value">Maintain l10n.ks.withholding.table and l10n.ks.tax.year.params from Kansas KW-100 / K-4 for each tax year.</field>
+    </record>
+</odoo>

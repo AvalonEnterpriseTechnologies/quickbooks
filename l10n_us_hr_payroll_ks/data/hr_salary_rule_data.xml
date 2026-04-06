@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_salary_rule_category_ks_sit" model="hr.salary.rule.category">
+        <field name="name">Kansas SIT</field>
+        <field name="code">KS_SIT_CAT</field>
+    </record>
+
+    <record id="hr_salary_rule_ks_sit" model="hr.salary.rule">
+        <field name="name">Kansas State Income Tax</field>
+        <field name="code">KS_SIT</field>
+        <field name="sequence" eval="350"/>
+        <field name="category_id" ref="l10n_us_hr_payroll_ks.hr_salary_rule_category_ks_sit"/>
+        <field name="condition_select">none</field>
+        <field name="amount_select">code</field>
+        <field name="appears_on_payslip" eval="True"/>
+        <field name="amount_python_compute"><![CDATA[
+result = employee._l10n_ks_compute_sit_line(payslip, categories)
+]]></field>
+    </record>
+    <!--
+      If install fails on this file, your build may use consolidated ``python_code``
+      on hr.salary.rule instead of amount_select / amount_python_compute — mirror the
+      same expression there and set struct_ids on the rule to your U.S. pay structure.
+    -->
+</odoo>

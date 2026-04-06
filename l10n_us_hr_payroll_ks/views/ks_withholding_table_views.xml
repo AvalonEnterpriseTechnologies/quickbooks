@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===== Withholding Brackets ===== -->
+    <record id="view_l10n_ks_bracket_tree" model="ir.ui.view">
+        <field name="name">l10n.ks.withholding.bracket.tree</field>
+        <field name="model">l10n.ks.withholding.bracket</field>
+        <field name="arch" type="xml">
+            <tree string="Kansas Withholding Brackets" editable="bottom">
+                <field name="tax_year"/>
+                <field name="filing_status"/>
+                <field name="income_from"/>
+                <field name="income_to"/>
+                <field name="base_tax"/>
+                <field name="marginal_rate"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_l10n_ks_bracket_form" model="ir.ui.view">
+        <field name="name">l10n.ks.withholding.bracket.form</field>
+        <field name="model">l10n.ks.withholding.bracket</field>
+        <field name="arch" type="xml">
+            <form string="Kansas Withholding Bracket">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="tax_year"/>
+                            <field name="filing_status"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Bracket range (annualized taxable income)">
+                        <field name="income_from"/>
+                        <field name="income_to"/>
+                    </group>
+                    <group string="Tax computation">
+                        <field name="base_tax"/>
+                        <field name="marginal_rate" widget="float" string="Marginal rate (%)"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_l10n_ks_bracket" model="ir.actions.act_window">
+        <field name="name">Kansas Withholding Brackets</field>
+        <field name="res_model">l10n.ks.withholding.bracket</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- ===== Tax Year Parameters ===== -->
+    <record id="view_l10n_ks_params_tree" model="ir.ui.view">
+        <field name="name">l10n.ks.tax.year.params.tree</field>
+        <field name="model">l10n.ks.tax.year.params</field>
+        <field name="arch" type="xml">
+            <tree string="Kansas Tax Year Parameters" editable="bottom">
+                <field name="tax_year"/>
+                <field name="personal_exemption_single"/>
+                <field name="personal_exemption_married"/>
+                <field name="dependent_exemption"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="notes" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_l10n_ks_params_form" model="ir.ui.view">
+        <field name="name">l10n.ks.tax.year.params.form</field>
+        <field name="model">l10n.ks.tax.year.params</field>
+        <field name="arch" type="xml">
+            <form string="Kansas Tax Year Parameters">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="tax_year"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="personal_exemption_single"/>
+                            <field name="personal_exemption_married"/>
+                            <field name="dependent_exemption"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="KDOR publication references, effective dates, etc."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_l10n_ks_params" model="ir.actions.act_window">
+        <field name="name">Kansas Tax Year Parameters</field>
+        <field name="res_model">l10n.ks.tax.year.params</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- ===== Menu items under Payroll > Configuration ===== -->
+    <menuitem
+        id="menu_l10n_ks_bracket"
+        name="Kansas Withholding Brackets"
+        parent="hr_payroll.menu_hr_payroll_configuration"
+        action="action_l10n_ks_bracket"
+        sequence="92"
+        groups="hr_payroll.group_hr_payroll_manager"
+    />
+    <menuitem
+        id="menu_l10n_ks_params"
+        name="Kansas Tax Year Parameters"
+        parent="hr_payroll.menu_hr_payroll_configuration"
+        action="action_l10n_ks_params"
+        sequence="93"
+        groups="hr_payroll.group_hr_payroll_manager"
+    />
+</odoo>

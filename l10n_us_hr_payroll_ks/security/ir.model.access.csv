@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_l10n_ks_bracket_user,l10n.ks.withholding.bracket payroll user,model_l10n_ks_withholding_bracket,hr_payroll.group_hr_payroll_user,1,0,0,0
+access_l10n_ks_bracket_manager,l10n.ks.withholding.bracket payroll manager,model_l10n_ks_withholding_bracket,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_l10n_ks_params_user,l10n.ks.tax.year.params payroll user,model_l10n_ks_tax_year_params,hr_payroll.group_hr_payroll_user,1,0,0,0
+access_l10n_ks_params_manager,l10n.ks.tax.year.params payroll manager,model_l10n_ks_tax_year_params,hr_payroll.group_hr_payroll_manager,1,1,1,1

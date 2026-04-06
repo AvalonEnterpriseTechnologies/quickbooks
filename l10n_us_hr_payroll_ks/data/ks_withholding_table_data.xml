@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Kansas withholding data — percentage method
+        Source: NFC Bulletin NFC-24-1722617728; KW-100 whrates.pdf
+        Effective: Pay Period 15, 2024  (Senate Bill 1, 2024 Special Session)
+        As of April 2026, Kansas has NOT published updated rates — these
+        remain current for tax years 2024, 2025, and 2026.
+    -->
+
+    <!-- ===== Tax Year Parameters (exemptions) ===== -->
+    <!--
+        Personal exemption — Single/HoH claiming >= 1 allowance:  $9,160
+        Personal exemption — Married claiming exactly 1 allowance: $9,160
+        Personal exemption — Married claiming >= 2 allowances:    $18,320
+        Each additional dependent (beyond personal):               $2,320
+    -->
+    <record id="l10n_ks_params_2024" model="l10n.ks.tax.year.params">
+        <field name="tax_year">2024</field>
+        <field name="personal_exemption_single">9160.00</field>
+        <field name="personal_exemption_married">18320.00</field>
+        <field name="dependent_exemption">2320.00</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="notes">SB 1 (2024 Special Session). NFC Bulletin NFC-24-1722617728.</field>
+    </record>
+    <record id="l10n_ks_params_2025" model="l10n.ks.tax.year.params">
+        <field name="tax_year">2025</field>
+        <field name="personal_exemption_single">9160.00</field>
+        <field name="personal_exemption_married">18320.00</field>
+        <field name="dependent_exemption">2320.00</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="notes">No change from 2024. Verify when KDOR publishes 2025-specific guidance.</field>
+    </record>
+    <record id="l10n_ks_params_2026" model="l10n.ks.tax.year.params">
+        <field name="tax_year">2026</field>
+        <field name="personal_exemption_single">9160.00</field>
+        <field name="personal_exemption_married">18320.00</field>
+        <field name="dependent_exemption">2320.00</field>
+        <field name="company_id" ref="base.main_company"/>
+        <field name="notes">Carried forward from 2024 SB 1. KDOR has not published 2026 changes as of April 2026.</field>
+    </record>
+
+    <!-- ===== Tax brackets — SINGLE / HoH / MFS ===== -->
+    <!--
+        $0     – $3,605      →  $0       + 0.00%  of excess over $0
+        $3,605 – $26,605     →  $0       + 5.20%  of excess over $3,605
+        $26,605+             →  $1,196   + 5.58%  of excess over $26,605
+    -->
+    <record id="l10n_ks_bracket_2024_s1" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2024</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">0</field>
+        <field name="income_to">3605</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">0</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2024_s2" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2024</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">3605</field>
+        <field name="income_to">26605</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">5.20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2024_s3" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2024</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">26605</field>
+        <field name="income_to">999999999</field>
+        <field name="base_tax">1196</field>
+        <field name="marginal_rate">5.58</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+
+    <!-- ===== Tax brackets — MARRIED ===== -->
+    <!--
+        $0     – $8,240      →  $0       + 0.00%  of excess over $0
+        $8,240 – $54,240     →  $0       + 5.20%  of excess over $8,240
+        $54,240+             →  $2,392   + 5.58%  of excess over $54,240
+    -->
+    <record id="l10n_ks_bracket_2024_m1" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2024</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">0</field>
+        <field name="income_to">8240</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">0</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2024_m2" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2024</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">8240</field>
+        <field name="income_to">54240</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">5.20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2024_m3" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2024</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">54240</field>
+        <field name="income_to">999999999</field>
+        <field name="base_tax">2392</field>
+        <field name="marginal_rate">5.58</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+
+    <!-- 2025 brackets — identical to 2024 (no KDOR update) -->
+    <record id="l10n_ks_bracket_2025_s1" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2025</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">0</field>
+        <field name="income_to">3605</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">0</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2025_s2" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2025</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">3605</field>
+        <field name="income_to">26605</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">5.20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2025_s3" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2025</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">26605</field>
+        <field name="income_to">999999999</field>
+        <field name="base_tax">1196</field>
+        <field name="marginal_rate">5.58</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2025_m1" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2025</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">0</field>
+        <field name="income_to">8240</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">0</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2025_m2" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2025</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">8240</field>
+        <field name="income_to">54240</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">5.20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2025_m3" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2025</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">54240</field>
+        <field name="income_to">999999999</field>
+        <field name="base_tax">2392</field>
+        <field name="marginal_rate">5.58</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+
+    <!-- 2026 brackets — identical to 2024 (KDOR has not published new rates as of Apr 2026) -->
+    <record id="l10n_ks_bracket_2026_s1" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2026</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">0</field>
+        <field name="income_to">3605</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">0</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2026_s2" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2026</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">3605</field>
+        <field name="income_to">26605</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">5.20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2026_s3" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2026</field>
+        <field name="filing_status">single</field>
+        <field name="income_from">26605</field>
+        <field name="income_to">999999999</field>
+        <field name="base_tax">1196</field>
+        <field name="marginal_rate">5.58</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2026_m1" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2026</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">0</field>
+        <field name="income_to">8240</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">0</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2026_m2" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2026</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">8240</field>
+        <field name="income_to">54240</field>
+        <field name="base_tax">0</field>
+        <field name="marginal_rate">5.20</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="l10n_ks_bracket_2026_m3" model="l10n.ks.withholding.bracket">
+        <field name="tax_year">2026</field>
+        <field name="filing_status">married</field>
+        <field name="income_from">54240</field>
+        <field name="income_to">999999999</field>
+        <field name="base_tax">2392</field>
+        <field name="marginal_rate">5.58</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+</odoo>
