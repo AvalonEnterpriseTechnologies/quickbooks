@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- Add PO Number + Has PO to the CRM list view (Odoo 19: <list> not <tree>) -->
+    <record id="miltech_crm_lead_list_inherit" model="ir.ui.view">
+        <field name="name">crm.lead.list.miltech</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_list_view_leads"/>
+        <field name="arch" type="xml">
+            <field name="stage_id" position="after">
+                <field name="x_studio_po_number" string="PO Number" optional="show"/>
+                <field name="has_po" string="Has PO" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Add PO Number to CRM opportunity list view -->
+    <record id="miltech_crm_case_list_view_oppor" model="ir.ui.view">
+        <field name="name">crm.lead.list.oppor.miltech</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_list_view_oppor"/>
+        <field name="arch" type="xml">
+            <field name="stage_id" position="after">
+                <field name="x_studio_po_number" string="PO Number" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Add PO Number to CRM form view -->
+    <record id="miltech_crm_lead_form_inherit" model="ir.ui.view">
+        <field name="name">crm.lead.form.miltech</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <field name="expected_revenue" position="after">
+                <field name="x_studio_po_number" string="PO Number"/>
+                <field name="has_po" invisible="1"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>
