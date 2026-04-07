@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
-    <!-- Add PO Number + Has PO to the CRM list view (Odoo 19: <list> not <tree>) -->
+    <!-- Add PO Number + Has PO to the CRM leads list view -->
     <record id="miltech_crm_lead_list_inherit" model="ir.ui.view">
         <field name="name">crm.lead.list.miltech</field>
         <field name="model">crm.lead</field>
-        <field name="inherit_id" ref="crm.crm_case_list_view_leads"/>
+        <field name="inherit_id" ref="crm.crm_case_tree_view_leads"/>
         <field name="arch" type="xml">
-            <field name="stage_id" position="after">
+            <field name="tag_ids" position="after">
                 <field name="x_studio_po_number" string="PO Number" optional="show"/>
                 <field name="has_po" string="Has PO" optional="hide"/>
             </field>
@@ -18,7 +18,7 @@
     <record id="miltech_crm_case_list_view_oppor" model="ir.ui.view">
         <field name="name">crm.lead.list.oppor.miltech</field>
         <field name="model">crm.lead</field>
-        <field name="inherit_id" ref="crm.crm_case_list_view_oppor"/>
+        <field name="inherit_id" ref="crm.crm_case_tree_view_oppor"/>
         <field name="arch" type="xml">
             <field name="stage_id" position="after">
                 <field name="x_studio_po_number" string="PO Number" optional="show"/>
