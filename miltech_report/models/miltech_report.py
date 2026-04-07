@@ -225,6 +225,7 @@ class MiltechReport(models.TransientModel):
             'won_count': 0,
             'won_value': 0,
             'lost_count': 0,
+            'quote_numbers': [],
             'po_numbers': [],
         }
 
@@ -243,6 +244,7 @@ class MiltechReport(models.TransientModel):
                         'won_count': 0,
                         'won_value': 0,
                         'lost_count': 0,
+                        'quote_numbers': [],
                         'po_numbers': [],
                     }
                 bucket = partner_map[pid]
@@ -258,6 +260,8 @@ class MiltechReport(models.TransientModel):
                 if lead.probability == 0:
                     bucket['lost_count'] += 1
 
+            if lead.x_studio_quote_number:
+                bucket['quote_numbers'].append(lead.x_studio_quote_number)
             if lead.x_studio_po_number:
                 bucket['po_numbers'].append(lead.x_studio_po_number)
 
@@ -272,6 +276,7 @@ class MiltechReport(models.TransientModel):
             row['win_rate'] = (
                 round(row['won_count'] / total * 100, 1) if total else 0
             )
+            row['quote_numbers'] = ', '.join(row['quote_numbers'])
             row['po_numbers'] = ', '.join(row['po_numbers'])
 
         if (other['active_count'] or other['won_count']
@@ -280,6 +285,7 @@ class MiltechReport(models.TransientModel):
             other['win_rate'] = (
                 round(other['won_count'] / total * 100, 1) if total else 0
             )
+            other['quote_numbers'] = ', '.join(other['quote_numbers'])
             other['po_numbers'] = ', '.join(other['po_numbers'])
             rows.append(other)
 
@@ -458,10 +464,10 @@ class MiltechReport(models.TransientModel):
         # SHEET 3: By Customer
         # =====================================================================
         ws3 = workbook.add_worksheet('Pipeline by Customer')
-        ws3.set_column(0, 7, 20)
+        ws3.set_column(0, 8, 20)
         cust_headers = [
             'Customer', 'Active Opps', 'Quoted Value', 'Won',
-            'Won Value', 'Lost', 'Win Rate', 'PO Numbers',
+            'Won Value', 'Lost', 'Win Rate', 'Quote Numbers', 'PO Numbers',
         ]
         for i, h in enumerate(cust_headers):
             ws3.write(0, i, h, header_fmt)
@@ -473,7 +479,8 @@ class MiltechReport(models.TransientModel):
             ws3.write(row_idx, 4, c['won_value'], money_fmt)
             ws3.write(row_idx, 5, c['lost_count'], num_fmt)
             ws3.write(row_idx, 6, c['win_rate'] / 100, pct_fmt)
-            ws3.write(row_idx, 7, c.get('po_numbers', ''), text_fmt)
+            ws3.write(row_idx, 7, c.get('quote_numbers', ''), text_fmt)
+            ws3.write(row_idx, 8, c.get('po_numbers', ''), text_fmt)
 
         # =====================================================================
         # SHEET 4: By Salesperson
