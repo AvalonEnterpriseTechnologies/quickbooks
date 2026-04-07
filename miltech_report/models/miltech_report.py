@@ -1,5 +1,6 @@
 import io
 import json
+from datetime import date, timedelta
 
 from odoo import api, fields, models
 
@@ -115,12 +116,13 @@ class MiltechReport(models.TransientModel):
         lost_leads = Lead.search(lost_domain)
         lost_count = len(lost_leads)
 
-        po_count = len(all_leads.filtered(lambda l: l.x_studio_po_number))
-
         quoting_leads = all_leads.filtered(
             lambda l: not l.stage_id.is_won and l.expected_revenue > 0
         )
         total_quoted = sum(quoting_leads.mapped('expected_revenue'))
+
+        engagements_today = self._get_engagements_today()
+        orders_shipped = self._get_orders_shipped(domain)
 
         return {
             'total_leads': total_leads,
@@ -129,8 +131,44 @@ class MiltechReport(models.TransientModel):
             'won_count': won_count,
             'won_revenue': won_revenue,
             'lost_count': lost_count,
-            'po_count': po_count,
+            'engagements_today': engagements_today,
+            'orders_shipped': orders_shipped,
         }
+
+    def _get_engagements_today(self):
+        """Count CRM cards created today in the 'Potential Clients' stage."""
+        Lead = self.env['crm.lead']
+        today_start = fields.Datetime.to_string(
+            fields.Datetime.start_of(fields.Datetime.now(), 'day')
+        )
+        today_end = fields.Datetime.to_string(
+            fields.Datetime.end_of(fields.Datetime.now(), 'day')
+        )
+        stage = self.env['crm.stage'].search(
+            [('name', 'ilike', 'Potential Clients')], limit=1
+        )
+        if not stage:
+            return 0
+        return Lead.search_count([
+            ('stage_id', '=', stage.id),
+            ('create_date', '>=', today_start),
+            ('create_date', '<=', today_end),
+            ('active', '=', True),
+        ])
+
+    def _get_orders_shipped(self, domain):
+        """Count leads/quotes in the 'Shipped' stage."""
+        Lead = self.env['crm.lead']
+        stage = self.env['crm.stage'].search(
+            [('name', 'ilike', 'Shipped')], limit=1
+        )
+        if not stage:
+            return 0
+        shipped_domain = domain + [
+            ('stage_id', '=', stage.id),
+            '|', ('active', '=', True), ('active', '=', False),
+        ]
+        return Lead.search_count(shipped_domain)
 
     # -------------------------------------------------------------------------
     # BY STAGE
@@ -381,8 +419,8 @@ class MiltechReport(models.TransientModel):
         # SHEET 1: Dashboard KPIs
         # =====================================================================
         ws = workbook.add_worksheet('Dashboard')
-        ws.set_column(0, 5, 22)
-        ws.merge_range('A1:F1', 'MILTECH CRM DASHBOARD', title_fmt)
+        ws.set_column(0, 6, 22)
+        ws.merge_range('A1:G1', 'MILTECH CRM DASHBOARD', title_fmt)
 
         kpis = data['kpis']
         kpi_items = [
@@ -391,7 +429,8 @@ class MiltechReport(models.TransientModel):
             ('Quotes Won', kpis['won_count']),
             ('Won Revenue', kpis['won_revenue']),
             ('Quotes Lost', kpis['lost_count']),
-            ('POs with Number', kpis['po_count']),
+            ('Engagements Today', kpis.get('engagements_today', 0)),
+            ('Orders Shipped', kpis.get('orders_shipped', 0)),
         ]
         for i, (label, value) in enumerate(kpi_items):
             row = 2 + i

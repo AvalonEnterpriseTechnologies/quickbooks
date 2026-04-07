@@ -119,6 +119,39 @@ class MiltechDashboard extends Component {
         await this.onApplyFilters();
     }
 
+    _toISODate(d) {
+        return d.toISOString().slice(0, 10);
+    }
+
+    async onPresetToday() {
+        const today = new Date();
+        const iso = this._toISODate(today);
+        this.state.filterValues.date_from = iso;
+        this.state.filterValues.date_to = iso;
+        await this.onApplyFilters();
+    }
+
+    async onPresetWeek() {
+        const today = new Date();
+        const day = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        this.state.filterValues.date_from = this._toISODate(monday);
+        this.state.filterValues.date_to = this._toISODate(sunday);
+        await this.onApplyFilters();
+    }
+
+    async onPresetMonth() {
+        const today = new Date();
+        const first = new Date(today.getFullYear(), today.getMonth(), 1);
+        const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        this.state.filterValues.date_from = this._toISODate(first);
+        this.state.filterValues.date_to = this._toISODate(last);
+        await this.onApplyFilters();
+    }
+
     // -------------------------------------------------------------------------
     // XLSX Export
     // -------------------------------------------------------------------------
