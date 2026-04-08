@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 <t t-name="miltech_report.Dashboard" owl="1">
-    <div class="miltech_dashboard" style="background: #f7f9fa; padding: 0;">
+    <div class="o_action miltech_dashboard">
 
-        <!-- HEADER BAR -->
-        <div style="background: #1B2A4A; color: white; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between;">
+        <!-- HEADER BAR (fixed above scroll area) -->
+        <div style="background: #1B2A4A; color: white; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto;">
             <div>
                 <h2 style="margin: 0; font-weight: 700; font-size: 22px;">MILTECH CRM DASHBOARD</h2>
                 <small style="color: #D6E4F0;">Live data from your CRM pipeline</small>
@@ -14,8 +14,8 @@
             </button>
         </div>
 
-        <!-- FILTER BAR -->
-        <div style="background: #2C3E6B; padding: 12px 32px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+        <!-- FILTER BAR (fixed above scroll area) -->
+        <div style="background: #2C3E6B; padding: 12px 32px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; flex: 0 0 auto;">
             <div class="d-flex align-items-center gap-1">
                 <button class="btn btn-outline-light btn-sm" t-on-click="onPresetToday" style="font-size: 11px; padding: 3px 10px;">Today</button>
                 <button class="btn btn-outline-light btn-sm" t-on-click="onPresetWeek" style="font-size: 11px; padding: 3px 10px;">This Week</button>
@@ -60,6 +60,9 @@
                 <i class="fa fa-times me-1"/> Clear
             </button>
         </div>
+
+        <!-- SCROLLABLE CONTENT AREA (Odoo scrolls .o_content natively) -->
+        <div class="o_content" style="background: #f7f9fa;">
 
         <!-- LOADING -->
         <t t-if="state.loading">
@@ -213,6 +216,7 @@
             </div>
         </t>
 
+        </div>
     </div>
 </t>
 </templates>
