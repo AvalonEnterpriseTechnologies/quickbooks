@@ -1,0 +1,26 @@
+.miltech_dashboard {
+    overflow-y: scroll !important;
+    height: 100% !important;
+}
+
+.miltech_dashboard::-webkit-scrollbar {
+    width: 10px !important;
+    display: block !important;
+}
+
+.miltech_dashboard::-webkit-scrollbar-track {
+    background: #dde3ea !important;
+}
+
+.miltech_dashboard::-webkit-scrollbar-thumb {
+    background: #8899aa !important;
+    border-radius: 5px !important;
+}
+
+.miltech_dashboard::-webkit-scrollbar-thumb:hover {
+    background: #667788 !important;
+}
+
+.o_action_manager .miltech_dashboard {
+    overflow-y: scroll !important;
+}

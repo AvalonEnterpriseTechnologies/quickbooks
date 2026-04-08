@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 <t t-name="miltech_report.Dashboard" owl="1">
-    <style>
-        .miltech_dashboard::-webkit-scrollbar { width: 8px; }
-        .miltech_dashboard::-webkit-scrollbar-track { background: #e8ecf1; }
-        .miltech_dashboard::-webkit-scrollbar-thumb { background: #9ab; border-radius: 4px; }
-        .miltech_dashboard::-webkit-scrollbar-thumb:hover { background: #789; }
-        .miltech_dashboard { scrollbar-width: thin; scrollbar-color: #9ab #e8ecf1; }
-    </style>
-    <div class="o_action miltech_dashboard" style="background: #f7f9fa; height: 100%; overflow-y: auto; padding: 0;">
+    <div class="o_action miltech_dashboard" style="background: #f7f9fa; padding: 0;">
 
         <!-- HEADER BAR -->
         <div style="background: #1B2A4A; color: white; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between;">
