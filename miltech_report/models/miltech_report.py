@@ -28,10 +28,11 @@ class MiltechReport(models.TransientModel):
     def get_dashboard_data(self, wizard_id=None):
         """Main entry point for the OWL dashboard. Returns all sections."""
         domain = self._build_domain(wizard_id)
+        won_domain = self._build_domain(wizard_id, date_field='date_closed')
         return {
-            'kpis': self._get_kpis(domain),
+            'kpis': self._get_kpis(domain, won_domain),
             'by_stage': self._get_by_stage(domain),
-            'by_customer': self._get_by_customer(domain),
+            'by_customer': self._get_by_customer(domain, won_domain),
             'filters': self._get_filter_options(),
         }
 
@@ -71,7 +72,8 @@ class MiltechReport(models.TransientModel):
     # DOMAIN BUILDER
     # -------------------------------------------------------------------------
 
-    def _build_domain(self, wizard_id=None):
+    def _build_domain(self, wizard_id=None, date_field='create_date'):
+        """Build search domain. date_field controls which field dates filter on."""
         domain = []
         if not wizard_id:
             return domain
@@ -81,13 +83,13 @@ class MiltechReport(models.TransientModel):
             return domain
 
         if wizard.date_from:
-            domain.append(('create_date', '>=', fields.Datetime.to_string(
+            domain.append((date_field, '>=', fields.Datetime.to_string(
                 fields.Datetime.start_of(
                     fields.Datetime.from_string(str(wizard.date_from)), 'day'
                 )
             )))
         if wizard.date_to:
-            domain.append(('create_date', '<=', fields.Datetime.to_string(
+            domain.append((date_field, '<=', fields.Datetime.to_string(
                 fields.Datetime.end_of(
                     fields.Datetime.from_string(str(wizard.date_to)), 'day'
                 )
@@ -105,7 +107,7 @@ class MiltechReport(models.TransientModel):
     # KPIs
     # -------------------------------------------------------------------------
 
-    def _get_kpis(self, domain):
+    def _get_kpis(self, domain, won_domain):
         Lead = self.env['crm.lead']
 
         active_domain = domain + [('active', '=', True)]
@@ -114,12 +116,15 @@ class MiltechReport(models.TransientModel):
         total_leads = len(all_leads)
         total_expected = sum(all_leads.mapped('expected_revenue'))
 
-        won_leads = all_leads.filtered(lambda l: self._is_won_stage(l.stage_id))
+        won_active = won_domain + [('active', '=', True)]
+        won_leads = Lead.search(won_active).filtered(
+            lambda l: self._is_won_stage(l.stage_id)
+        )
         won_count = len(won_leads)
         won_revenue = sum(won_leads.mapped('expected_revenue'))
 
-        lost_domain = domain + [('active', '=', False), ('probability', '=', 0)]
-        lost_leads = Lead.search(lost_domain)
+        lost_domain_full = domain + [('active', '=', False), ('probability', '=', 0)]
+        lost_leads = Lead.search(lost_domain_full)
         lost_count = len(lost_leads)
 
         quoting_leads = all_leads.filtered(
@@ -208,17 +213,24 @@ class MiltechReport(models.TransientModel):
     # BY CUSTOMER
     # -------------------------------------------------------------------------
 
-    def _get_by_customer(self, domain):
+    def _get_by_customer(self, domain, won_domain):
         Lead = self.env['crm.lead']
         potential_stage = self.env['crm.stage'].search(
             [('name', 'ilike', 'Potential Clients')], limit=1
         )
-        all_domain = domain + [
+        exclude = [('stage_id', '!=', potential_stage.id)] if potential_stage else []
+
+        all_domain = domain + exclude + [
             '|', ('active', '=', True), ('active', '=', False),
         ]
-        if potential_stage:
-            all_domain += [('stage_id', '!=', potential_stage.id)]
         all_leads = Lead.search(all_domain)
+
+        won_leads_domain = won_domain + exclude + [('active', '=', True)]
+        won_leads_set = set(
+            Lead.search(won_leads_domain).filtered(
+                lambda l: self._is_won_stage(l.stage_id)
+            ).ids
+        )
 
         partner_map = {}
         other = {
@@ -254,7 +266,7 @@ class MiltechReport(models.TransientModel):
                 is_won = self._is_won_stage(lead.stage_id)
                 if not is_won:
                     bucket['quoted_value'] += lead.expected_revenue or 0
-                if is_won:
+                if is_won and lead.id in won_leads_set:
                     bucket['won_count'] += 1
                     bucket['won_value'] += lead.expected_revenue or 0
             else:
