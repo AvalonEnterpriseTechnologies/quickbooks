@@ -19,7 +19,6 @@ class MiltechDashboard extends Component {
             kpis: {},
             byStage: [],
             byCustomer: [],
-            bySalesperson: [],
             filters: { salespeople: [], partners: [], stages: [] },
             filterValues: {
                 date_from: "",
@@ -65,7 +64,6 @@ class MiltechDashboard extends Component {
         this.state.kpis = data.kpis || {};
         this.state.byStage = data.by_stage || [];
         this.state.byCustomer = data.by_customer || [];
-        this.state.bySalesperson = data.by_salesperson || [];
         if (data.filters) {
             this.state.filters = data.filters;
         }
@@ -194,19 +192,6 @@ class MiltechDashboard extends Component {
             view_mode: "list,form",
             views: [[false, "list"], [false, "form"]],
             domain: [["partner_id", "=", partnerId]],
-            target: "current",
-        });
-    }
-
-    viewSalespersonLeads(userId) {
-        if (!userId) return;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: "Opportunities",
-            res_model: "crm.lead",
-            view_mode: "list,form",
-            views: [[false, "list"], [false, "form"]],
-            domain: [["user_id", "=", userId]],
             target: "current",
         });
     }

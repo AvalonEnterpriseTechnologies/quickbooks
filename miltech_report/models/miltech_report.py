@@ -32,9 +32,15 @@ class MiltechReport(models.TransientModel):
             'kpis': self._get_kpis(domain),
             'by_stage': self._get_by_stage(domain),
             'by_customer': self._get_by_customer(domain),
-            'by_salesperson': self._get_by_salesperson(domain),
             'filters': self._get_filter_options(),
         }
+
+    def _is_won_stage(self, stage):
+        """A stage counts as won if Odoo marks it is_won OR it's Shipped/Delivered."""
+        if stage.is_won:
+            return True
+        name = (stage.name or '').strip().lower()
+        return name in ('shipped', 'delivered')
 
     @api.model
     def apply_filters(self, wizard_id, filter_vals):
@@ -108,7 +114,7 @@ class MiltechReport(models.TransientModel):
         total_leads = len(all_leads)
         total_expected = sum(all_leads.mapped('expected_revenue'))
 
-        won_leads = all_leads.filtered(lambda l: l.stage_id.is_won)
+        won_leads = all_leads.filtered(lambda l: self._is_won_stage(l.stage_id))
         won_count = len(won_leads)
         won_revenue = sum(won_leads.mapped('expected_revenue'))
 
@@ -117,7 +123,7 @@ class MiltechReport(models.TransientModel):
         lost_count = len(lost_leads)
 
         quoting_leads = all_leads.filtered(
-            lambda l: not l.stage_id.is_won and l.expected_revenue > 0
+            lambda l: not self._is_won_stage(l.stage_id) and l.expected_revenue > 0
         )
         total_quoted = sum(quoting_leads.mapped('expected_revenue'))
 
@@ -194,7 +200,7 @@ class MiltechReport(models.TransientModel):
             result.append({
                 'stage_id': stage.id,
                 'stage_name': stage.name,
-                'is_won': stage.is_won,
+                'is_won': self._is_won_stage(stage),
                 'count': len(leads),
                 'total_revenue': sum(revenues),
                 'avg_probability': (
@@ -253,9 +259,10 @@ class MiltechReport(models.TransientModel):
 
             if lead.active:
                 bucket['active_count'] += 1
-                if not lead.stage_id.is_won:
+                is_won = self._is_won_stage(lead.stage_id)
+                if not is_won:
                     bucket['quoted_value'] += lead.expected_revenue or 0
-                if lead.stage_id.is_won:
+                if is_won:
                     bucket['won_count'] += 1
                     bucket['won_value'] += lead.expected_revenue or 0
             else:
@@ -290,60 +297,6 @@ class MiltechReport(models.TransientModel):
             other['quote_numbers'] = ', '.join(other['quote_numbers'])
             other['po_numbers'] = ', '.join(other['po_numbers'])
             rows.append(other)
-
-        return rows
-
-    # -------------------------------------------------------------------------
-    # BY SALESPERSON
-    # -------------------------------------------------------------------------
-
-    def _get_by_salesperson(self, domain):
-        Lead = self.env['crm.lead']
-        all_domain = domain + [
-            '|', ('active', '=', True), ('active', '=', False),
-        ]
-        all_leads = Lead.search(all_domain)
-
-        user_map = {}
-        for lead in all_leads:
-            uid = lead.user_id.id if lead.user_id else 0
-            uname = lead.user_id.name if lead.user_id else 'Unassigned'
-
-            if uid not in user_map:
-                user_map[uid] = {
-                    'user_id': uid,
-                    'user_name': uname,
-                    'total_opps': 0,
-                    'quoted_value': 0,
-                    'won_count': 0,
-                    'won_revenue': 0,
-                    'lost_count': 0,
-                }
-
-            entry = user_map[uid]
-            entry['total_opps'] += 1
-
-            if lead.active:
-                if not lead.stage_id.is_won:
-                    entry['quoted_value'] += lead.expected_revenue or 0
-                if lead.stage_id.is_won:
-                    entry['won_count'] += 1
-                    entry['won_revenue'] += lead.expected_revenue or 0
-            else:
-                if lead.probability == 0:
-                    entry['lost_count'] += 1
-
-        rows = sorted(
-            user_map.values(),
-            key=lambda r: r['won_revenue'],
-            reverse=True,
-        )
-
-        for row in rows:
-            total = row['won_count'] + row['lost_count']
-            row['win_rate'] = (
-                round(row['won_count'] / total * 100, 1) if total else 0
-            )
 
         return rows
 
@@ -483,25 +436,6 @@ class MiltechReport(models.TransientModel):
             ws3.write(row_idx, 6, c['win_rate'] / 100, pct_fmt)
             ws3.write(row_idx, 7, c.get('quote_numbers', ''), text_fmt)
             ws3.write(row_idx, 8, c.get('po_numbers', ''), text_fmt)
-
-        # =====================================================================
-        # SHEET 4: By Salesperson
-        # =====================================================================
-        ws4 = workbook.add_worksheet('Pipeline by Salesperson')
-        ws4.set_column(0, 5, 22)
-        sp_headers = [
-            'Salesperson', 'Total Opps', 'Quoted Value',
-            'Won', 'Won Revenue', 'Win Rate',
-        ]
-        for i, h in enumerate(sp_headers):
-            ws4.write(0, i, h, header_fmt)
-        for row_idx, s in enumerate(data['by_salesperson'], 1):
-            ws4.write(row_idx, 0, s['user_name'], text_fmt)
-            ws4.write(row_idx, 1, s['total_opps'], num_fmt)
-            ws4.write(row_idx, 2, s['quoted_value'], money_fmt)
-            ws4.write(row_idx, 3, s['won_count'], num_fmt)
-            ws4.write(row_idx, 4, s['won_revenue'], money_fmt)
-            ws4.write(row_idx, 5, s['win_rate'] / 100, pct_fmt)
 
         workbook.close()
         output.seek(0)
