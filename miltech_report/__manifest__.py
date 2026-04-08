@@ -22,7 +22,6 @@
     ],
     'assets': {
         'web.assets_backend': [
-            'miltech_report/static/src/css/miltech_dashboard.css',
             'miltech_report/static/src/js/miltech_dashboard.js',
             'miltech_report/static/src/xml/miltech_dashboard.xml',
         ],

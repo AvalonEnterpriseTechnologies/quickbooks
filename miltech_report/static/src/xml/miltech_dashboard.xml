@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 <t t-name="miltech_report.Dashboard" owl="1">
-    <div class="o_action miltech_dashboard" style="background: #f7f9fa; padding: 0;">
+    <div class="miltech_dashboard" style="background: #f7f9fa; padding: 0;">
 
         <!-- HEADER BAR -->
         <div style="background: #1B2A4A; color: white; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between;">
