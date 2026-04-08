@@ -127,7 +127,7 @@ class MiltechReport(models.TransientModel):
         )
         total_quoted = sum(quoting_leads.mapped('expected_revenue'))
 
-        engagements_today = self._get_engagements_today()
+        engagements = self._get_engagements(domain)
         orders_shipped = self._get_orders_shipped(domain)
 
         return {
@@ -137,30 +137,23 @@ class MiltechReport(models.TransientModel):
             'won_count': won_count,
             'won_revenue': won_revenue,
             'lost_count': lost_count,
-            'engagements_today': engagements_today,
+            'engagements': engagements,
             'orders_shipped': orders_shipped,
         }
 
-    def _get_engagements_today(self):
-        """Count CRM cards created today in the 'Potential Clients' stage."""
+    def _get_engagements(self, domain):
+        """Count leads in the 'Potential Clients' stage matching current filters."""
         Lead = self.env['crm.lead']
-        today_start = fields.Datetime.to_string(
-            fields.Datetime.start_of(fields.Datetime.now(), 'day')
-        )
-        today_end = fields.Datetime.to_string(
-            fields.Datetime.end_of(fields.Datetime.now(), 'day')
-        )
         stage = self.env['crm.stage'].search(
             [('name', 'ilike', 'Potential Clients')], limit=1
         )
         if not stage:
             return 0
-        return Lead.search_count([
+        eng_domain = domain + [
             ('stage_id', '=', stage.id),
-            ('create_date', '>=', today_start),
-            ('create_date', '<=', today_end),
             ('active', '=', True),
-        ])
+        ]
+        return Lead.search_count(eng_domain)
 
     def _get_orders_shipped(self, domain):
         """Count leads/quotes in the 'Delivered' stage."""
@@ -217,9 +210,14 @@ class MiltechReport(models.TransientModel):
 
     def _get_by_customer(self, domain):
         Lead = self.env['crm.lead']
+        potential_stage = self.env['crm.stage'].search(
+            [('name', 'ilike', 'Potential Clients')], limit=1
+        )
         all_domain = domain + [
             '|', ('active', '=', True), ('active', '=', False),
         ]
+        if potential_stage:
+            all_domain += [('stage_id', '!=', potential_stage.id)]
         all_leads = Lead.search(all_domain)
 
         partner_map = {}
@@ -375,7 +373,7 @@ class MiltechReport(models.TransientModel):
             ('Quotes Won', kpis['won_count']),
             ('Won Revenue', kpis['won_revenue']),
             ('Quotes Lost', kpis['lost_count']),
-            ('Engagements Today', kpis.get('engagements_today', 0)),
+            ('Engagements', kpis.get('engagements', 0)),
             ('Orders Delivered', kpis.get('orders_shipped', 0)),
         ]
         for i, (label, value) in enumerate(kpi_items):
