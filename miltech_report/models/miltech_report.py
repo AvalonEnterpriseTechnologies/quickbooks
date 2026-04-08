@@ -163,10 +163,10 @@ class MiltechReport(models.TransientModel):
         ])
 
     def _get_orders_shipped(self, domain):
-        """Count leads/quotes in the 'Shipped' stage."""
+        """Count leads/quotes in the 'Delivered' stage."""
         Lead = self.env['crm.lead']
         stage = self.env['crm.stage'].search(
-            [('name', 'ilike', 'Shipped')], limit=1
+            ['|', ('name', 'ilike', 'Delivered'), ('name', 'ilike', 'Shipped')], limit=1
         )
         if not stage:
             return 0
@@ -391,7 +391,7 @@ class MiltechReport(models.TransientModel):
             ('Won Revenue', kpis['won_revenue']),
             ('Quotes Lost', kpis['lost_count']),
             ('Engagements Today', kpis.get('engagements_today', 0)),
-            ('Orders Shipped', kpis.get('orders_shipped', 0)),
+            ('Orders Delivered', kpis.get('orders_shipped', 0)),
         ]
         for i, (label, value) in enumerate(kpi_items):
             row = 2 + i

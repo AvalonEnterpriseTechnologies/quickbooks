@@ -121,7 +121,7 @@
                     </div>
 
                     <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #2980B9;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Orders Shipped</div>
+                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Orders Delivered</div>
                         <div style="font-size: 28px; font-weight: 700; color: #2980B9; margin-top: 4px;">
                             <t t-esc="state.kpis.orders_shipped or 0"/>
                         </div>
