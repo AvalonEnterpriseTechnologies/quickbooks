@@ -123,9 +123,7 @@ class MiltechReport(models.TransientModel):
         won_count = len(won_leads)
         won_revenue = sum(won_leads.mapped('expected_revenue'))
 
-        lost_domain_full = domain + [('active', '=', False), ('probability', '=', 0)]
-        lost_leads = Lead.search(lost_domain_full)
-        lost_count = len(lost_leads)
+        lost_count = self._get_lost_count(domain)
 
         quoting_leads = all_leads.filtered(
             lambda l: not self._is_won_stage(l.stage_id) and l.expected_revenue > 0
@@ -145,6 +143,20 @@ class MiltechReport(models.TransientModel):
             'engagements': engagements,
             'orders_shipped': orders_shipped,
         }
+
+    def _get_lost_count(self, domain):
+        """Count leads in the 'Lost' stage (active or archived)."""
+        Lead = self.env['crm.lead']
+        stage = self.env['crm.stage'].search(
+            [('name', 'ilike', 'Lost')], limit=1
+        )
+        if not stage:
+            return 0
+        lost_domain = domain + [
+            ('stage_id', '=', stage.id),
+            '|', ('active', '=', True), ('active', '=', False),
+        ]
+        return Lead.search_count(lost_domain)
 
     def _get_engagements(self, domain):
         """Count leads in the 'Potential Clients' stage matching current filters."""
@@ -261,7 +273,10 @@ class MiltechReport(models.TransientModel):
                     }
                 bucket = partner_map[pid]
 
-            if lead.active:
+            is_lost_stage = (lead.stage_id.name or '').strip().lower() == 'lost'
+            if is_lost_stage:
+                bucket['lost_count'] += 1
+            elif lead.active:
                 bucket['active_count'] += 1
                 is_won = self._is_won_stage(lead.stage_id)
                 if not is_won:
@@ -269,9 +284,6 @@ class MiltechReport(models.TransientModel):
                 if is_won and lead.id in won_leads_set:
                     bucket['won_count'] += 1
                     bucket['won_value'] += lead.expected_revenue or 0
-            else:
-                if lead.probability == 0:
-                    bucket['lost_count'] += 1
 
         rows = sorted(
             partner_map.values(),
