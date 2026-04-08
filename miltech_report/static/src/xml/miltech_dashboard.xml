@@ -181,8 +181,6 @@
                                     <th class="text-center" style="padding: 10px 16px;">Won $</th>
                                     <th class="text-center" style="padding: 10px 16px;">Lost</th>
                                     <th class="text-center" style="padding: 10px 16px;">Win Rate</th>
-                                    <th style="padding: 10px 16px;">Quote Numbers</th>
-                                    <th style="padding: 10px 16px;">PO Numbers</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -197,16 +195,10 @@
                                         <td class="text-center" style="padding: 8px 16px;"><t t-esc="formatCurrency(row.won_value)"/></td>
                                         <td class="text-center" style="padding: 8px 16px; color: #E74C3C;"><t t-esc="row.lost_count"/></td>
                                         <td class="text-center" style="padding: 8px 16px;"><t t-esc="formatPct(row.win_rate)"/></td>
-                                        <td style="padding: 8px 16px; font-size: 12px; color: #2980B9;">
-                                            <t t-esc="row.quote_numbers || '-'"/>
-                                        </td>
-                                        <td style="padding: 8px 16px; font-size: 12px; color: #8E44AD;">
-                                            <t t-esc="row.po_numbers || '-'"/>
-                                        </td>
                                     </tr>
                                 </t>
                                 <t t-if="!state.byCustomer.length">
-                                    <tr><td colspan="9" class="text-center text-muted py-3">No data</td></tr>
+                                    <tr><td colspan="7" class="text-center text-muted py-3">No data</td></tr>
                                 </t>
                             </tbody>
                         </table>
