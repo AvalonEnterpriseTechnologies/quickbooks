@@ -211,6 +211,8 @@ class MiltechReport(models.TransientModel):
 
     def _get_by_customer(self, domain):
         Lead = self.env['crm.lead']
+        has_quote_field = 'x_studio_quote_number' in Lead._fields
+        has_po_field = 'x_studio_po_number' in Lead._fields
         all_domain = domain + [
             '|', ('active', '=', True), ('active', '=', False),
         ]
@@ -260,9 +262,9 @@ class MiltechReport(models.TransientModel):
                 if lead.probability == 0:
                     bucket['lost_count'] += 1
 
-            if lead.x_studio_quote_number:
+            if has_quote_field and lead.x_studio_quote_number:
                 bucket['quote_numbers'].append(lead.x_studio_quote_number)
-            if lead.x_studio_po_number:
+            if has_po_field and lead.x_studio_po_number:
                 bucket['po_numbers'].append(lead.x_studio_po_number)
 
         rows = sorted(

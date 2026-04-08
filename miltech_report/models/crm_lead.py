@@ -13,5 +13,6 @@ class CrmLead(models.Model):
 
     @api.depends('x_studio_po_number')
     def _compute_has_po(self):
+        has_field = 'x_studio_po_number' in self._fields
         for lead in self:
-            lead.has_po = bool(lead.x_studio_po_number)
+            lead.has_po = bool(lead.x_studio_po_number) if has_field else False
