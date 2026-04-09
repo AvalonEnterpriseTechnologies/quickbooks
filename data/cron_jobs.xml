@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<data noupdate="1">
+    <!-- Process pending queue items every 2 minutes -->
+    <record id="ir_cron_qb_queue_processor" model="ir.cron">
+        <field name="name">QuickBooks: Process Sync Queue</field>
+        <field name="model_id" ref="model_quickbooks_sync_queue"/>
+        <field name="state">code</field>
+        <field name="code">model.process_pending_jobs()</field>
+        <field name="interval_number">2</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- Full periodic sync every 30 minutes -->
+    <record id="ir_cron_qb_full_sync" model="ir.cron">
+        <field name="name">QuickBooks: Periodic Full Sync</field>
+        <field name="model_id" ref="model_quickbooks_sync_queue"/>
+        <field name="state">code</field>
+        <field name="code">model.process_sync_queue()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- Token refresh every 45 minutes (tokens expire in 60 min) -->
+    <record id="ir_cron_qb_token_refresh" model="ir.cron">
+        <field name="name">QuickBooks: Token Refresh</field>
+        <field name="model_id" ref="model_quickbooks_config"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_refresh_tokens()</field>
+        <field name="interval_number">45</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</data>
+</odoo>

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Setup Wizard -->
+    <record id="view_quickbooks_setup_wizard_form" model="ir.ui.view">
+        <field name="name">quickbooks.setup.wizard.form</field>
+        <field name="model">quickbooks.setup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Connect to QuickBooks">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="environment"/>
+                    <field name="client_id"/>
+                    <field name="client_secret" password="True"/>
+                    <field name="webhook_verifier_token" password="True"/>
+                </group>
+                <footer>
+                    <button name="action_save_and_connect"
+                            string="Save &amp; Connect"
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quickbooks_setup_wizard" model="ir.actions.act_window">
+        <field name="name">QuickBooks Setup</field>
+        <field name="res_model">quickbooks.setup.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Manual Sync Wizard -->
+    <record id="view_quickbooks_sync_wizard_form" model="ir.ui.view">
+        <field name="name">quickbooks.sync.wizard.form</field>
+        <field name="model">quickbooks.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Manual Sync">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="sync_direction"/>
+                </group>
+                <group string="Entities">
+                    <group>
+                        <field name="sync_customers"/>
+                        <field name="sync_vendors"/>
+                        <field name="sync_products"/>
+                        <field name="sync_invoices"/>
+                    </group>
+                    <group>
+                        <field name="sync_bills"/>
+                        <field name="sync_payments"/>
+                        <field name="sync_journal_entries"/>
+                        <field name="sync_credit_memos"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_run_sync"
+                            string="Start Sync"
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quickbooks_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Manual Sync</field>
+        <field name="res_model">quickbooks.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Migration Wizard -->
+    <record id="view_quickbooks_migration_wizard_form" model="ir.ui.view">
+        <field name="name">quickbooks.migration.wizard.form</field>
+        <field name="model">quickbooks.migration.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Initial Data Migration">
+                <div class="alert alert-warning" role="alert">
+                    <strong>Warning:</strong> This will queue a full import/export of
+                    all selected entities. This may take a significant amount of time
+                    for large datasets.
+                </div>
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="direction"/>
+                </group>
+                <group string="Entities to Migrate">
+                    <group>
+                        <field name="migrate_accounts"/>
+                        <field name="migrate_tax_codes"/>
+                        <field name="migrate_customers"/>
+                        <field name="migrate_vendors"/>
+                        <field name="migrate_products"/>
+                    </group>
+                    <group>
+                        <field name="migrate_invoices"/>
+                        <field name="migrate_bills"/>
+                        <field name="migrate_payments"/>
+                        <field name="migrate_journal_entries"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_start_migration"
+                            string="Start Migration"
+                            type="object" class="btn-primary"
+                            confirm="This will queue a large number of sync jobs. Continue?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quickbooks_migration_wizard" model="ir.actions.act_window">
+        <field name="name">Initial Migration</field>
+        <field name="res_model">quickbooks.migration.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

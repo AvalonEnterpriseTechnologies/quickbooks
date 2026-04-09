@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="qb_oauth_result_template" name="QuickBooks OAuth Result">
+        <t t-call="web.login_layout">
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div t-attf-class="card border-#{success and 'success' or 'danger'}">
+                            <div t-attf-class="card-header bg-#{success and 'success' or 'danger'} text-white">
+                                <h4 class="mb-0">
+                                    <t t-if="success">QuickBooks Connected</t>
+                                    <t t-else="">Connection Failed</t>
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <p><t t-esc="message"/></p>
+                                <a href="/odoo/accounting" class="btn btn-primary mt-3">
+                                    Return to Odoo
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<data noupdate="1">
+    <!-- Customer field mappings -->
+    <record id="mapping_customer_name" model="quickbooks.field.mapping">
+        <field name="entity_type">customer</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">DisplayName</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_customer_email" model="quickbooks.field.mapping">
+        <field name="entity_type">customer</field>
+        <field name="sequence">2</field>
+        <field name="odoo_field">email</field>
+        <field name="qb_field">PrimaryEmailAddr.Address</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_customer_phone" model="quickbooks.field.mapping">
+        <field name="entity_type">customer</field>
+        <field name="sequence">3</field>
+        <field name="odoo_field">phone</field>
+        <field name="qb_field">PrimaryPhone.FreeFormNumber</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_customer_street" model="quickbooks.field.mapping">
+        <field name="entity_type">customer</field>
+        <field name="sequence">4</field>
+        <field name="odoo_field">street</field>
+        <field name="qb_field">BillAddr.Line1</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_customer_city" model="quickbooks.field.mapping">
+        <field name="entity_type">customer</field>
+        <field name="sequence">5</field>
+        <field name="odoo_field">city</field>
+        <field name="qb_field">BillAddr.City</field>
+        <field name="direction">both</field>
+    </record>
+
+    <!-- Product field mappings -->
+    <record id="mapping_product_name" model="quickbooks.field.mapping">
+        <field name="entity_type">product</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">Name</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_product_sku" model="quickbooks.field.mapping">
+        <field name="entity_type">product</field>
+        <field name="sequence">2</field>
+        <field name="odoo_field">default_code</field>
+        <field name="qb_field">Sku</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_product_price" model="quickbooks.field.mapping">
+        <field name="entity_type">product</field>
+        <field name="sequence">3</field>
+        <field name="odoo_field">list_price</field>
+        <field name="qb_field">UnitPrice</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_product_cost" model="quickbooks.field.mapping">
+        <field name="entity_type">product</field>
+        <field name="sequence">4</field>
+        <field name="odoo_field">standard_price</field>
+        <field name="qb_field">PurchaseCost</field>
+        <field name="direction">both</field>
+    </record>
+</data>
+</odoo>

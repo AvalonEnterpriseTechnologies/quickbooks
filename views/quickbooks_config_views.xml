@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════
+         QuickBooks — simplified config form (API credentials only)
+         ══════════════════════════════════════════════════════════ -->
+    <record id="view_quickbooks_config_form" model="ir.ui.view">
+        <field name="name">quickbooks.config.form</field>
+        <field name="model">quickbooks.config</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks Configuration">
+                <header>
+                    <button name="action_connect_qb"
+                            string="Connect to QuickBooks"
+                            type="object" class="btn-primary"
+                            icon="fa-plug"
+                            invisible="state != 'draft'"/>
+                    <button name="action_test_connection"
+                            string="Test Connection"
+                            type="object" class="btn-secondary"
+                            icon="fa-refresh"
+                            invisible="state != 'connected'"/>
+                    <button name="action_disconnect"
+                            string="Disconnect"
+                            type="object" class="btn-danger"
+                            icon="fa-times"
+                            invisible="state == 'draft'"
+                            confirm="Disconnect from QuickBooks?"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,connected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <h1>QuickBooks Online</h1>
+                    </div>
+
+                    <div class="alert alert-success" role="alert"
+                         invisible="state != 'connected'">
+                        <i class="fa fa-check-circle"/> Connected
+                        <span invisible="not qb_company_name"> to <strong><field name="qb_company_name" nolabel="1" readonly="1"/></strong></span>.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="state != 'error'">
+                        <i class="fa fa-exclamation-triangle"/> Connection error — check your credentials and try again.
+                        <div invisible="not error_message"
+                             class="mt-1 small text-muted">
+                            <field name="error_message" nolabel="1" readonly="1"/>
+                        </div>
+                    </div>
+
+                    <group string="API Credentials">
+                        <field name="client_id" placeholder="Your Intuit app Client ID"
+                               required="1"/>
+                        <field name="client_secret" password="True"
+                               placeholder="Your Intuit app Client Secret"
+                               required="1"/>
+                        <field name="environment" required="1"/>
+                    </group>
+
+                    <group string="Connection Info"
+                           invisible="state == 'draft'">
+                        <field name="realm_id" readonly="1"/>
+                        <field name="last_sync_date" readonly="1"/>
+                    </group>
+
+                    <group invisible="1">
+                        <field name="company_id"/>
+                        <field name="webhook_verifier_token"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quickbooks_config_list" model="ir.ui.view">
+        <field name="name">quickbooks.config.list</field>
+        <field name="model">quickbooks.config</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Configurations">
+                <field name="company_id"/>
+                <field name="environment"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'connected'"
+                       decoration-danger="state == 'error'"
+                       decoration-muted="state == 'draft'"/>
+                <field name="last_sync_date"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_quickbooks_config" model="ir.actions.act_window">
+        <field name="name">QuickBooks Configuration</field>
+        <field name="res_model">quickbooks.config</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

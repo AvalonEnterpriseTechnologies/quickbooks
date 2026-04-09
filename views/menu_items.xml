@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_quickbooks_root"
+              name="QuickBooks"
+              sequence="80"
+              groups="quickbooks_api_module.group_qb_user"
+              web_icon="quickbooks_api_module,static/description/icon.png"/>
+
+    <menuitem id="menu_quickbooks_config"
+              name="Configuration"
+              parent="menu_quickbooks_root"
+              sequence="10"
+              groups="quickbooks_api_module.group_qb_manager"
+              action="action_quickbooks_config"/>
+
+    <menuitem id="menu_quickbooks_sync_log"
+              name="Sync Logs"
+              parent="menu_quickbooks_root"
+              sequence="20"
+              action="action_quickbooks_sync_log"/>
+
+    <menuitem id="menu_quickbooks_sync_queue"
+              name="Sync Queue"
+              parent="menu_quickbooks_root"
+              sequence="30"
+              action="action_quickbooks_sync_queue"/>
+</odoo>

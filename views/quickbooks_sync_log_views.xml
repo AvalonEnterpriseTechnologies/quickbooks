@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quickbooks_sync_log_list" model="ir.ui.view">
+        <field name="name">quickbooks.sync.log.list</field>
+        <field name="model">quickbooks.sync.log</field>
+        <field name="arch" type="xml">
+            <list string="Sync Logs" default_order="create_date desc">
+                <field name="create_date" string="Date"/>
+                <field name="entity_type"/>
+                <field name="direction"/>
+                <field name="operation"/>
+                <field name="odoo_model"/>
+                <field name="odoo_record_id"/>
+                <field name="qb_entity_id"/>
+                <field name="state"
+                       decoration-success="state == 'success'"
+                       decoration-danger="state == 'error'"
+                       decoration-warning="state == 'warning'"
+                       widget="badge"/>
+                <field name="duration_ms" string="ms"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quickbooks_sync_log_form" model="ir.ui.view">
+        <field name="name">quickbooks.sync.log.form</field>
+        <field name="model">quickbooks.sync.log</field>
+        <field name="arch" type="xml">
+            <form string="Sync Log Entry" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="create_date" string="Date"/>
+                            <field name="entity_type"/>
+                            <field name="direction"/>
+                            <field name="operation"/>
+                            <field name="state"/>
+                        </group>
+                        <group>
+                            <field name="odoo_model"/>
+                            <field name="odoo_record_id"/>
+                            <field name="qb_entity_id"/>
+                            <field name="duration_ms"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Error" invisible="not error_message">
+                        <field name="error_message" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Request Data" invisible="not request_data">
+                            <field name="request_data" nolabel="1"/>
+                        </page>
+                        <page string="Response Data" invisible="not response_data">
+                            <field name="response_data" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quickbooks_sync_log_search" model="ir.ui.view">
+        <field name="name">quickbooks.sync.log.search</field>
+        <field name="model">quickbooks.sync.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="entity_type"/>
+                <field name="qb_entity_id"/>
+                <field name="odoo_record_id"/>
+                <filter string="Errors" name="errors"
+                        domain="[('state', '=', 'error')]"/>
+                <filter string="Success" name="success"
+                        domain="[('state', '=', 'success')]"/>
+                <filter string="Today" name="today"
+                        date="create_date"/>
+                <separator/>
+                <group>
+                    <filter string="Entity Type" name="group_entity"
+                            context="{'group_by': 'entity_type'}"/>
+                    <filter string="Direction" name="group_direction"
+                            context="{'group_by': 'direction'}"/>
+                    <filter string="State" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quickbooks_sync_log" model="ir.actions.act_window">
+        <field name="name">Sync Logs</field>
+        <field name="res_model">quickbooks.sync.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_errors': 0}</field>
+    </record>
+</odoo>

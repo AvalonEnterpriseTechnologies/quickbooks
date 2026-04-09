@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quickbooks_sync_queue_list" model="ir.ui.view">
+        <field name="name">quickbooks.sync.queue.list</field>
+        <field name="model">quickbooks.sync.queue</field>
+        <field name="arch" type="xml">
+            <list string="Sync Queue" default_order="priority desc, create_date asc">
+                <field name="create_date" string="Queued"/>
+                <field name="entity_type"/>
+                <field name="direction"/>
+                <field name="operation"/>
+                <field name="odoo_model"/>
+                <field name="odoo_record_id"/>
+                <field name="qb_entity_id"/>
+                <field name="state"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'failed'"
+                       decoration-warning="state == 'conflict'"
+                       decoration-info="state == 'processing'"
+                       widget="badge"/>
+                <field name="retry_count"/>
+                <field name="priority" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quickbooks_sync_queue_form" model="ir.ui.view">
+        <field name="name">quickbooks.sync.queue.form</field>
+        <field name="model">quickbooks.sync.queue</field>
+        <field name="arch" type="xml">
+            <form string="Sync Queue Job">
+                <header>
+                    <button name="action_retry" string="Retry"
+                            type="object" class="btn-primary"
+                            invisible="state not in ('failed', 'conflict')"/>
+                    <button name="action_cancel" string="Cancel"
+                            type="object" class="btn-secondary"
+                            invisible="state in ('done',)"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,processing,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="entity_type"/>
+                            <field name="direction"/>
+                            <field name="operation"/>
+                            <field name="priority"/>
+                        </group>
+                        <group>
+                            <field name="odoo_model"/>
+                            <field name="odoo_record_id"/>
+                            <field name="qb_entity_id"/>
+                            <field name="retry_count"/>
+                            <field name="next_retry_at"/>
+                            <field name="idempotency_key"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Error" invisible="not error_message">
+                        <field name="error_message" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quickbooks_sync_queue_search" model="ir.ui.view">
+        <field name="name">quickbooks.sync.queue.search</field>
+        <field name="model">quickbooks.sync.queue</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="entity_type"/>
+                <field name="qb_entity_id"/>
+                <filter string="Pending" name="pending"
+                        domain="[('state', '=', 'pending')]"/>
+                <filter string="Failed" name="failed"
+                        domain="[('state', '=', 'failed')]"/>
+                <filter string="Conflicts" name="conflicts"
+                        domain="[('state', '=', 'conflict')]"/>
+                <separator/>
+                <group>
+                    <filter string="Entity Type" name="group_entity"
+                            context="{'group_by': 'entity_type'}"/>
+                    <filter string="State" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Direction" name="group_direction"
+                            context="{'group_by': 'direction'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quickbooks_sync_queue" model="ir.actions.act_window">
+        <field name="name">Sync Queue</field>
+        <field name="res_model">quickbooks.sync.queue</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+</odoo>
