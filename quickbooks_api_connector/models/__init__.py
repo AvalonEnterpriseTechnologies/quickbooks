@@ -10,6 +10,8 @@ from . import account_payment
 from . import account_tax
 
 try:
-    from . import slate_bridge
-except Exception:
+    import odoo.addons.slate_connector_v19  # noqa: F401
+except (ImportError, ModuleNotFoundError):
     pass
+else:
+    from . import slate_bridge
