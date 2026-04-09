@@ -9,6 +9,12 @@ class QBSyncEmployees(models.AbstractModel):
     _name = 'qb.sync.employees'
     _description = 'QuickBooks Employee Sync'
 
+    def _check_model(self):
+        if 'hr.employee' not in self.env:
+            _logger.warning("hr module not installed — skipping employee sync")
+            return False
+        return True
+
     def _qb_employee_to_odoo(self, qb_data):
         name_parts = []
         if qb_data.get('GivenName'):
@@ -56,6 +62,8 @@ class QBSyncEmployees(models.AbstractModel):
         return {k: v for k, v in data.items() if v is not None}
 
     def push(self, client, config, job):
+        if not self._check_model():
+            return {}
         employee = self.env['hr.employee'].browse(job.odoo_record_id)
         if not employee.exists():
             return {}
@@ -82,6 +90,8 @@ class QBSyncEmployees(models.AbstractModel):
         return {'qb_id': str(created.get('Id', ''))}
 
     def pull(self, client, config, job):
+        if not self._check_model():
+            return {}
         qb_id = job.qb_entity_id
         if not qb_id:
             return {}
@@ -101,6 +111,8 @@ class QBSyncEmployees(models.AbstractModel):
         return {'qb_id': str(qb_data.get('Id', ''))}
 
     def pull_all(self, client, config, entity_type):
+        if not self._check_model():
+            return
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
@@ -118,6 +130,8 @@ class QBSyncEmployees(models.AbstractModel):
                 Employee.create(vals)
 
     def push_all(self, client, config, entity_type):
+        if not self._check_model():
+            return
         employees = self.env['hr.employee'].search([
             ('qb_employee_id', '=', False),
             ('qb_do_not_sync', '=', False),

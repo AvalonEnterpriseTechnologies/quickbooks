@@ -9,6 +9,12 @@ class QBSyncDepartments(models.AbstractModel):
     _name = 'qb.sync.departments'
     _description = 'QuickBooks Department Sync'
 
+    def _check_model(self):
+        if 'hr.department' not in self.env:
+            _logger.warning("hr module not installed — skipping department sync")
+            return False
+        return True
+
     def _qb_department_to_odoo(self, qb_data):
         return {
             'name': qb_data.get('Name', 'Unknown'),
@@ -18,6 +24,8 @@ class QBSyncDepartments(models.AbstractModel):
         }
 
     def push(self, client, config, job):
+        if not self._check_model():
+            return {}
         dept = self.env['hr.department'].browse(job.odoo_record_id)
         if not dept.exists():
             return {}
@@ -41,6 +49,8 @@ class QBSyncDepartments(models.AbstractModel):
         return {'qb_id': str(created.get('Id', ''))}
 
     def pull(self, client, config, job):
+        if not self._check_model():
+            return {}
         qb_id = job.qb_entity_id
         if not qb_id:
             return {}
@@ -59,6 +69,8 @@ class QBSyncDepartments(models.AbstractModel):
         return {'qb_id': str(qb_data.get('Id', ''))}
 
     def pull_all(self, client, config, entity_type):
+        if not self._check_model():
+            return
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (

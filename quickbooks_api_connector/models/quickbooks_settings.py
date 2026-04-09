@@ -4,6 +4,15 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+OPTIONAL_MODULES = {
+    'sale': 'Sales',
+    'purchase': 'Purchase',
+    'hr': 'Employees (HR)',
+    'hr_expense': 'Expenses',
+    'hr_timesheet': 'Timesheets',
+    'stock': 'Inventory',
+}
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
@@ -73,12 +82,75 @@ class ResConfigSettings(models.TransientModel):
     # --- QuickBooks Time / TSheets API (Phase 4) ---
     qb_time_enabled = fields.Boolean(string='Enable QuickBooks Time Sync', default=False)
 
+    # --- Optional module detection ---
+    qb_mod_sale = fields.Boolean(compute='_compute_qb_module_status')
+    qb_mod_purchase = fields.Boolean(compute='_compute_qb_module_status')
+    qb_mod_hr = fields.Boolean(compute='_compute_qb_module_status')
+    qb_mod_hr_expense = fields.Boolean(compute='_compute_qb_module_status')
+    qb_mod_hr_timesheet = fields.Boolean(compute='_compute_qb_module_status')
+    qb_mod_stock = fields.Boolean(compute='_compute_qb_module_status')
+
     def _compute_qb_config_id(self):
         Config = self.env['quickbooks.config']
         for rec in self:
             rec.qb_config_id = Config.search(
                 [('company_id', '=', rec.company_id.id)], limit=1,
             )
+
+    @api.depends_context('uid')
+    def _compute_qb_module_status(self):
+        IrModule = self.env['ir.module.module'].sudo()
+        status = {}
+        for mod_name in OPTIONAL_MODULES:
+            rec = IrModule.search(
+                [('name', '=', mod_name), ('state', '=', 'installed')],
+                limit=1,
+            )
+            status[mod_name] = bool(rec)
+        for rec in self:
+            rec.qb_mod_sale = status.get('sale', False)
+            rec.qb_mod_purchase = status.get('purchase', False)
+            rec.qb_mod_hr = status.get('hr', False)
+            rec.qb_mod_hr_expense = status.get('hr_expense', False)
+            rec.qb_mod_hr_timesheet = status.get('hr_timesheet', False)
+            rec.qb_mod_stock = status.get('stock', False)
+
+    # --- Module install actions ---
+
+    def _install_module(self, module_name):
+        module = self.env['ir.module.module'].sudo().search(
+            [('name', '=', module_name)], limit=1,
+        )
+        if not module:
+            raise models.UserError(
+                'Module "%s" not found. Check your Odoo addons path.' % module_name
+            )
+        if module.state != 'installed':
+            module.button_immediate_install()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        }
+
+    def action_install_sale(self):
+        return self._install_module('sale')
+
+    def action_install_purchase(self):
+        return self._install_module('purchase')
+
+    def action_install_hr(self):
+        return self._install_module('hr')
+
+    def action_install_hr_expense(self):
+        return self._install_module('hr_expense')
+
+    def action_install_hr_timesheet(self):
+        return self._install_module('hr_timesheet')
+
+    def action_install_stock(self):
+        return self._install_module('stock')
+
+    # --- Config persistence ---
 
     def _get_or_create_qb_config(self):
         config = self.env['quickbooks.config'].search(
@@ -175,6 +247,8 @@ class ResConfigSettings(models.TransientModel):
                 vals[f] = getattr(self, settings_field, False)
 
         config.write(vals)
+
+    # --- Quick actions ---
 
     def action_qb_connect(self):
         config = self._get_or_create_qb_config()

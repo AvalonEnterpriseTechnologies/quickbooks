@@ -22,7 +22,7 @@ class QBSyncTimesheets(models.AbstractModel):
         }
 
         user_id = ts_data.get('user_id')
-        if user_id:
+        if user_id and 'hr.employee' in self.env:
             employee = self.env['hr.employee'].search(
                 [('qb_employee_id', '=', str(user_id))], limit=1,
             )

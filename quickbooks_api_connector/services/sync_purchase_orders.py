@@ -9,6 +9,12 @@ class QBSyncPurchaseOrders(models.AbstractModel):
     _name = 'qb.sync.purchase.orders'
     _description = 'QuickBooks Purchase Order Sync'
 
+    def _check_model(self):
+        if 'purchase.order' not in self.env:
+            _logger.warning("purchase module not installed — skipping PO sync")
+            return False
+        return True
+
     def _odoo_to_qb_po(self, order):
         lines = []
         for line in order.order_line:
@@ -46,6 +52,8 @@ class QBSyncPurchaseOrders(models.AbstractModel):
         return vals
 
     def push(self, client, config, job):
+        if not self._check_model():
+            return {}
         order = self.env['purchase.order'].browse(job.odoo_record_id)
         if not order.exists():
             return {}
@@ -72,6 +80,8 @@ class QBSyncPurchaseOrders(models.AbstractModel):
         return {'qb_id': str(created.get('Id', ''))}
 
     def pull(self, client, config, job):
+        if not self._check_model():
+            return {}
         qb_id = job.qb_entity_id
         if not qb_id:
             return {}
@@ -89,6 +99,8 @@ class QBSyncPurchaseOrders(models.AbstractModel):
         return {'qb_id': str(qb_data.get('Id', ''))}
 
     def pull_all(self, client, config, entity_type):
+        if not self._check_model():
+            return
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
@@ -104,6 +116,8 @@ class QBSyncPurchaseOrders(models.AbstractModel):
                 existing.write(vals)
 
     def push_all(self, client, config, entity_type):
+        if not self._check_model():
+            return
         orders = self.env['purchase.order'].search([
             ('qb_po_id', '=', False),
             ('qb_do_not_sync', '=', False),

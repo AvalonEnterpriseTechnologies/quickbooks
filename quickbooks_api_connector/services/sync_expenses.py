@@ -9,6 +9,12 @@ class QBSyncExpenses(models.AbstractModel):
     _name = 'qb.sync.expenses'
     _description = 'QuickBooks Purchase/Expense Sync'
 
+    def _check_model(self):
+        if 'hr.expense' not in self.env:
+            _logger.warning("hr_expense module not installed — skipping expense sync")
+            return False
+        return True
+
     def _qb_purchase_to_odoo(self, qb_data):
         vals = {
             'qb_purchase_id': str(qb_data.get('Id', '')),
@@ -22,6 +28,8 @@ class QBSyncExpenses(models.AbstractModel):
         return vals
 
     def push(self, client, config, job):
+        if not self._check_model():
+            return {}
         expense = self.env['hr.expense'].browse(job.odoo_record_id)
         if not expense.exists():
             return {}
@@ -59,6 +67,8 @@ class QBSyncExpenses(models.AbstractModel):
         return {'qb_id': str(created.get('Id', ''))}
 
     def pull(self, client, config, job):
+        if not self._check_model():
+            return {}
         qb_id = job.qb_entity_id
         if not qb_id:
             return {}
@@ -76,6 +86,8 @@ class QBSyncExpenses(models.AbstractModel):
         return {'qb_id': str(qb_data.get('Id', ''))}
 
     def pull_all(self, client, config, entity_type):
+        if not self._check_model():
+            return
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (

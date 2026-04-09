@@ -10,11 +10,18 @@
                 <app string="QuickBooks" name="quickbooks_api_connector"
                      groups="quickbooks_api_connector.group_qb_manager">
 
-                    <!-- Connection Status Banner -->
+                    <!-- Hidden fields for module detection -->
                     <field name="qb_config_id" invisible="1"/>
                     <field name="qb_state" invisible="1"/>
                     <field name="qb_error_message" invisible="1"/>
+                    <field name="qb_mod_sale" invisible="1"/>
+                    <field name="qb_mod_purchase" invisible="1"/>
+                    <field name="qb_mod_hr" invisible="1"/>
+                    <field name="qb_mod_hr_expense" invisible="1"/>
+                    <field name="qb_mod_hr_timesheet" invisible="1"/>
+                    <field name="qb_mod_stock" invisible="1"/>
 
+                    <!-- Connection Status Banner -->
                     <div class="alert alert-success" role="alert"
                          invisible="qb_state != 'connected'">
                         <i class="fa fa-check-circle"/>
@@ -244,7 +251,14 @@
                         </div>
                     </div>
 
+                    <!-- ============ SALES ============ -->
                     <h2>Sales</h2>
+                    <div class="alert alert-warning mb0 mt8" invisible="qb_mod_sale">
+                        <i class="fa fa-puzzle-piece"/>
+                        The <b>Sales</b> module is required for estimate / quotation sync.
+                        <button name="action_install_sale" string="Install Sales"
+                                type="object" class="btn-primary btn-sm ms-2"/>
+                    </div>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane">
@@ -266,9 +280,17 @@
                         </div>
                     </div>
 
+                    <!-- ============ PURCHASE ============ -->
                     <h2>Purchase</h2>
+                    <div class="alert alert-warning mb0 mt8" invisible="qb_mod_purchase">
+                        <i class="fa fa-puzzle-piece"/>
+                        The <b>Purchase</b> module is required for purchase order sync.
+                        <button name="action_install_purchase" string="Install Purchase"
+                                type="object" class="btn-primary btn-sm ms-2"/>
+                    </div>
                     <div class="row mt16 o_settings_container">
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="not qb_mod_purchase">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_purchase_orders"/>
                             </div>
@@ -277,7 +299,8 @@
                                 <div class="text-muted">Purchase orders</div>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="not qb_mod_hr_expense">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_expenses"/>
                             </div>
@@ -286,8 +309,21 @@
                                 <div class="text-muted">QBO Purchases to Odoo expenses</div>
                             </div>
                         </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="qb_mod_hr_expense">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="text-muted">
+                                    <i class="fa fa-puzzle-piece me-1"/>
+                                    Expense sync requires the Expenses module.
+                                </span>
+                                <button name="action_install_hr_expense" string="Install Expenses"
+                                        type="object" class="btn-sm btn-link"/>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- ============ PRODUCTS & INVENTORY ============ -->
                     <h2>Products &amp; Inventory</h2>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">
@@ -299,7 +335,8 @@
                                 <div class="text-muted">Items / products</div>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="not qb_mod_stock">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_inventory_qty"/>
                             </div>
@@ -308,11 +345,31 @@
                                 <div class="text-muted">Sync QtyOnHand with stock quantities</div>
                             </div>
                         </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="qb_mod_stock">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="text-muted">
+                                    <i class="fa fa-puzzle-piece me-1"/>
+                                    Inventory quantity sync requires the Inventory module.
+                                </span>
+                                <button name="action_install_stock" string="Install Inventory"
+                                        type="object" class="btn-sm btn-link"/>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- ============ EMPLOYEES & TIMESHEETS ============ -->
                     <h2>Employees &amp; Timesheets</h2>
+                    <div class="alert alert-warning mb0 mt8" invisible="qb_mod_hr">
+                        <i class="fa fa-puzzle-piece"/>
+                        The <b>Employees</b> module is required for employee and department sync.
+                        <button name="action_install_hr" string="Install Employees"
+                                type="object" class="btn-primary btn-sm ms-2"/>
+                    </div>
                     <div class="row mt16 o_settings_container">
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="not qb_mod_hr">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_employees"/>
                             </div>
@@ -321,7 +378,8 @@
                                 <div class="text-muted">Employees from QBO</div>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="not qb_mod_hr">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_departments"/>
                             </div>
@@ -330,7 +388,8 @@
                                 <div class="text-muted">Departments from QBO</div>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="not qb_mod_hr_timesheet">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_time_activities"/>
                             </div>
@@ -339,8 +398,21 @@
                                 <div class="text-muted">QBO TimeActivity entries to timesheets</div>
                             </div>
                         </div>
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="qb_mod_hr_timesheet">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="text-muted">
+                                    <i class="fa fa-puzzle-piece me-1"/>
+                                    Time activity sync requires the Timesheets module.
+                                </span>
+                                <button name="action_install_hr_timesheet" string="Install Timesheets"
+                                        type="object" class="btn-sm btn-link"/>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- ============ ADVANCED APIs ============ -->
                     <h2>Advanced APIs</h2>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">

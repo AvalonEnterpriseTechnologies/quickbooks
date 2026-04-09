@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector',
-    'version': '19.0.2.1.0',
+    'version': '19.0.2.2.0',
     'category': 'Accounting',
     'summary': 'Full QuickBooks Online connector for Odoo 19 — Accounting, Payroll, Time',
     'description': """
@@ -9,10 +9,12 @@
         Features:
         - OAuth 2.0 connection to QuickBooks Online
         - Bidirectional sync: customers, vendors, products, invoices,
-          bills, payments, journal entries, tax codes, purchase orders,
-          sales receipts, expenses, deposits, transfers, employees,
-          departments, time activities, classes, payment terms, attachments
-        - Inventory quantity sync (QtyOnHand)
+          bills, payments, journal entries, tax codes, vendor credits,
+          refund receipts, deposits, transfers, classes, payment terms
+        - Extended sync (prompted to install when enabled in Settings):
+          purchase orders (purchase), expenses (hr_expense),
+          employees/departments (hr), timesheets (hr_timesheet),
+          inventory quantities (stock), sales (sale)
         - QuickBooks Payroll API (GraphQL) integration
         - QuickBooks Time API (TSheets) integration
         - Async queue-based processing with retry and backoff
@@ -23,20 +25,15 @@
         - Rate-limited API client (sliding window, 450 req/min)
         - Configuration via Settings > QuickBooks
 
-        Required modules map to QuickBooks Accounting API entities.
-        Payroll API (hr_payroll) and slate_connector_v19 are optional.
+        Optional modules are installed on-demand from the Settings page
+        when the user enables the corresponding sync features.
     """,
     'author': 'Avalon Enterprise Technologies',
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',
     'license': 'LGPL-3',
     'depends': [
-        # Core
-        'base', 'base_setup', 'mail',
-        # QB Accounting API — required Odoo counterparts
-        'account', 'contacts', 'product',
-        'sale', 'purchase',
-        'hr', 'hr_expense', 'hr_timesheet',
-        'stock', 'analytic',
+        'base', 'base_setup', 'mail', 'account',
+        'contacts',
     ],
     'external_dependencies': {
         'python': ['requests'],
@@ -49,7 +46,7 @@
         'data/cron_jobs.xml',
         'data/mail_templates.xml',
         'data/default_field_mappings.xml',
-        # Views
+        # Views — core (always available)
         'views/quickbooks_config_views.xml',
         'views/quickbooks_sync_log_views.xml',
         'views/quickbooks_sync_queue_views.xml',
@@ -59,10 +56,6 @@
         'views/res_partner_views.xml',
         'views/product_views.xml',
         'views/account_move_views.xml',
-        'views/hr_employee_views.xml',
-        'views/hr_expense_views.xml',
-        'views/purchase_order_views.xml',
-        'views/account_analytic_line_views.xml',
         'views/oauth_result_template.xml',
     ],
     'post_init_hook': '_post_init_hook',

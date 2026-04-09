@@ -24,7 +24,7 @@ class QBSyncTimeActivities(models.AbstractModel):
         }
 
         emp_ref = qb_data.get('EmployeeRef')
-        if emp_ref:
+        if emp_ref and 'hr.employee' in self.env:
             employee = self.env['hr.employee'].search(
                 [('qb_employee_id', '=', emp_ref.get('value'))], limit=1,
             )

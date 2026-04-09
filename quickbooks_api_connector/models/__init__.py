@@ -9,19 +9,34 @@ from . import account_account
 from . import account_move
 from . import account_payment
 from . import account_tax
-from . import hr_employee
-from . import hr_department
-from . import hr_expense
-from . import purchase_order
-from . import account_analytic_line
 from . import account_analytic_account
+from . import account_analytic_line
 from . import account_payment_term
 
-# Optional: Payroll API bridge (Enterprise module)
+# Optional: hr (employees, departments)
 try:
-    import odoo.addons.hr_payroll  # noqa: F401
+    import odoo.addons.hr  # noqa: F401
 except (ImportError, ModuleNotFoundError):
     pass
+else:
+    from . import hr_employee
+    from . import hr_department
+
+# Optional: hr_expense
+try:
+    import odoo.addons.hr_expense  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    pass
+else:
+    from . import hr_expense
+
+# Optional: purchase
+try:
+    import odoo.addons.purchase  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    pass
+else:
+    from . import purchase_order
 
 # Optional: slate_connector_v19
 try:
