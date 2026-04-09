@@ -111,7 +111,7 @@
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
-                                <label string="Auto Sync Interval"/>
+                                <label for="qb_auto_sync_interval" string="Auto Sync Interval"/>
                                 <div class="d-flex align-items-center gap-2 mt-1">
                                     <span>Every</span>
                                     <field name="qb_auto_sync_interval"
