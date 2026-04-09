@@ -11,7 +11,7 @@ class TestRateLimiter(QuickbooksTestCommon):
 
     def test_rate_limit_window_tracking(self):
         """Test that request timestamps are tracked in the sliding window."""
-        from odoo.addons.quickbooks.services.qb_api_client import (
+        from odoo.addons.quickbooks_api_connector.services.qb_api_client import (
             _QBClient, MAX_REQUESTS_PER_MINUTE,
         )
         # Access the class-level deque
@@ -26,7 +26,7 @@ class TestRateLimiter(QuickbooksTestCommon):
 
     def test_exponential_backoff_on_429(self):
         """Test that 429 responses trigger retry with backoff."""
-        from odoo.addons.quickbooks.services.qb_api_client import (
+        from odoo.addons.quickbooks_api_connector.services.qb_api_client import (
             _QBClient, MAX_RETRIES_429,
         )
         client = self._mock_client()
@@ -36,7 +36,7 @@ class TestRateLimiter(QuickbooksTestCommon):
 
     def test_concurrent_request_semaphore(self):
         """Test that max concurrent requests is bounded."""
-        from odoo.addons.quickbooks.services.qb_api_client import (
+        from odoo.addons.quickbooks_api_connector.services.qb_api_client import (
             MAX_CONCURRENT,
         )
         self.assertEqual(MAX_CONCURRENT, 8)
@@ -44,7 +44,7 @@ class TestRateLimiter(QuickbooksTestCommon):
 
     def test_headroom_below_api_limit(self):
         """Test that our rate limit has headroom below the QBO limit."""
-        from odoo.addons.quickbooks.services.qb_api_client import (
+        from odoo.addons.quickbooks_api_connector.services.qb_api_client import (
             MAX_REQUESTS_PER_MINUTE,
         )
         self.assertEqual(MAX_REQUESTS_PER_MINUTE, 450)
@@ -52,7 +52,7 @@ class TestRateLimiter(QuickbooksTestCommon):
 
     def test_api_error_class(self):
         """Test QBApiError carries status_code and detail."""
-        from odoo.addons.quickbooks.services.qb_api_client import QBApiError
+        from odoo.addons.quickbooks_api_connector.services.qb_api_client import QBApiError
 
         error = QBApiError(429, 'Too many requests', '/v3/company/123/customer')
         self.assertEqual(error.status_code, 429)
@@ -61,7 +61,7 @@ class TestRateLimiter(QuickbooksTestCommon):
 
     def test_query_all_pagination(self):
         """Test query_all pages through results correctly."""
-        from odoo.addons.quickbooks.services.qb_api_client import _QBClient
+        from odoo.addons.quickbooks_api_connector.services.qb_api_client import _QBClient
 
         mock_env = MagicMock()
         mock_config = MagicMock()
