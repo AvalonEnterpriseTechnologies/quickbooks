@@ -10,16 +10,9 @@
                 <app string="QuickBooks" name="quickbooks_api_connector"
                      groups="quickbooks_api_connector.group_qb_manager">
 
-                    <!-- Hidden fields for module detection -->
                     <field name="qb_config_id" invisible="1"/>
                     <field name="qb_state" invisible="1"/>
                     <field name="qb_error_message" invisible="1"/>
-                    <field name="qb_mod_sale" invisible="1"/>
-                    <field name="qb_mod_purchase" invisible="1"/>
-                    <field name="qb_mod_hr" invisible="1"/>
-                    <field name="qb_mod_hr_expense" invisible="1"/>
-                    <field name="qb_mod_hr_timesheet" invisible="1"/>
-                    <field name="qb_mod_stock" invisible="1"/>
 
                     <!-- Connection Status Banner -->
                     <div class="alert alert-success" role="alert"
@@ -42,15 +35,22 @@
 
                     <h2>Connection</h2>
                     <div class="row mt16 o_settings_container">
-                        <div class="col-12 col-lg-6 o_setting_box">
+
+                        <!-- Credential fields — admin-only, hidden once connected -->
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             groups="base.group_system"
+                             invisible="qb_state == 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
                                 <label for="qb_client_id"/>
                                 <div class="text-muted">Your Intuit developer app Client ID</div>
-                                <field name="qb_client_id" placeholder="Client ID"/>
+                                <field name="qb_client_id" password="True"
+                                       placeholder="Client ID"/>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             groups="base.group_system"
+                             invisible="qb_state == 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
                                 <label for="qb_client_secret"/>
@@ -59,14 +59,17 @@
                                        placeholder="Client Secret"/>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             invisible="qb_state == 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
                                 <label for="qb_environment"/>
                                 <field name="qb_environment"/>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="col-12 col-lg-6 o_setting_box"
+                             groups="base.group_system"
+                             invisible="qb_state == 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
                                 <label for="qb_webhook_verifier_token"/>
@@ -74,6 +77,8 @@
                                 <field name="qb_webhook_verifier_token" password="True"/>
                             </div>
                         </div>
+
+                        <!-- Action buttons -->
                         <div class="col-12 mt8 mb16">
                             <button name="action_qb_connect"
                                     string="Connect to QuickBooks"
@@ -91,10 +96,10 @@
                                     icon="fa-times"
                                     invisible="qb_state == 'draft'"
                                     confirm="Disconnect from QuickBooks?"/>
-                            <span class="ms-3">
+                            <span class="ms-3"
+                                  invisible="not qb_realm_id">
                                 Realm ID: <field name="qb_realm_id" nolabel="1" readonly="1"
-                                                 class="d-inline"
-                                                 invisible="not qb_realm_id"/>
+                                                 class="d-inline"/>
                             </span>
                         </div>
                     </div>
@@ -261,10 +266,6 @@
 
                     <!-- ============ SALES ============ -->
                     <h2>Sales</h2>
-                    <div class="text-muted mb-2 mt-1" invisible="qb_mod_sale">
-                        <i class="fa fa-info-circle me-1"/>
-                        The <b>Sales</b> module will be installed automatically when you save.
-                    </div>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane">
@@ -288,10 +289,6 @@
 
                     <!-- ============ PURCHASE ============ -->
                     <h2>Purchase</h2>
-                    <div class="text-muted mb-2 mt-1" invisible="qb_mod_purchase">
-                        <i class="fa fa-info-circle me-1"/>
-                        The <b>Purchase</b> module will be installed automatically when you save.
-                    </div>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane">
@@ -315,10 +312,6 @@
 
                     <!-- ============ PRODUCTS & INVENTORY ============ -->
                     <h2>Products &amp; Inventory</h2>
-                    <div class="text-muted mb-2 mt-1" invisible="qb_mod_stock">
-                        <i class="fa fa-info-circle me-1"/>
-                        The <b>Inventory</b> module will be installed automatically when you save.
-                    </div>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane">
@@ -342,14 +335,6 @@
 
                     <!-- ============ EMPLOYEES & TIMESHEETS ============ -->
                     <h2>Employees &amp; Timesheets</h2>
-                    <div class="text-muted mb-2 mt-1" invisible="qb_mod_hr">
-                        <i class="fa fa-info-circle me-1"/>
-                        The <b>Employees</b> module will be installed automatically when you save.
-                    </div>
-                    <div class="text-muted mb-2 mt-1" invisible="qb_mod_hr_timesheet">
-                        <i class="fa fa-info-circle me-1"/>
-                        The <b>Timesheets</b> module will be installed automatically when you save.
-                    </div>
                     <div class="row mt16 o_settings_container">
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane">

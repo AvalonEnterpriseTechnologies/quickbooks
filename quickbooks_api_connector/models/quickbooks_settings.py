@@ -44,13 +44,19 @@ class ResConfigSettings(models.TransientModel):
     qb_realm_id = fields.Char(related='qb_config_id.realm_id', readonly=True)
     qb_error_message = fields.Text(related='qb_config_id.error_message', readonly=True)
 
-    qb_client_id = fields.Char(string='Client ID')
-    qb_client_secret = fields.Char(string='Client Secret')
+    qb_client_id = fields.Char(
+        string='Client ID', groups='base.group_system',
+    )
+    qb_client_secret = fields.Char(
+        string='Client Secret', groups='base.group_system',
+    )
     qb_environment = fields.Selection(
         [('sandbox', 'Sandbox'), ('production', 'Production')],
         string='Environment', default='sandbox',
     )
-    qb_webhook_verifier_token = fields.Char(string='Webhook Verifier Token')
+    qb_webhook_verifier_token = fields.Char(
+        string='Webhook Verifier Token', groups='base.group_system',
+    )
 
     qb_conflict_resolution = fields.Selection(
         [('last_modified', 'Last Modified Wins'),
