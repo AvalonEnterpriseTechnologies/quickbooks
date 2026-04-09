@@ -36,7 +36,7 @@ class IntegrationRegistryQB(models.Model):
     qb_client_secret = fields.Char(
         'Client Secret', compute='_compute_qb_config_fields',
         inverse='_inverse_qb_credentials', store=False,
-        groups='quickbooks_api_module.group_qb_manager',
+        groups='quickbooks.group_qb_manager',
     )
     qb_environment = fields.Selection([
         ('sandbox', 'Sandbox'),
@@ -47,7 +47,7 @@ class IntegrationRegistryQB(models.Model):
     qb_webhook_verifier_token = fields.Char(
         'Webhook Verifier Token', compute='_compute_qb_config_fields',
         inverse='_inverse_qb_credentials', store=False,
-        groups='quickbooks_api_module.group_qb_manager',
+        groups='quickbooks.group_qb_manager',
     )
 
     def _compute_qb_config_fields(self):

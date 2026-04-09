@@ -3,14 +3,14 @@
     <menuitem id="menu_quickbooks_root"
               name="QuickBooks"
               sequence="80"
-              groups="quickbooks_api_module.group_qb_user"
-              web_icon="quickbooks_api_module,static/description/icon.png"/>
+              groups="quickbooks.group_qb_user"
+              web_icon="quickbooks,static/description/icon.png"/>
 
     <menuitem id="menu_quickbooks_config"
               name="Configuration"
               parent="menu_quickbooks_root"
               sequence="10"
-              groups="quickbooks_api_module.group_qb_manager"
+              groups="quickbooks.group_qb_manager"
               action="action_quickbooks_config"/>
 
     <menuitem id="menu_quickbooks_sync_log"

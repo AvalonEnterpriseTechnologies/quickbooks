@@ -140,7 +140,7 @@ class QuickbooksSyncQueue(models.Model):
 
     def _send_failure_notification(self):
         template = self.env.ref(
-            'quickbooks_api_module.mail_template_sync_failure',
+            'quickbooks.mail_template_sync_failure',
             raise_if_not_found=False,
         )
         if template:

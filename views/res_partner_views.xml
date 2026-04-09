@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="QuickBooks" name="quickbooks_tab"
-                      groups="quickbooks_api_module.group_qb_user">
+                      groups="quickbooks.group_qb_user">
                     <group>
                         <group string="QuickBooks IDs">
                             <field name="qb_customer_id" readonly="1"/>
@@ -26,7 +26,7 @@
                                 string="Sync to QuickBooks"
                                 type="object"
                                 class="btn-primary"
-                                groups="quickbooks_api_module.group_qb_user"/>
+                                groups="quickbooks.group_qb_user"/>
                     </div>
                 </page>
             </xpath>

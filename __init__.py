@@ -11,8 +11,8 @@ def _post_init_hook(env):
         return
 
     group_xmlids = [
-        'quickbooks_api_module.group_qb_manager',
-        'quickbooks_api_module.group_qb_user',
+        'quickbooks.group_qb_manager',
+        'quickbooks.group_qb_user',
     ]
     for xmlid in group_xmlids:
         group = env.ref(xmlid, raise_if_not_found=False)
@@ -27,7 +27,7 @@ def _post_init_hook(env):
     if registry is not None:
         registry.register_provider(
             provider='quickbooks',
-            technical_module='quickbooks_api_module',
+            technical_module='quickbooks',
             config_model='quickbooks.config',
             sync_log_model='quickbooks.sync.log',
         )

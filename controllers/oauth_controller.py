@@ -18,13 +18,13 @@ class QuickbooksOAuthController(http.Controller):
         if error:
             _logger.error('OAuth error: %s', error)
             return request.render(
-                'quickbooks_api_module.qb_oauth_result_template',
+                'quickbooks.qb_oauth_result_template',
                 {'success': False, 'message': 'Authorization denied: %s' % error},
             )
 
         if not code or not realm_id:
             return request.render(
-                'quickbooks_api_module.qb_oauth_result_template',
+                'quickbooks.qb_oauth_result_template',
                 {'success': False, 'message': 'Missing authorization code or realm ID.'},
             )
 
@@ -34,7 +34,7 @@ class QuickbooksOAuthController(http.Controller):
 
         if not config:
             return request.render(
-                'quickbooks_api_module.qb_oauth_result_template',
+                'quickbooks.qb_oauth_result_template',
                 {'success': False, 'message': 'No QuickBooks configuration found.'},
             )
 
@@ -42,7 +42,7 @@ class QuickbooksOAuthController(http.Controller):
         if stored_state != state:
             _logger.warning('CSRF state mismatch in QB OAuth callback')
             return request.render(
-                'quickbooks_api_module.qb_oauth_result_template',
+                'quickbooks.qb_oauth_result_template',
                 {'success': False, 'message': 'Security validation failed (state mismatch).'},
             )
 
@@ -61,7 +61,7 @@ class QuickbooksOAuthController(http.Controller):
             config.write({'qb_company_name': company_name})
 
             return request.render(
-                'quickbooks_api_module.qb_oauth_result_template',
+                'quickbooks.qb_oauth_result_template',
                 {
                     'success': True,
                     'message': 'Successfully connected to %s!' % company_name,
@@ -74,6 +74,6 @@ class QuickbooksOAuthController(http.Controller):
                 'error_message': str(e),
             })
             return request.render(
-                'quickbooks_api_module.qb_oauth_result_template',
+                'quickbooks.qb_oauth_result_template',
                 {'success': False, 'message': 'Connection failed: %s' % str(e)},
             )

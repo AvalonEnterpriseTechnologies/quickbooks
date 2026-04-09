@@ -20,7 +20,7 @@ class TestWebhookHandler(QuickbooksTestCommon):
 
     def test_cloud_events_parsing(self):
         """Test that CloudEvents payloads are correctly parsed and enqueued."""
-        from odoo.addons.quickbooks_api_module.controllers.webhook_controller import (
+        from odoo.addons.quickbooks.controllers.webhook_controller import (
             CLOUD_EVENT_TYPE_MAP,
         )
 
@@ -34,7 +34,7 @@ class TestWebhookHandler(QuickbooksTestCommon):
 
     def test_legacy_format_parsing(self):
         """Test that legacy webhook payloads are correctly parsed."""
-        from odoo.addons.quickbooks_api_module.controllers.webhook_controller import (
+        from odoo.addons.quickbooks.controllers.webhook_controller import (
             LEGACY_ENTITY_MAP,
         )
 
@@ -65,7 +65,7 @@ class TestWebhookHandler(QuickbooksTestCommon):
 
     def test_all_cloud_event_types_mapped(self):
         """Verify key entity types have CloudEvent type mappings."""
-        from odoo.addons.quickbooks_api_module.controllers.webhook_controller import (
+        from odoo.addons.quickbooks.controllers.webhook_controller import (
             CLOUD_EVENT_TYPE_MAP,
         )
 
