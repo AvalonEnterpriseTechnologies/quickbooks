@@ -64,6 +64,8 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_terms = fields.Boolean(string='Sync Payment Terms', default=False)
     qb_sync_attachments = fields.Boolean(string='Sync Attachments', default=False)
     qb_sync_inventory_qty = fields.Boolean(string='Sync Inventory Quantities', default=False)
+    qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
+    qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=False)
 
     # --- Payroll API (Phase 3) ---
     qb_payroll_enabled = fields.Boolean(string='Enable Payroll Sync', default=False)
@@ -127,6 +129,8 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_terms': getattr(config, 'sync_terms', False),
                 'qb_sync_attachments': getattr(config, 'sync_attachments', False),
                 'qb_sync_inventory_qty': getattr(config, 'sync_inventory_qty', False),
+                'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
+                'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', False),
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
                 'qb_time_enabled': getattr(config, 'qbt_enabled', False),
             })
@@ -158,7 +162,8 @@ class ResConfigSettings(models.TransientModel):
             'sync_tax_codes', 'sync_purchase_orders', 'sync_sales_receipts',
             'sync_expenses', 'sync_deposits', 'sync_transfers', 'sync_employees',
             'sync_departments', 'sync_time_activities', 'sync_classes', 'sync_terms',
-            'sync_attachments', 'sync_inventory_qty', 'payroll_enabled', 'qbt_enabled',
+            'sync_attachments', 'sync_inventory_qty', 'sync_vendor_credits',
+            'sync_refund_receipts', 'payroll_enabled', 'qbt_enabled',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',

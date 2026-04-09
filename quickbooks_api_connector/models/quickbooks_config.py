@@ -83,6 +83,8 @@ class QuickbooksConfig(models.Model):
     sync_terms = fields.Boolean(default=False, string='Sync Payment Terms')
     sync_attachments = fields.Boolean(default=False, string='Sync Attachments')
     sync_inventory_qty = fields.Boolean(default=False, string='Sync Inventory Quantities')
+    sync_vendor_credits = fields.Boolean(default=True, string='Sync Vendor Credits')
+    sync_refund_receipts = fields.Boolean(default=False, string='Sync Refund Receipts')
 
     payroll_enabled = fields.Boolean(default=False, string='Enable Payroll API')
     qbt_enabled = fields.Boolean(default=False, string='Enable QuickBooks Time API')

@@ -8,6 +8,7 @@ MOVE_TYPE_MAP = {
     'out_invoice': 'invoice',
     'in_invoice': 'bill',
     'out_refund': 'credit_memo',
+    'in_refund': 'vendor_credit',
     'entry': 'journal_entry',
 }
 
@@ -38,6 +39,9 @@ class AccountMove(models.Model):
     )
     qb_refundreceipt_id = fields.Char(
         string='QB Refund Receipt ID', index=True, copy=False,
+    )
+    qb_vendorcredit_id = fields.Char(
+        string='QB Vendor Credit ID', index=True, copy=False,
     )
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
     qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)

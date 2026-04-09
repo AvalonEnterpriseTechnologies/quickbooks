@@ -26,6 +26,8 @@
                                    invisible="not qb_transfer_id"/>
                             <field name="qb_refundreceipt_id" readonly="1"
                                    invisible="not qb_refundreceipt_id"/>
+                            <field name="qb_vendorcredit_id" readonly="1"
+                                   invisible="not qb_vendorcredit_id"/>
                             <field name="qb_sync_token" readonly="1"/>
                         </group>
                         <group string="Sync Status">

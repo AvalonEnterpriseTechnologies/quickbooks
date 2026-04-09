@@ -225,6 +225,24 @@
                                 <div class="text-muted">QBO Classes to analytic accounts</div>
                             </div>
                         </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_vendor_credits"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_vendor_credits"/>
+                                <div class="text-muted">Vendor credit notes / refunds</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_refund_receipts"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_refund_receipts"/>
+                                <div class="text-muted">Customer refund receipts (immediate cash refund)</div>
+                            </div>
+                        </div>
                     </div>
 
                     <h2>Sales</h2>

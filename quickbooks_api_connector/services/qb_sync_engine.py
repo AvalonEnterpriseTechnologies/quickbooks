@@ -32,12 +32,17 @@ ENTITY_SERVICE_MAP = {
     'transfer': 'qb.sync.transfers',
     'term': 'qb.sync.terms',
     'attachment': 'qb.sync.attachments',
+    'vendor_credit': 'qb.sync.vendor.credits',
+    'refund_receipt': 'qb.sync.refund.receipts',
+    'exchange_rate': 'qb.sync.exchange.rates',
+    'company_info': 'qb.sync.company.info',
     'payroll_compensation': 'qb.sync.payroll',
     'timesheet': 'qb.sync.timesheets',
 }
 
 PULL_ONLY_ENTITIES = frozenset([
     'account', 'tax_code', 'term', 'attachment',
+    'exchange_rate', 'company_info', 'refund_receipt',
 ])
 
 
@@ -110,11 +115,13 @@ class QBSyncEngine(models.AbstractModel):
         total_errors = 0
 
         entity_order = [
+            'company_info', 'exchange_rate',
             'account', 'tax_code', 'term',
             'department', 'class',
             'customer', 'vendor', 'employee', 'product',
-            'invoice', 'bill', 'credit_memo',
-            'sales_receipt', 'purchase_order', 'expense',
+            'invoice', 'bill', 'credit_memo', 'vendor_credit',
+            'sales_receipt', 'refund_receipt',
+            'purchase_order', 'expense',
             'payment', 'bill_payment',
             'deposit', 'transfer',
             'journal_entry',
@@ -122,6 +129,8 @@ class QBSyncEngine(models.AbstractModel):
             'attachment',
         ]
         toggle_map = {
+            'company_info': True,
+            'exchange_rate': True,
             'customer': config.sync_customers,
             'vendor': config.sync_vendors,
             'product': config.sync_products,
@@ -131,6 +140,8 @@ class QBSyncEngine(models.AbstractModel):
             'bill_payment': config.sync_payments,
             'journal_entry': config.sync_journal_entries,
             'credit_memo': config.sync_credit_memos,
+            'vendor_credit': getattr(config, 'sync_vendor_credits', False),
+            'refund_receipt': getattr(config, 'sync_refund_receipts', False),
             'estimate': config.sync_estimates,
             'account': True,
             'tax_code': getattr(config, 'sync_tax_codes', True),

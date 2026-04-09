@@ -21,6 +21,10 @@ from . import sync_deposits
 from . import sync_transfers
 from . import sync_terms
 from . import sync_attachments
+from . import sync_vendor_credits
+from . import sync_refund_receipts
+from . import sync_exchange_rates
+from . import sync_company_info
 from . import qb_payroll_client
 from . import sync_payroll
 from . import qbt_api_client

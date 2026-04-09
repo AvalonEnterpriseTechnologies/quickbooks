@@ -82,10 +82,16 @@ class QBSyncAccounts(models.AbstractModel):
         ], limit=1)
 
         if existing:
-            existing.with_context(skip_qb_sync=True).write({
+            update_vals = {
+                'name': vals.get('name', existing.name),
                 'qb_sync_token': vals['qb_sync_token'],
                 'qb_last_synced': vals['qb_last_synced'],
-            })
+            }
+            if vals.get('code') and vals['code'] != existing.code:
+                update_vals['code'] = vals['code']
+            if vals.get('note'):
+                update_vals['note'] = vals['note']
+            existing.with_context(skip_qb_sync=True).write(update_vals)
         else:
             vals['company_id'] = config.company_id.id
             self.env['account.account'].with_context(
@@ -140,13 +146,19 @@ class QBSyncAccounts(models.AbstractModel):
             ], limit=1)
 
             if existing:
-                existing.with_context(skip_qb_sync=True).write({
+                update_vals = {
+                    'name': vals.get('name', existing.name),
                     'qb_sync_token': vals['qb_sync_token'],
                     'qb_last_synced': vals['qb_last_synced'],
-                })
+                }
+                if vals.get('code') and vals['code'] != existing.code:
+                    update_vals['code'] = vals['code']
+                if vals.get('note'):
+                    update_vals['note'] = vals['note']
+                existing.with_context(skip_qb_sync=True).write(update_vals)
             else:
                 vals['company_id'] = config.company_id.id
                 Account.with_context(skip_qb_sync=True).create(vals)
 
     def push_all(self, client, config, entity_type):
-        pass  # Accounts are primarily QB -> Odoo
+        pass
