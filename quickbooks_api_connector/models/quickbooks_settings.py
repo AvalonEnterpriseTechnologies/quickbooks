@@ -13,6 +13,21 @@ OPTIONAL_MODULES = {
     'stock': 'Inventory',
 }
 
+# Maps each sync toggle to the Odoo module(s) it requires.
+# When the user enables a toggle, any missing modules are installed automatically.
+TOGGLE_REQUIRED_MODULES = {
+    'qb_sync_estimates': ['sale'],
+    'qb_sync_sales_receipts': ['sale'],
+    'qb_sync_purchase_orders': ['purchase'],
+    'qb_sync_expenses': ['hr_expense'],
+    'qb_sync_employees': ['hr'],
+    'qb_sync_departments': ['hr'],
+    'qb_sync_time_activities': ['hr_timesheet'],
+    'qb_sync_inventory_qty': ['stock'],
+    'qb_payroll_enabled': ['hr'],
+    'qb_time_enabled': ['hr_timesheet'],
+}
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
@@ -45,10 +60,17 @@ class ResConfigSettings(models.TransientModel):
         string='Conflict Resolution', default='last_modified',
     )
     qb_auto_sync_interval = fields.Integer(
-        string='Auto Sync Interval (minutes)', default=30,
+        string='Auto Sync Interval', default=30,
+    )
+    qb_auto_sync_interval_type = fields.Selection(
+        [('seconds', 'Seconds'),
+         ('minutes', 'Minutes'),
+         ('hours', 'Hours'),
+         ('days', 'Days')],
+        string='Interval Unit', default='minutes',
     )
 
-    # --- Accounting entity toggles ---
+    # --- Accounting entity toggles (on by default) ---
     qb_sync_customers = fields.Boolean(string='Sync Customers', default=True)
     qb_sync_vendors = fields.Boolean(string='Sync Vendors', default=True)
     qb_sync_products = fields.Boolean(string='Sync Products', default=True)
@@ -57,24 +79,24 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_payments = fields.Boolean(string='Sync Payments', default=True)
     qb_sync_journal_entries = fields.Boolean(string='Sync Journal Entries', default=True)
     qb_sync_credit_memos = fields.Boolean(string='Sync Credit Memos', default=True)
-    qb_sync_estimates = fields.Boolean(string='Sync Estimates', default=False)
+    qb_sync_estimates = fields.Boolean(string='Sync Estimates', default=True)
     qb_sync_tax_codes = fields.Boolean(string='Sync Tax Codes', default=True)
 
-    # --- New entity toggles (Phase 2) ---
-    qb_sync_purchase_orders = fields.Boolean(string='Sync Purchase Orders', default=False)
-    qb_sync_sales_receipts = fields.Boolean(string='Sync Sales Receipts', default=False)
-    qb_sync_expenses = fields.Boolean(string='Sync Expenses', default=False)
-    qb_sync_deposits = fields.Boolean(string='Sync Deposits', default=False)
-    qb_sync_transfers = fields.Boolean(string='Sync Transfers', default=False)
-    qb_sync_employees = fields.Boolean(string='Sync Employees', default=False)
-    qb_sync_departments = fields.Boolean(string='Sync Departments', default=False)
-    qb_sync_time_activities = fields.Boolean(string='Sync Time Activities', default=False)
-    qb_sync_classes = fields.Boolean(string='Sync Classes', default=False)
-    qb_sync_terms = fields.Boolean(string='Sync Payment Terms', default=False)
+    # --- Extended entity toggles (on by default) ---
+    qb_sync_purchase_orders = fields.Boolean(string='Sync Purchase Orders', default=True)
+    qb_sync_sales_receipts = fields.Boolean(string='Sync Sales Receipts', default=True)
+    qb_sync_expenses = fields.Boolean(string='Sync Expenses', default=True)
+    qb_sync_deposits = fields.Boolean(string='Sync Deposits', default=True)
+    qb_sync_transfers = fields.Boolean(string='Sync Transfers', default=True)
+    qb_sync_employees = fields.Boolean(string='Sync Employees', default=True)
+    qb_sync_departments = fields.Boolean(string='Sync Departments', default=True)
+    qb_sync_time_activities = fields.Boolean(string='Sync Time Activities', default=True)
+    qb_sync_classes = fields.Boolean(string='Sync Classes', default=True)
+    qb_sync_terms = fields.Boolean(string='Sync Payment Terms', default=True)
     qb_sync_attachments = fields.Boolean(string='Sync Attachments', default=False)
-    qb_sync_inventory_qty = fields.Boolean(string='Sync Inventory Quantities', default=False)
+    qb_sync_inventory_qty = fields.Boolean(string='Sync Inventory Quantities', default=True)
     qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
-    qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=False)
+    qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=True)
 
     # --- Payroll API (Phase 3) ---
     qb_payroll_enabled = fields.Boolean(string='Enable Payroll Sync', default=False)
@@ -179,6 +201,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_webhook_verifier_token': config.webhook_verifier_token,
                 'qb_conflict_resolution': config.conflict_resolution,
                 'qb_auto_sync_interval': config.auto_sync_interval,
+                'qb_auto_sync_interval_type': getattr(
+                    config, 'auto_sync_interval_type', 'minutes',
+                ),
                 'qb_sync_customers': config.sync_customers,
                 'qb_sync_vendors': config.sync_vendors,
                 'qb_sync_products': config.sync_products,
@@ -189,34 +214,70 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_credit_memos': config.sync_credit_memos,
                 'qb_sync_estimates': config.sync_estimates,
                 'qb_sync_tax_codes': getattr(config, 'sync_tax_codes', True),
-                'qb_sync_purchase_orders': getattr(config, 'sync_purchase_orders', False),
-                'qb_sync_sales_receipts': getattr(config, 'sync_sales_receipts', False),
-                'qb_sync_expenses': getattr(config, 'sync_expenses', False),
-                'qb_sync_deposits': getattr(config, 'sync_deposits', False),
-                'qb_sync_transfers': getattr(config, 'sync_transfers', False),
-                'qb_sync_employees': getattr(config, 'sync_employees', False),
-                'qb_sync_departments': getattr(config, 'sync_departments', False),
-                'qb_sync_time_activities': getattr(config, 'sync_time_activities', False),
-                'qb_sync_classes': getattr(config, 'sync_classes', False),
-                'qb_sync_terms': getattr(config, 'sync_terms', False),
+                'qb_sync_purchase_orders': getattr(config, 'sync_purchase_orders', True),
+                'qb_sync_sales_receipts': getattr(config, 'sync_sales_receipts', True),
+                'qb_sync_expenses': getattr(config, 'sync_expenses', True),
+                'qb_sync_deposits': getattr(config, 'sync_deposits', True),
+                'qb_sync_transfers': getattr(config, 'sync_transfers', True),
+                'qb_sync_employees': getattr(config, 'sync_employees', True),
+                'qb_sync_departments': getattr(config, 'sync_departments', True),
+                'qb_sync_time_activities': getattr(config, 'sync_time_activities', True),
+                'qb_sync_classes': getattr(config, 'sync_classes', True),
+                'qb_sync_terms': getattr(config, 'sync_terms', True),
                 'qb_sync_attachments': getattr(config, 'sync_attachments', False),
-                'qb_sync_inventory_qty': getattr(config, 'sync_inventory_qty', False),
+                'qb_sync_inventory_qty': getattr(config, 'sync_inventory_qty', True),
                 'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
-                'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', False),
+                'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', True),
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
                 'qb_time_enabled': getattr(config, 'qbt_enabled', False),
             })
         return res
 
+    def _ensure_modules_for_toggles(self):
+        """Auto-install Odoo modules required by enabled sync toggles."""
+        IrModule = self.env['ir.module.module'].sudo()
+        needs_reload = False
+        for toggle_field, mod_names in TOGGLE_REQUIRED_MODULES.items():
+            if not getattr(self, toggle_field, False):
+                continue
+            for mod_name in mod_names:
+                module = IrModule.search([('name', '=', mod_name)], limit=1)
+                if module and module.state != 'installed':
+                    _logger.info(
+                        "Auto-installing module '%s' required by %s",
+                        mod_name, toggle_field,
+                    )
+                    module.button_immediate_install()
+                    needs_reload = True
+        return needs_reload
+
+    def _update_sync_cron(self, interval, interval_type):
+        """Sync the periodic full-sync cron with user-configured interval."""
+        cron = self.env.ref(
+            'quickbooks_api_connector.ir_cron_qb_full_sync', raise_if_not_found=False,
+        )
+        if cron:
+            cron.sudo().write({
+                'interval_number': max(interval, 1),
+                'interval_type': interval_type or 'minutes',
+            })
+
     def set_values(self):
         super().set_values()
+
+        needs_reload = self._ensure_modules_for_toggles()
+
         config = self._get_or_create_qb_config()
+        interval = self.qb_auto_sync_interval or 30
+        interval_type = self.qb_auto_sync_interval_type or 'minutes'
+
         vals = {
             'client_id': self.qb_client_id or '',
             'environment': self.qb_environment or 'sandbox',
             'webhook_verifier_token': self.qb_webhook_verifier_token or '',
             'conflict_resolution': self.qb_conflict_resolution or 'last_modified',
-            'auto_sync_interval': self.qb_auto_sync_interval or 30,
+            'auto_sync_interval': interval,
+            'auto_sync_interval_type': interval_type,
             'sync_customers': self.qb_sync_customers,
             'sync_vendors': self.qb_sync_vendors,
             'sync_products': self.qb_sync_products,
@@ -247,6 +308,13 @@ class ResConfigSettings(models.TransientModel):
                 vals[f] = getattr(self, settings_field, False)
 
         config.write(vals)
+        self._update_sync_cron(interval, interval_type)
+
+        if needs_reload:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'reload',
+            }
 
     # --- Quick actions ---
 

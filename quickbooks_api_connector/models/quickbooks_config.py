@@ -69,22 +69,22 @@ class QuickbooksConfig(models.Model):
     sync_payments = fields.Boolean(default=True, string='Sync Payments')
     sync_journal_entries = fields.Boolean(default=True, string='Sync Journal Entries')
     sync_credit_memos = fields.Boolean(default=True, string='Sync Credit Memos')
-    sync_estimates = fields.Boolean(default=False, string='Sync Estimates')
+    sync_estimates = fields.Boolean(default=True, string='Sync Estimates')
     sync_tax_codes = fields.Boolean(default=True, string='Sync Tax Codes')
-    sync_purchase_orders = fields.Boolean(default=False, string='Sync Purchase Orders')
-    sync_sales_receipts = fields.Boolean(default=False, string='Sync Sales Receipts')
-    sync_expenses = fields.Boolean(default=False, string='Sync Expenses')
-    sync_deposits = fields.Boolean(default=False, string='Sync Deposits')
-    sync_transfers = fields.Boolean(default=False, string='Sync Transfers')
-    sync_employees = fields.Boolean(default=False, string='Sync Employees')
-    sync_departments = fields.Boolean(default=False, string='Sync Departments')
-    sync_time_activities = fields.Boolean(default=False, string='Sync Time Activities')
-    sync_classes = fields.Boolean(default=False, string='Sync Classes')
-    sync_terms = fields.Boolean(default=False, string='Sync Payment Terms')
+    sync_purchase_orders = fields.Boolean(default=True, string='Sync Purchase Orders')
+    sync_sales_receipts = fields.Boolean(default=True, string='Sync Sales Receipts')
+    sync_expenses = fields.Boolean(default=True, string='Sync Expenses')
+    sync_deposits = fields.Boolean(default=True, string='Sync Deposits')
+    sync_transfers = fields.Boolean(default=True, string='Sync Transfers')
+    sync_employees = fields.Boolean(default=True, string='Sync Employees')
+    sync_departments = fields.Boolean(default=True, string='Sync Departments')
+    sync_time_activities = fields.Boolean(default=True, string='Sync Time Activities')
+    sync_classes = fields.Boolean(default=True, string='Sync Classes')
+    sync_terms = fields.Boolean(default=True, string='Sync Payment Terms')
     sync_attachments = fields.Boolean(default=False, string='Sync Attachments')
-    sync_inventory_qty = fields.Boolean(default=False, string='Sync Inventory Quantities')
+    sync_inventory_qty = fields.Boolean(default=True, string='Sync Inventory Quantities')
     sync_vendor_credits = fields.Boolean(default=True, string='Sync Vendor Credits')
-    sync_refund_receipts = fields.Boolean(default=False, string='Sync Refund Receipts')
+    sync_refund_receipts = fields.Boolean(default=True, string='Sync Refund Receipts')
 
     payroll_enabled = fields.Boolean(default=False, string='Enable Payroll API')
     qbt_enabled = fields.Boolean(default=False, string='Enable QuickBooks Time API')
@@ -99,7 +99,14 @@ class QuickbooksConfig(models.Model):
         default='last_modified', required=True,
     )
     auto_sync_interval = fields.Integer(
-        string='Auto Sync Interval (minutes)', default=30,
+        string='Auto Sync Interval', default=30,
+    )
+    auto_sync_interval_type = fields.Selection(
+        [('seconds', 'Seconds'),
+         ('minutes', 'Minutes'),
+         ('hours', 'Hours'),
+         ('days', 'Days')],
+        string='Interval Unit', default='minutes', required=True,
     )
 
     _company_uniq = models.Constraint(
