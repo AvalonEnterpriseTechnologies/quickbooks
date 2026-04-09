@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector',
-    'version': '19.0.2.0.0',
+    'version': '19.0.2.1.0',
     'category': 'Accounting',
     'summary': 'Full QuickBooks Online connector for Odoo 19 — Accounting, Payroll, Time',
     'description': """
@@ -23,14 +23,18 @@
         - Rate-limited API client (sliding window, 450 req/min)
         - Configuration via Settings > QuickBooks
 
-        Optionally integrates with slate_connector_v19 if installed.
+        Required modules map to QuickBooks Accounting API entities.
+        Payroll API (hr_payroll) and slate_connector_v19 are optional.
     """,
     'author': 'Avalon Enterprise Technologies',
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',
     'license': 'LGPL-3',
     'depends': [
-        'base', 'base_setup', 'mail', 'account',
-        'product', 'contacts', 'sale', 'purchase',
+        # Core
+        'base', 'base_setup', 'mail',
+        # QB Accounting API — required Odoo counterparts
+        'account', 'contacts', 'product',
+        'sale', 'purchase',
         'hr', 'hr_expense', 'hr_timesheet',
         'stock', 'analytic',
     ],

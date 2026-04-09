@@ -17,6 +17,13 @@ from . import account_analytic_line
 from . import account_analytic_account
 from . import account_payment_term
 
+# Optional: Payroll API bridge (Enterprise module)
+try:
+    import odoo.addons.hr_payroll  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    pass
+
+# Optional: slate_connector_v19
 try:
     import odoo.addons.slate_connector_v19  # noqa: F401
 except (ImportError, ModuleNotFoundError):
