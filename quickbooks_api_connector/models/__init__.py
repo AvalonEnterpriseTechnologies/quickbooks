@@ -1,3 +1,5 @@
+import sys
+
 from . import quickbooks_config
 from . import quickbooks_settings
 from . import quickbooks_sync_log
@@ -13,35 +15,19 @@ from . import account_analytic_account
 from . import account_analytic_line
 from . import account_payment_term
 
-# Optional: hr (employees, departments)
-try:
-    import odoo.addons.hr  # noqa: F401
-except (ImportError, ModuleNotFoundError):
-    pass
-else:
+# Extend models from optional modules only when Odoo has loaded them
+# (checking sys.modules instead of import, because on Odoo.sh all addon
+# packages exist on disk regardless of installation state)
+
+if 'odoo.addons.hr' in sys.modules:
     from . import hr_employee
     from . import hr_department
 
-# Optional: hr_expense
-try:
-    import odoo.addons.hr_expense  # noqa: F401
-except (ImportError, ModuleNotFoundError):
-    pass
-else:
+if 'odoo.addons.hr_expense' in sys.modules:
     from . import hr_expense
 
-# Optional: purchase
-try:
-    import odoo.addons.purchase  # noqa: F401
-except (ImportError, ModuleNotFoundError):
-    pass
-else:
+if 'odoo.addons.purchase' in sys.modules:
     from . import purchase_order
 
-# Optional: slate_connector_v19
-try:
-    import odoo.addons.slate_connector_v19  # noqa: F401
-except (ImportError, ModuleNotFoundError):
-    pass
-else:
+if 'odoo.addons.slate_connector_v19' in sys.modules:
     from . import slate_bridge
