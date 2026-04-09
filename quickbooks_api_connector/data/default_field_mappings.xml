@@ -67,5 +67,80 @@
         <field name="qb_field">PurchaseCost</field>
         <field name="direction">both</field>
     </record>
+
+    <!-- Employee field mappings -->
+    <record id="mapping_employee_name" model="quickbooks.field.mapping">
+        <field name="entity_type">employee</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">DisplayName</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_employee_email" model="quickbooks.field.mapping">
+        <field name="entity_type">employee</field>
+        <field name="sequence">2</field>
+        <field name="odoo_field">work_email</field>
+        <field name="qb_field">PrimaryEmailAddr.Address</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_employee_phone" model="quickbooks.field.mapping">
+        <field name="entity_type">employee</field>
+        <field name="sequence">3</field>
+        <field name="odoo_field">work_phone</field>
+        <field name="qb_field">PrimaryPhone.FreeFormNumber</field>
+        <field name="direction">both</field>
+    </record>
+
+    <!-- Department field mappings -->
+    <record id="mapping_department_name" model="quickbooks.field.mapping">
+        <field name="entity_type">department</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">Name</field>
+        <field name="direction">both</field>
+    </record>
+
+    <!-- Time Activity field mappings -->
+    <record id="mapping_timeactivity_desc" model="quickbooks.field.mapping">
+        <field name="entity_type">time_activity</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">Description</field>
+        <field name="direction">both</field>
+    </record>
+    <record id="mapping_timeactivity_date" model="quickbooks.field.mapping">
+        <field name="entity_type">time_activity</field>
+        <field name="sequence">2</field>
+        <field name="odoo_field">date</field>
+        <field name="qb_field">TxnDate</field>
+        <field name="direction">both</field>
+    </record>
+
+    <!-- Class field mappings -->
+    <record id="mapping_class_name" model="quickbooks.field.mapping">
+        <field name="entity_type">class</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">Name</field>
+        <field name="direction">both</field>
+    </record>
+
+    <!-- Term field mappings -->
+    <record id="mapping_term_name" model="quickbooks.field.mapping">
+        <field name="entity_type">term</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">name</field>
+        <field name="qb_field">Name</field>
+        <field name="direction">pull</field>
+    </record>
+
+    <!-- Purchase Order field mappings -->
+    <record id="mapping_po_date" model="quickbooks.field.mapping">
+        <field name="entity_type">purchase_order</field>
+        <field name="sequence">1</field>
+        <field name="odoo_field">date_order</field>
+        <field name="qb_field">TxnDate</field>
+        <field name="direction">both</field>
+    </record>
 </data>
 </odoo>

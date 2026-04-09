@@ -166,6 +166,39 @@ class QBSyncProducts(models.AbstractModel):
 
     # ---- Bulk ----
 
+    def _sync_inventory_qty(self, product, qb_data, config):
+        """Sync QBO QtyOnHand into Odoo stock.quant if stock module is available."""
+        if not getattr(config, 'sync_inventory_qty', False):
+            return
+        if not qb_data.get('TrackQtyOnHand'):
+            return
+        try:
+            Quant = self.env['stock.quant']
+        except KeyError:
+            return
+
+        qb_qty = float(qb_data.get('QtyOnHand', 0))
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', config.company_id.id)], limit=1,
+        )
+        if not warehouse:
+            return
+        location = warehouse.lot_stock_id
+
+        quant = Quant.search([
+            ('product_id', '=', product.id),
+            ('location_id', '=', location.id),
+        ], limit=1)
+        if quant:
+            if quant.quantity != qb_qty:
+                quant.sudo().write({'quantity': qb_qty})
+        else:
+            Quant.sudo().create({
+                'product_id': product.id,
+                'location_id': location.id,
+                'quantity': qb_qty,
+            })
+
     def pull_all(self, client, config, entity_type):
         where = ''
         if config.last_sync_date:
@@ -183,8 +216,10 @@ class QBSyncProducts(models.AbstractModel):
                 resolver = self.env['qb.conflict.resolver']
                 if resolver.resolve(config, existing, qb_data, 'product') == 'qbo':
                     existing.with_context(skip_qb_sync=True).write(vals)
+                    self._sync_inventory_qty(existing, qb_data, config)
             else:
-                Product.with_context(skip_qb_sync=True).create(vals)
+                new_product = Product.with_context(skip_qb_sync=True).create(vals)
+                self._sync_inventory_qty(new_product, qb_data, config)
 
     def push_all(self, client, config, entity_type):
         products = self.env['product.product'].search([

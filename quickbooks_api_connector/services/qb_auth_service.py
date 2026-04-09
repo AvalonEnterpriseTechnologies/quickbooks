@@ -13,7 +13,8 @@ QBO_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 QBO_SANDBOX_BASE = 'https://sandbox-quickbooks.api.intuit.com'
 QBO_PRODUCTION_BASE = 'https://quickbooks.api.intuit.com'
 
-SCOPES = 'com.intuit.quickbooks.accounting'
+SCOPES_BASE = 'com.intuit.quickbooks.accounting'
+SCOPES_PAYROLL = 'com.intuit.quickbooks.accounting payroll.compensation.read'
 
 
 class QBAuthService(models.AbstractModel):
@@ -28,9 +29,10 @@ class QBAuthService(models.AbstractModel):
         state = secrets.token_urlsafe(32)
         config.sudo().write({'error_message': state})
 
+        scopes = SCOPES_PAYROLL if getattr(config, 'payroll_enabled', False) else SCOPES_BASE
         params = {
             'client_id': config.client_id,
-            'scope': SCOPES,
+            'scope': scopes,
             'redirect_uri': self._get_redirect_uri(),
             'response_type': 'code',
             'state': state,

@@ -9,3 +9,12 @@ from . import test_sync_journal_entries
 from . import test_webhook_handler
 from . import test_conflict_resolution
 from . import test_rate_limiter
+from . import test_sync_employees
+from . import test_sync_departments
+from . import test_sync_time_activities
+from . import test_sync_purchase_orders
+from . import test_sync_sales_receipts
+from . import test_sync_terms
+from . import test_sync_classes
+from . import test_sync_deposits
+from . import test_sync_transfers

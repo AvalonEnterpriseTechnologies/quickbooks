@@ -1,4 +1,5 @@
 from . import quickbooks_config
+from . import quickbooks_settings
 from . import quickbooks_sync_log
 from . import quickbooks_sync_queue
 from . import quickbooks_field_mapping
@@ -8,6 +9,13 @@ from . import account_account
 from . import account_move
 from . import account_payment
 from . import account_tax
+from . import hr_employee
+from . import hr_department
+from . import hr_expense
+from . import purchase_order
+from . import account_analytic_line
+from . import account_analytic_account
+from . import account_payment_term
 
 try:
     import odoo.addons.slate_connector_v19  # noqa: F401

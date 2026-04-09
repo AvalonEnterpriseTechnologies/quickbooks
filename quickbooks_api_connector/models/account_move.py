@@ -27,6 +27,18 @@ class AccountMove(models.Model):
     qb_je_id = fields.Char(
         string='QB Journal Entry ID', index=True, copy=False,
     )
+    qb_salesreceipt_id = fields.Char(
+        string='QB Sales Receipt ID', index=True, copy=False,
+    )
+    qb_deposit_id = fields.Char(
+        string='QB Deposit ID', index=True, copy=False,
+    )
+    qb_transfer_id = fields.Char(
+        string='QB Transfer ID', index=True, copy=False,
+    )
+    qb_refundreceipt_id = fields.Char(
+        string='QB Refund Receipt ID', index=True, copy=False,
+    )
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
     qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
     qb_sync_error = fields.Text(string='Last Sync Error', copy=False)

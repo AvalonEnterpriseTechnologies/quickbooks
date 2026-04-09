@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_employee_form_qb" model="ir.ui.view">
+        <field name="name">hr.employee.form.qb</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="QuickBooks" name="quickbooks_tab"
+                      groups="quickbooks_api_connector.group_qb_user">
+                    <group>
+                        <group string="QuickBooks IDs">
+                            <field name="qb_employee_id" readonly="1"/>
+                            <field name="qb_sync_token" readonly="1"/>
+                        </group>
+                        <group string="Sync Status">
+                            <field name="qb_last_synced" readonly="1"/>
+                            <field name="qb_do_not_sync"/>
+                            <field name="qb_sync_error" readonly="1"
+                                   invisible="not qb_sync_error"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -20,6 +20,20 @@ QB_ENTITY_TYPES = [
     ('credit_memo', 'Credit Memo'),
     ('estimate', 'Estimate'),
     ('tax_code', 'Tax Code'),
+    ('sales_receipt', 'Sales Receipt'),
+    ('refund_receipt', 'Refund Receipt'),
+    ('purchase_order', 'Purchase Order'),
+    ('expense', 'Expense / Purchase'),
+    ('deposit', 'Deposit'),
+    ('transfer', 'Transfer'),
+    ('employee', 'Employee'),
+    ('department', 'Department'),
+    ('time_activity', 'Time Activity'),
+    ('class', 'Class'),
+    ('term', 'Payment Term'),
+    ('attachment', 'Attachment'),
+    ('payroll_compensation', 'Payroll Compensation'),
+    ('timesheet', 'Timesheet (QBT)'),
 ]
 
 MAX_RETRIES = 5

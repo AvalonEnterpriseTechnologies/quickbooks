@@ -18,6 +18,14 @@
                                    invisible="move_type != 'out_refund'"/>
                             <field name="qb_je_id" readonly="1"
                                    invisible="move_type != 'entry'"/>
+                            <field name="qb_salesreceipt_id" readonly="1"
+                                   invisible="not qb_salesreceipt_id"/>
+                            <field name="qb_deposit_id" readonly="1"
+                                   invisible="not qb_deposit_id"/>
+                            <field name="qb_transfer_id" readonly="1"
+                                   invisible="not qb_transfer_id"/>
+                            <field name="qb_refundreceipt_id" readonly="1"
+                                   invisible="not qb_refundreceipt_id"/>
                             <field name="qb_sync_token" readonly="1"/>
                         </group>
                         <group string="Sync Status">

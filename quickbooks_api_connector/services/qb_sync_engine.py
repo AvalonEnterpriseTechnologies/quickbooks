@@ -21,7 +21,24 @@ ENTITY_SERVICE_MAP = {
     'credit_memo': 'qb.sync.invoices',
     'estimate': 'qb.sync.invoices',
     'tax_code': 'qb.sync.tax.codes',
+    'sales_receipt': 'qb.sync.sales.receipts',
+    'purchase_order': 'qb.sync.purchase.orders',
+    'expense': 'qb.sync.expenses',
+    'employee': 'qb.sync.employees',
+    'department': 'qb.sync.departments',
+    'time_activity': 'qb.sync.time.activities',
+    'class': 'qb.sync.classes',
+    'deposit': 'qb.sync.deposits',
+    'transfer': 'qb.sync.transfers',
+    'term': 'qb.sync.terms',
+    'attachment': 'qb.sync.attachments',
+    'payroll_compensation': 'qb.sync.payroll',
+    'timesheet': 'qb.sync.timesheets',
 }
+
+PULL_ONLY_ENTITIES = frozenset([
+    'account', 'tax_code', 'term', 'attachment',
+])
 
 
 class QBSyncEngine(models.AbstractModel):
@@ -93,11 +110,16 @@ class QBSyncEngine(models.AbstractModel):
         total_errors = 0
 
         entity_order = [
-            'account', 'tax_code',
-            'customer', 'vendor', 'product',
+            'account', 'tax_code', 'term',
+            'department', 'class',
+            'customer', 'vendor', 'employee', 'product',
             'invoice', 'bill', 'credit_memo',
+            'sales_receipt', 'purchase_order', 'expense',
             'payment', 'bill_payment',
+            'deposit', 'transfer',
             'journal_entry',
+            'time_activity',
+            'attachment',
         ]
         toggle_map = {
             'customer': config.sync_customers,
@@ -109,9 +131,20 @@ class QBSyncEngine(models.AbstractModel):
             'bill_payment': config.sync_payments,
             'journal_entry': config.sync_journal_entries,
             'credit_memo': config.sync_credit_memos,
-            'account': True,
-            'tax_code': True,
             'estimate': config.sync_estimates,
+            'account': True,
+            'tax_code': getattr(config, 'sync_tax_codes', True),
+            'sales_receipt': getattr(config, 'sync_sales_receipts', False),
+            'purchase_order': getattr(config, 'sync_purchase_orders', False),
+            'expense': getattr(config, 'sync_expenses', False),
+            'deposit': getattr(config, 'sync_deposits', False),
+            'transfer': getattr(config, 'sync_transfers', False),
+            'employee': getattr(config, 'sync_employees', False),
+            'department': getattr(config, 'sync_departments', False),
+            'time_activity': getattr(config, 'sync_time_activities', False),
+            'class': getattr(config, 'sync_classes', False),
+            'term': getattr(config, 'sync_terms', False),
+            'attachment': getattr(config, 'sync_attachments', False),
         }
 
         for entity_type in entity_order:
@@ -123,7 +156,7 @@ class QBSyncEngine(models.AbstractModel):
             try:
                 service = self.env[service_name]
                 service.pull_all(client, config, entity_type)
-                if entity_type not in ('account', 'tax_code'):
+                if entity_type not in PULL_ONLY_ENTITIES:
                     service.push_all(client, config, entity_type)
             except Exception:
                 total_errors += 1

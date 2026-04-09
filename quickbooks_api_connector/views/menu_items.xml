@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_quickbooks_root"
+    <!-- QuickBooks items under Settings > Technical -->
+    <menuitem id="menu_qb_technical_root"
               name="QuickBooks"
-              sequence="80"
-              groups="quickbooks_api_connector.group_qb_user"
-              web_icon="quickbooks_api_connector,static/description/icon.png"/>
-
-    <menuitem id="menu_quickbooks_config"
-              name="Configuration"
-              parent="menu_quickbooks_root"
-              sequence="10"
-              groups="quickbooks_api_connector.group_qb_manager"
-              action="action_quickbooks_config"/>
+              parent="base.menu_custom"
+              sequence="90"
+              groups="quickbooks_api_connector.group_qb_manager"/>
 
     <menuitem id="menu_quickbooks_sync_log"
               name="Sync Logs"
-              parent="menu_quickbooks_root"
-              sequence="20"
+              parent="menu_qb_technical_root"
+              sequence="10"
               action="action_quickbooks_sync_log"/>
 
     <menuitem id="menu_quickbooks_sync_queue"
               name="Sync Queue"
-              parent="menu_quickbooks_root"
-              sequence="30"
+              parent="menu_qb_technical_root"
+              sequence="20"
               action="action_quickbooks_sync_queue"/>
+
+    <menuitem id="menu_quickbooks_config"
+              name="Configurations"
+              parent="menu_qb_technical_root"
+              sequence="30"
+              groups="quickbooks_api_connector.group_qb_manager"
+              action="action_quickbooks_config"/>
 </odoo>

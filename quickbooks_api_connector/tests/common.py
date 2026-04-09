@@ -203,6 +203,132 @@ class QuickbooksTestCommon(TransactionCase):
             },
         }
 
+    def _make_qb_employee(self, qb_id='800', name='John Doe'):
+        return {
+            'Employee': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'GivenName': name.split()[0],
+                'FamilyName': ' '.join(name.split()[1:]) or '',
+                'DisplayName': name,
+                'PrimaryEmailAddr': {'Address': 'john@example.com'},
+                'PrimaryPhone': {'FreeFormNumber': '555-8888'},
+                'HiredDate': '2025-01-01',
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_department(self, qb_id='900', name='Engineering'):
+        return {
+            'Department': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'Name': name,
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_time_activity(self, qb_id='1000', hours=2, minutes=30):
+        return {
+            'TimeActivity': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'TxnDate': '2026-01-15',
+                'NameOf': 'Employee',
+                'Hours': hours,
+                'Minutes': minutes,
+                'Description': 'Test time activity',
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_sales_receipt(self, qb_id='1100'):
+        return {
+            'SalesReceipt': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'TxnDate': '2026-01-15',
+                'TotalAmt': 150.00,
+                'Line': [],
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_purchase_order(self, qb_id='1200', vendor_id='200'):
+        return {
+            'PurchaseOrder': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'VendorRef': {'value': vendor_id},
+                'TxnDate': '2026-01-15',
+                'TotalAmt': 1000.00,
+                'Line': [],
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_deposit(self, qb_id='1300'):
+        return {
+            'Deposit': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'TxnDate': '2026-01-15',
+                'TotalAmt': 5000.00,
+                'Line': [],
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_transfer(self, qb_id='1400'):
+        return {
+            'Transfer': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'TxnDate': '2026-01-15',
+                'Amount': 2000.00,
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_term(self, qb_id='1500', name='Net 30'):
+        return {
+            'Term': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'Name': name,
+                'DueDays': 30,
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
+    def _make_qb_class(self, qb_id='1600', name='Marketing'):
+        return {
+            'Class': {
+                'Id': qb_id,
+                'SyncToken': '0',
+                'Name': name,
+                'MetaData': {
+                    'LastUpdatedTime': '2026-01-15T10:00:00Z',
+                },
+            },
+        }
+
     def _make_cloud_event(self, event_type, entity_id, realm_id=None):
         """Create a CloudEvents-format webhook event."""
         return {

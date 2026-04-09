@@ -1,0 +1,389 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_quickbooks" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.quickbooks</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="QuickBooks" string="QuickBooks"
+                     data-key="quickbooks_api_connector"
+                     groups="quickbooks_api_connector.group_qb_manager">
+
+                    <!-- Connection Status Banner -->
+                    <field name="qb_config_id" invisible="1"/>
+                    <field name="qb_state" invisible="1"/>
+                    <field name="qb_error_message" invisible="1"/>
+
+                    <div class="alert alert-success" role="alert"
+                         invisible="qb_state != 'connected'">
+                        <i class="fa fa-check-circle"/>
+                        Connected to QuickBooks Online
+                        <field name="qb_company_name" invisible="not qb_company_name"
+                               nolabel="1" readonly="1" class="fw-bold ms-1"/>
+                        <span class="ms-3 text-muted small">
+                            Last sync: <field name="qb_last_sync_date" nolabel="1" readonly="1"
+                                              widget="datetime" class="d-inline"/>
+                        </span>
+                    </div>
+
+                    <div class="alert alert-danger" role="alert"
+                         invisible="qb_state != 'error'">
+                        <i class="fa fa-exclamation-triangle"/>
+                        Connection error — check your credentials and reconnect.
+                    </div>
+
+                    <h2>Connection</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_client_id"/>
+                                <div class="text-muted">Your Intuit developer app Client ID</div>
+                                <field name="qb_client_id" placeholder="Client ID"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_client_secret"/>
+                                <div class="text-muted">Your Intuit developer app Client Secret</div>
+                                <field name="qb_client_secret" password="True"
+                                       placeholder="Client Secret"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_environment"/>
+                                <field name="qb_environment"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_webhook_verifier_token"/>
+                                <div class="text-muted">For HMAC webhook verification (optional)</div>
+                                <field name="qb_webhook_verifier_token" password="True"/>
+                            </div>
+                        </div>
+                        <div class="col-12 mt8 mb16">
+                            <button name="action_qb_connect"
+                                    string="Connect to QuickBooks"
+                                    type="object" class="btn-primary me-2"
+                                    icon="fa-plug"
+                                    invisible="qb_state == 'connected'"/>
+                            <button name="action_qb_test_connection"
+                                    string="Test Connection"
+                                    type="object" class="btn-secondary me-2"
+                                    icon="fa-refresh"
+                                    invisible="qb_state != 'connected'"/>
+                            <button name="action_qb_disconnect"
+                                    string="Disconnect"
+                                    type="object" class="btn-danger me-2"
+                                    icon="fa-times"
+                                    invisible="qb_state == 'draft'"
+                                    confirm="Disconnect from QuickBooks?"/>
+                            <span class="ms-3">
+                                Realm ID: <field name="qb_realm_id" nolabel="1" readonly="1"
+                                                 class="d-inline"
+                                                 invisible="not qb_realm_id"/>
+                            </span>
+                        </div>
+                    </div>
+
+                    <h2>Sync Preferences</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_conflict_resolution"/>
+                                <field name="qb_conflict_resolution"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_auto_sync_interval"/>
+                                <field name="qb_auto_sync_interval"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Contacts</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_customers"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_customers"/>
+                                <div class="text-muted">Bidirectional sync of customers</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_vendors"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_vendors"/>
+                                <div class="text-muted">Bidirectional sync of vendors</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Accounting</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_invoices"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_invoices"/>
+                                <div class="text-muted">Customer invoices</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_bills"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_bills"/>
+                                <div class="text-muted">Vendor bills</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_payments"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_payments"/>
+                                <div class="text-muted">Customer and vendor payments</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_journal_entries"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_journal_entries"/>
+                                <div class="text-muted">Manual journal entries</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_credit_memos"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_credit_memos"/>
+                                <div class="text-muted">Credit memos / refunds</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_tax_codes"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_tax_codes"/>
+                                <div class="text-muted">Tax codes and rates (pull only)</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_deposits"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_deposits"/>
+                                <div class="text-muted">Bank deposits</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_transfers"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_transfers"/>
+                                <div class="text-muted">Fund transfers between accounts</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_terms"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_terms"/>
+                                <div class="text-muted">Payment terms</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_classes"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_classes"/>
+                                <div class="text-muted">QBO Classes to analytic accounts</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Sales</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_estimates"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_estimates"/>
+                                <div class="text-muted">Estimates / quotations</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_sales_receipts"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_sales_receipts"/>
+                                <div class="text-muted">Sales receipts (immediate payment)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Purchase</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_purchase_orders"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_purchase_orders"/>
+                                <div class="text-muted">Purchase orders</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_expenses"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_expenses"/>
+                                <div class="text-muted">QBO Purchases to Odoo expenses</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Products &amp; Inventory</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_products"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_products"/>
+                                <div class="text-muted">Items / products</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_inventory_qty"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_inventory_qty"/>
+                                <div class="text-muted">Sync QtyOnHand with stock quantities</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Employees &amp; Timesheets</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_employees"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_employees"/>
+                                <div class="text-muted">Employees from QBO</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_departments"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_departments"/>
+                                <div class="text-muted">Departments from QBO</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_time_activities"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_time_activities"/>
+                                <div class="text-muted">QBO TimeActivity entries to timesheets</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Advanced APIs</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_payroll_enabled"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_payroll_enabled"/>
+                                <div class="text-muted">
+                                    QuickBooks Payroll API (GraphQL) — requires
+                                    QBO Payroll subscription and hr_payroll module
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_time_enabled"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_time_enabled"/>
+                                <div class="text-muted">
+                                    QuickBooks Time API (formerly TSheets) — separate API for detailed timesheets
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_attachments"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_attachments"/>
+                                <div class="text-muted">Sync file attachments from QBO</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Tools</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <button name="action_open_sync_logs"
+                                        string="View Sync Logs"
+                                        type="object" class="btn-link" icon="fa-list"/>
+                                <button name="action_open_sync_queue"
+                                        string="View Sync Queue"
+                                        type="object" class="btn-link ms-3" icon="fa-tasks"/>
+                                <button name="action_open_manual_sync"
+                                        string="Manual Sync"
+                                        type="object" class="btn-link ms-3" icon="fa-refresh"/>
+                                <button name="action_open_migration_wizard"
+                                        string="Initial Migration"
+                                        type="object" class="btn-link ms-3" icon="fa-database"/>
+                            </div>
+                        </div>
+                    </div>
+
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

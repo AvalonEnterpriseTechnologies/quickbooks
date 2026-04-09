@@ -49,6 +49,11 @@ class _QBClient:
             self._base_url, QBO_API_VERSION, self.config.realm_id,
         )
 
+    @staticmethod
+    def _append_minor_version(url):
+        sep = '&' if '?' in url else '?'
+        return '%s%sminorversion=75' % (url, sep)
+
     def _get_headers(self, access_token):
         return {
             'Authorization': 'Bearer %s' % access_token,
@@ -82,6 +87,7 @@ class _QBClient:
         self._wait_for_rate_limit()
 
         url = '%s/%s' % (self._api_prefix, endpoint.lstrip('/'))
+        url = self._append_minor_version(url)
         headers = self._get_headers(access_token)
 
         kwargs = {'headers': headers, 'timeout': 60}
@@ -143,6 +149,30 @@ class _QBClient:
         return self._execute(
             'POST', '%s?operation=delete' % entity_name.lower(), payload,
         )
+
+    def cdc(self, entities, changed_since):
+        """Use Change Data Capture to fetch all changed entities since a timestamp.
+
+        Args:
+            entities: comma-separated entity names e.g. 'Customer,Invoice,Payment'
+            changed_since: ISO datetime string e.g. '2026-01-01T00:00:00Z'
+        Returns:
+            dict mapping entity name -> list of changed records
+        """
+        import urllib.parse
+        endpoint = 'cdc?entities=%s&changedSince=%s' % (
+            urllib.parse.quote(entities),
+            urllib.parse.quote(changed_since),
+        )
+        resp = self._execute('GET', endpoint)
+        result = {}
+        for entry in resp.get('CDCResponse', []):
+            query_response = entry.get('QueryResponse', [])
+            for qr in query_response:
+                for key, records in qr.items():
+                    if isinstance(records, list):
+                        result.setdefault(key, []).extend(records)
+        return result
 
     def query_all(self, entity_name, where_clause='', page_size=1000):
         """Page through all records of an entity type."""
