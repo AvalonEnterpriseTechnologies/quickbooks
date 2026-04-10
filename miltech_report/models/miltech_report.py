@@ -1,5 +1,7 @@
+import base64
 import io
 import json
+import os
 from datetime import date, timedelta
 
 from odoo import api, fields, models
@@ -432,6 +434,13 @@ class MiltechReport(models.TransientModel):
 
         now_str = fields.Datetime.now().strftime('%B %d, %Y at %I:%M %p')
 
+        logo_b64 = self._get_logo_base64()
+        logo_img = (
+            f'<img src="data:image/png;base64,{logo_b64}"'
+            f' style="height:44px; margin-right:16px;"/>'
+            if logo_b64 else ''
+        )
+
         html = f'''<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"/>
@@ -439,11 +448,17 @@ class MiltechReport(models.TransientModel):
   @page {{ size: letter portrait; margin: 0.5in 0.6in; }}
   body {{ font-family: Arial, Helvetica, sans-serif; color: #333;
          font-size: 11px; margin: 0; padding: 0; }}
-  .header {{ background: #1B2A4A; color: #fff; padding: 18px 24px;
-             margin: -0.5in -0.6in 0 -0.6in; }}
-  .header h1 {{ margin: 0; font-size: 20px; font-weight: 700;
-                letter-spacing: 1px; }}
-  .header .subtitle {{ color: #B0C4DE; font-size: 11px; margin-top: 3px; }}
+  .header {{ background: #1B2A4A; color: #fff; padding: 16px 24px;
+             margin: -0.5in -0.6in 0 -0.6in;
+             display: flex; align-items: center; justify-content: space-between; }}
+  .header-left {{ display: flex; align-items: center; }}
+  .header-titles h1 {{ margin: 0; font-size: 20px; font-weight: 700;
+                        letter-spacing: 1px; }}
+  .header-titles .subtitle {{ color: #B0C4DE; font-size: 11px; margin-top: 2px; }}
+  .header-right {{ text-align: right; }}
+  .internal-use {{ background: #E74C3C; color: #fff; font-size: 9px;
+                   font-weight: 700; padding: 3px 10px; border-radius: 3px;
+                   letter-spacing: 0.8px; text-transform: uppercase; }}
   .filter-bar {{ background: #EBF1F8; padding: 8px 0; margin-top: 14px;
                  font-size: 10px; color: #4A6FA5; font-weight: 600;
                  border-radius: 4px; text-align: center; }}
@@ -457,15 +472,27 @@ class MiltechReport(models.TransientModel):
        font-weight: 700; color: #333; border-bottom: 2px solid #4A6FA5; }}
   th:first-child {{ text-align: left; }}
   td {{ border-bottom: 1px solid #eee; }}
-  .footer {{ margin-top: 20px; text-align: center; font-size: 9px;
-             color: #999; border-top: 1px solid #ddd; padding-top: 8px; }}
+  .footer {{ margin-top: 24px; text-align: center; font-size: 8px;
+             color: #888; border-top: 1px solid #ccc; padding-top: 10px;
+             line-height: 1.5; }}
+  .footer .gen-date {{ font-size: 9px; color: #666; font-weight: 600;
+                       margin-bottom: 4px; }}
+  .footer .confidential {{ font-style: italic; }}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>MILTECH CRM DASHBOARD</h1>
-  <div class="subtitle">Pipeline Report</div>
+  <div class="header-left">
+    {logo_img}
+    <div class="header-titles">
+      <h1>MILTECH CRM DASHBOARD</h1>
+      <div class="subtitle">Pipeline Report</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="internal-use">For Internal Use Only</span>
+  </div>
 </div>
 
 <div class="filter-bar">{filter_desc}</div>
@@ -502,7 +529,13 @@ class MiltechReport(models.TransientModel):
 </table>
 
 <div class="footer">
-  Generated {now_str} &mdash; Miltech Manufacturing
+  <div class="gen-date">Generated {now_str} &mdash; Miltech Manufacturing</div>
+  <div class="confidential">
+    CONFIDENTIAL &mdash; This document contains proprietary business information
+    belonging to Miltech Manufacturing. It is intended solely for internal use
+    by authorized personnel. Unauthorized reproduction, distribution, or
+    disclosure of this material is strictly prohibited.
+  </div>
 </div>
 
 </body>
@@ -518,6 +551,19 @@ class MiltechReport(models.TransientModel):
             },
         )
         return pdf_content
+
+    def _get_logo_base64(self):
+        """Read the Miltech logo from the module's static folder and
+        return it as a base64-encoded string for embedding in HTML."""
+        logo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'static', 'src', 'img', 'miltech_logo.png',
+        )
+        try:
+            with open(logo_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode('ascii')
+        except (OSError, IOError):
+            return ''
 
     def _get_filter_description(self, wizard_id):
         """Build a human-readable string of the active filters."""
