@@ -5,7 +5,6 @@
     <t t-call="web.html_container">
         <t t-foreach="docs" t-as="doc">
             <t t-set="pdf" t-value="doc.get_pdf_data(doc.id if doc.id else None)"/>
-            <t t-call="web.minimal_layout">
                 <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #333; font-size: 11px;">
 
                     <!-- HEADER -->
@@ -147,7 +146,6 @@
                     </div>
 
                 </div>
-            </t>
         </t>
     </t>
 </template>
