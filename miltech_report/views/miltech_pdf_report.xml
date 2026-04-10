@@ -11,7 +11,8 @@
                     <table style="width:100%; background:#1B2A4A;" cellpadding="0" cellspacing="0">
                         <tr>
                             <td style="padding:14px 20px; vertical-align:middle; width:60px;">
-                                <img src="/miltech_report/static/src/img/miltech_logo.png"
+                                <img t-if="pdf.get('logo_b64')"
+                                     t-attf-src="data:image/png;base64,#{pdf['logo_b64']}"
                                      style="height:38px; vertical-align:middle;"/>
                             </td>
                             <td style="padding:14px 8px; vertical-align:middle;">

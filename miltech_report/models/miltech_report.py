@@ -1,3 +1,4 @@
+import base64
 import io
 from datetime import date, timedelta
 
@@ -389,6 +390,7 @@ class MiltechReport(models.TransientModel):
 
         now_str = fields.Datetime.now().strftime('%B %d, %Y at %I:%M %p')
         filter_desc = self._get_filter_description(wizard_id)
+        logo_b64 = self._get_logo_base64()
 
         return {
             'kpi_items': kpi_items,
@@ -396,7 +398,29 @@ class MiltechReport(models.TransientModel):
             'by_customer': customer_rows,
             'filter_desc': filter_desc,
             'now_str': now_str,
+            'logo_b64': logo_b64,
         }
+
+    def _get_logo_base64(self):
+        """Read the Miltech logo and return as base64 string for PDF embedding."""
+        try:
+            from odoo.modules.module import get_module_resource
+            logo_path = get_module_resource(
+                'miltech_report', 'static', 'src', 'img', 'miltech_logo.png'
+            )
+        except Exception:
+            logo_path = None
+        if not logo_path:
+            import os
+            logo_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'static', 'src', 'img', 'miltech_logo.png',
+            )
+        try:
+            with open(logo_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode('ascii')
+        except Exception:
+            return ''
 
     def _get_filter_description(self, wizard_id):
         """Build a human-readable string of the active filters."""
