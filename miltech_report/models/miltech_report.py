@@ -538,19 +538,21 @@ class MiltechReport(models.TransientModel):
             [html],
             landscape=False,
             specific_paperformat_args={
-                'data-report-margin-top': 10,
+                'data-report-margin-top': 0,
                 'data-report-header-spacing': 0,
             },
         )
         return pdf_content
 
     def _get_logo_base64(self):
-        """Read the Miltech logo from the module's static folder and
-        return it as a base64-encoded string for embedding in HTML."""
-        from odoo.modules.module import get_module_resource
-        logo_path = get_module_resource(
-            'miltech_report', 'static', 'src', 'img', 'miltech_logo.png'
-        )
+        """Read the Miltech logo and return as base64 string."""
+        try:
+            from odoo.modules.module import get_module_resource
+            logo_path = get_module_resource(
+                'miltech_report', 'static', 'src', 'img', 'miltech_logo.png'
+            )
+        except Exception:
+            logo_path = None
         if not logo_path:
             logo_path = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -559,7 +561,7 @@ class MiltechReport(models.TransientModel):
         try:
             with open(logo_path, 'rb') as f:
                 return base64.b64encode(f.read()).decode('ascii')
-        except (OSError, IOError):
+        except Exception:
             return ''
 
     def _get_filter_description(self, wizard_id):

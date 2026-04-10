@@ -37,16 +37,23 @@ class MiltechReportController(http.Controller):
         csrf=False,
     )
     def download_pdf(self, wizard_id=None, **kw):
-        wizard_id = int(wizard_id) if wizard_id else None
-        report_model = request.env['miltech.report'].sudo()
-        pdf_data = report_model.generate_pdf(wizard_id)
+        import logging
+        import traceback
+        _logger = logging.getLogger(__name__)
+        try:
+            wizard_id = int(wizard_id) if wizard_id else None
+            report_model = request.env['miltech.report'].sudo()
+            pdf_data = report_model.generate_pdf(wizard_id)
 
-        response = request.make_response(
-            pdf_data,
-            headers=[
-                ('Content-Type', 'application/pdf'),
-                ('Content-Disposition',
-                 content_disposition('Miltech_CRM_Report.pdf')),
-            ],
-        )
-        return response
+            response = request.make_response(
+                pdf_data,
+                headers=[
+                    ('Content-Type', 'application/pdf'),
+                    ('Content-Disposition',
+                     content_disposition('Miltech_CRM_Report.pdf')),
+                ],
+            )
+            return response
+        except Exception as e:
+            _logger.error('PDF export failed:\n%s', traceback.format_exc())
+            raise
