@@ -364,7 +364,6 @@ class MiltechReport(models.TransientModel):
                 return '0.0%'
             return '{:.1f}%'.format(v)
 
-        kpi_cards_html = ''
         kpi_items = [
             ('Total Opportunities', str(kpis['total_leads']), '#4A6FA5'),
             ('Total Quoted Value', fmt_money(kpis['total_quoted']), '#F39C12'),
@@ -374,15 +373,17 @@ class MiltechReport(models.TransientModel):
             ('Engagements', str(kpis.get('engagements', 0)), '#8E44AD'),
             ('Orders Delivered', str(kpis.get('orders_shipped', 0)), '#2980B9'),
         ]
+        kpi_cells = ''
         for label, value, color in kpi_items:
-            kpi_cards_html += (
-                f'<div style="border:1px solid #ddd; border-top:4px solid {color};'
-                f' border-radius:6px; padding:12px 14px; text-align:center;">'
-                f'<div style="font-size:9px; color:#5D6D7E; text-transform:uppercase;'
-                f' font-weight:700; letter-spacing:0.5px;">{label}</div>'
-                f'<div style="font-size:22px; font-weight:700; color:{color};'
-                f' margin-top:4px;">{value}</div></div>'
+            kpi_cells += (
+                f'<td style="border:1px solid #ddd; border-top:4px solid {color};'
+                f' padding:10px 8px; text-align:center; width:14.28%;">'
+                f'<div style="font-size:8px; color:#5D6D7E; text-transform:uppercase;'
+                f' font-weight:700; letter-spacing:0.3px;">{label}</div>'
+                f'<div style="font-size:18px; font-weight:700; color:{color};'
+                f' margin-top:3px;">{value}</div></td>'
             )
+        kpi_cards_html = f'<table style="width:100%; border-collapse:separate; border-spacing:6px; margin:12px 0;"><tr>{kpi_cells}</tr></table>'
 
         stage_rows = ''
         for s in data['by_stage']:
@@ -437,7 +438,7 @@ class MiltechReport(models.TransientModel):
         logo_b64 = self._get_logo_base64()
         logo_img = (
             f'<img src="data:image/png;base64,{logo_b64}"'
-            f' style="height:44px; margin-right:16px;"/>'
+            f' style="height:38px; vertical-align:middle;"/>'
             if logo_b64 else ''
         )
 
@@ -445,62 +446,49 @@ class MiltechReport(models.TransientModel):
 <html>
 <head><meta charset="utf-8"/>
 <style>
-  @page {{ size: letter portrait; margin: 0.5in 0.6in; }}
   body {{ font-family: Arial, Helvetica, sans-serif; color: #333;
          font-size: 11px; margin: 0; padding: 0; }}
-  .header {{ background: #1B2A4A; color: #fff; padding: 16px 24px;
-             margin: -0.5in -0.6in 0 -0.6in;
-             display: flex; align-items: center; justify-content: space-between; }}
-  .header-left {{ display: flex; align-items: center; }}
-  .header-titles h1 {{ margin: 0; font-size: 20px; font-weight: 700;
-                        letter-spacing: 1px; }}
-  .header-titles .subtitle {{ color: #B0C4DE; font-size: 11px; margin-top: 2px; }}
-  .header-right {{ text-align: right; }}
-  .internal-use {{ background: #E74C3C; color: #fff; font-size: 9px;
-                   font-weight: 700; padding: 3px 10px; border-radius: 3px;
-                   letter-spacing: 0.8px; text-transform: uppercase; }}
-  .filter-bar {{ background: #EBF1F8; padding: 8px 0; margin-top: 14px;
-                 font-size: 10px; color: #4A6FA5; font-weight: 600;
-                 border-radius: 4px; text-align: center; }}
-  .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr);
-               gap: 10px; margin: 16px 0; }}
-  .section-title {{ background: #4A6FA5; color: #fff; padding: 8px 14px;
-                    font-weight: 700; font-size: 12px; border-radius: 6px 6px 0 0;
-                    margin-top: 18px; }}
-  table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
-  th {{ background: #EBF1F8; padding: 7px 10px; text-align: center;
-       font-weight: 700; color: #333; border-bottom: 2px solid #4A6FA5; }}
-  th:first-child {{ text-align: left; }}
-  td {{ border-bottom: 1px solid #eee; }}
-  .footer {{ margin-top: 24px; text-align: center; font-size: 8px;
-             color: #888; border-top: 1px solid #ccc; padding-top: 10px;
-             line-height: 1.5; }}
-  .footer .gen-date {{ font-size: 9px; color: #666; font-weight: 600;
-                       margin-bottom: 4px; }}
-  .footer .confidential {{ font-style: italic; }}
+  .data-table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
+  .data-table th {{ background: #EBF1F8; padding: 7px 10px; text-align: center;
+                    font-weight: 700; color: #333; border-bottom: 2px solid #4A6FA5; }}
+  .data-table th:first-child {{ text-align: left; }}
+  .data-table td {{ border-bottom: 1px solid #eee; }}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    {logo_img}
-    <div class="header-titles">
-      <h1>MILTECH CRM DASHBOARD</h1>
-      <div class="subtitle">Pipeline Report</div>
-    </div>
-  </div>
-  <div class="header-right">
-    <span class="internal-use">For Internal Use Only</span>
-  </div>
+<!-- HEADER -->
+<table style="width:100%; background:#1B2A4A; padding:0;" cellpadding="0" cellspacing="0">
+  <tr>
+    <td style="padding:14px 20px; vertical-align:middle; width:50px;">
+      {logo_img}
+    </td>
+    <td style="padding:14px 8px; vertical-align:middle;">
+      <div style="color:#fff; font-size:18px; font-weight:700; letter-spacing:0.5px;">
+        MILTECH CRM DASHBOARD</div>
+      <div style="color:#B0C4DE; font-size:10px; margin-top:2px;">Pipeline Report</div>
+    </td>
+    <td style="padding:14px 20px; vertical-align:middle; text-align:right;">
+      <span style="background:#E74C3C; color:#fff; font-size:8px; font-weight:700;
+                   padding:3px 8px; letter-spacing:0.5px; text-transform:uppercase;">
+        For Internal Use Only</span>
+    </td>
+  </tr>
+</table>
+
+<!-- FILTER BAR -->
+<div style="background:#EBF1F8; padding:6px 20px; font-size:10px; color:#4A6FA5;
+            font-weight:600; text-align:center; margin-bottom:10px;">
+  {filter_desc}
 </div>
 
-<div class="filter-bar">{filter_desc}</div>
+<!-- KPI CARDS -->
+{kpi_cards_html}
 
-<div class="kpi-grid">{kpi_cards_html}</div>
-
-<div class="section-title">PIPELINE BY STAGE</div>
-<table>
+<!-- PIPELINE BY STAGE -->
+<div style="background:#4A6FA5; color:#fff; padding:7px 14px; font-weight:700;
+            font-size:11px; margin-top:14px;">PIPELINE BY STAGE</div>
+<table class="data-table">
   <thead>
     <tr>
       <th style="text-align:left;">Stage</th>
@@ -512,8 +500,10 @@ class MiltechReport(models.TransientModel):
   <tbody>{stage_rows}</tbody>
 </table>
 
-<div class="section-title">PIPELINE BY CUSTOMER</div>
-<table>
+<!-- PIPELINE BY CUSTOMER -->
+<div style="background:#4A6FA5; color:#fff; padding:7px 14px; font-weight:700;
+            font-size:11px; margin-top:14px;">PIPELINE BY CUSTOMER</div>
+<table class="data-table">
   <thead>
     <tr>
       <th style="text-align:left;">Customer</th>
@@ -528,14 +518,16 @@ class MiltechReport(models.TransientModel):
   <tbody>{cust_rows}</tbody>
 </table>
 
-<div class="footer">
-  <div class="gen-date">Generated {now_str} &mdash; Miltech Manufacturing</div>
-  <div class="confidential">
+<!-- FOOTER -->
+<div style="margin-top:20px; text-align:center; font-size:8px; color:#888;
+            border-top:1px solid #ccc; padding-top:8px; line-height:1.6;">
+  <div style="font-size:9px; color:#666; font-weight:600; margin-bottom:3px;">
+    Generated {now_str} &mdash; Miltech Manufacturing</div>
+  <div style="font-style:italic;">
     CONFIDENTIAL &mdash; This document contains proprietary business information
     belonging to Miltech Manufacturing. It is intended solely for internal use
     by authorized personnel. Unauthorized reproduction, distribution, or
-    disclosure of this material is strictly prohibited.
-  </div>
+    disclosure of this material is strictly prohibited.</div>
 </div>
 
 </body>
@@ -546,7 +538,10 @@ class MiltechReport(models.TransientModel):
             [html],
             landscape=False,
             specific_paperformat_args={
-                'data-report-margin-top': 0,
+                'data-report-margin-top': 10,
+                'data-report-margin-bottom': 10,
+                'data-report-margin-left': 15,
+                'data-report-margin-right': 15,
                 'data-report-header-spacing': 0,
             },
         )
@@ -555,10 +550,15 @@ class MiltechReport(models.TransientModel):
     def _get_logo_base64(self):
         """Read the Miltech logo from the module's static folder and
         return it as a base64-encoded string for embedding in HTML."""
-        logo_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'static', 'src', 'img', 'miltech_logo.png',
+        from odoo.modules.module import get_module_resource
+        logo_path = get_module_resource(
+            'miltech_report', 'static', 'src', 'img', 'miltech_logo.png'
         )
+        if not logo_path:
+            logo_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'static', 'src', 'img', 'miltech_logo.png',
+            )
         try:
             with open(logo_path, 'rb') as f:
                 return base64.b64encode(f.read()).decode('ascii')
