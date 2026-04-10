@@ -6,7 +6,7 @@
         <!-- HEADER BAR (fixed above scroll area) -->
         <div style="background: #1B2A4A; color: white; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto;">
             <div>
-                <h2 style="margin: 0; font-weight: 700; font-size: 22px;">MILTECH CRM DASHBOARD</h2>
+                <h2 style="margin: 0; font-weight: 700; font-size: 22px; color: white !important;">MILTECH CRM DASHBOARD</h2>
                 <small style="color: #D6E4F0;">Live data from your CRM pipeline</small>
             </div>
             <div class="d-flex gap-2">
@@ -28,19 +28,19 @@
             </div>
             <div class="d-flex align-items-center gap-2">
                 <label style="color: #D6E4F0; font-size: 12px; white-space: nowrap;">From</label>
-                <input type="date" class="form-control form-control-sm" style="width: 150px;"
+                <input type="date" class="form-control form-control-sm" style="width: 150px; background: rgba(255,255,255,0.1); color: #fff !important; border-color: rgba(255,255,255,0.3);"
                        t-att-value="state.filterValues.date_from"
                        t-on-change="onDateFromChange"/>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <label style="color: #D6E4F0; font-size: 12px; white-space: nowrap;">To</label>
-                <input type="date" class="form-control form-control-sm" style="width: 150px;"
+                <input type="date" class="form-control form-control-sm" style="width: 150px; background: rgba(255,255,255,0.1); color: #fff !important; border-color: rgba(255,255,255,0.3);"
                        t-att-value="state.filterValues.date_to"
                        t-on-change="onDateToChange"/>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <label style="color: #D6E4F0; font-size: 12px; white-space: nowrap;">Salesperson</label>
-                <select class="form-select form-select-sm" style="width: 170px;"
+                <select class="form-select form-select-sm" style="width: 170px; background-color: rgba(255,255,255,0.1); color: #fff !important; border-color: rgba(255,255,255,0.3);"
                         t-on-change="onSalespersonChange">
                     <option value="0">All</option>
                     <t t-foreach="state.filters.salespeople" t-as="sp" t-key="sp.id">
@@ -50,7 +50,7 @@
             </div>
             <div class="d-flex align-items-center gap-2">
                 <label style="color: #D6E4F0; font-size: 12px; white-space: nowrap;">Customer</label>
-                <select class="form-select form-select-sm" style="width: 200px;"
+                <select class="form-select form-select-sm" style="width: 200px; background-color: rgba(255,255,255,0.1); color: #fff !important; border-color: rgba(255,255,255,0.3);"
                         t-on-change="onCustomerChange">
                     <option value="0">All</option>
                     <t t-foreach="state.filters.partners" t-as="p" t-key="p.id">
