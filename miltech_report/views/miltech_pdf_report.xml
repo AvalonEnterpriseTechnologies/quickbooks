@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+<template id="report_miltech_dashboard">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <t t-set="pdf" t-value="doc.get_pdf_data(doc.id if doc.id else None)"/>
+            <t t-call="web.minimal_layout">
+                <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #333; font-size: 11px;">
+
+                    <!-- HEADER -->
+                    <table style="width:100%; background:#1B2A4A;" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="padding:14px 20px; vertical-align:middle; width:60px;">
+                                <img src="/miltech_report/static/src/img/miltech_logo.png"
+                                     style="height:38px; vertical-align:middle;"/>
+                            </td>
+                            <td style="padding:14px 8px; vertical-align:middle;">
+                                <div style="color:#fff; font-size:18px; font-weight:700; letter-spacing:0.5px;">
+                                    MILTECH CRM DASHBOARD</div>
+                                <div style="color:#B0C4DE; font-size:10px; margin-top:2px;">Pipeline Report</div>
+                            </td>
+                            <td style="padding:14px 20px; vertical-align:middle; text-align:right;">
+                                <span style="background:#E74C3C; color:#fff; font-size:8px; font-weight:700;
+                                             padding:3px 8px; letter-spacing:0.5px; text-transform:uppercase;">
+                                    For Internal Use Only</span>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- FILTER BAR -->
+                    <div style="background:#EBF1F8; padding:6px 20px; font-size:10px; color:#4A6FA5;
+                                font-weight:600; text-align:center; margin-bottom:10px;">
+                        <t t-esc="pdf['filter_desc']"/>
+                    </div>
+
+                    <!-- KPI CARDS -->
+                    <table style="width:100%; border-collapse:separate; border-spacing:5px; margin:10px 0;">
+                        <tr>
+                            <t t-foreach="pdf['kpi_items']" t-as="kpi">
+                                <td t-attf-style="border:1px solid #ddd; border-top:4px solid #{kpi['color']};
+                                                   padding:10px 6px; text-align:center; width:14.28%;">
+                                    <div style="font-size:8px; color:#5D6D7E; text-transform:uppercase;
+                                                font-weight:700; letter-spacing:0.3px;">
+                                        <t t-esc="kpi['label']"/></div>
+                                    <div t-attf-style="font-size:18px; font-weight:700; color:#{kpi['color']};
+                                                       margin-top:3px;">
+                                        <t t-esc="kpi['value']"/></div>
+                                </td>
+                            </t>
+                        </tr>
+                    </table>
+
+                    <!-- PIPELINE BY STAGE -->
+                    <div style="background:#4A6FA5; color:#fff; padding:7px 14px; font-weight:700;
+                                font-size:11px; margin-top:14px;">PIPELINE BY STAGE</div>
+                    <table style="width:100%; border-collapse:collapse; font-size:10px;">
+                        <thead>
+                            <tr>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:left;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Stage</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Count</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Total Revenue</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Avg Probability</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="pdf['by_stage']" t-as="row">
+                                <tr>
+                                    <td t-attf-style="padding:6px 10px; border-bottom:1px solid #eee;
+                                                      #{'color:#27AE60; font-weight:700;' if row['is_won'] else ''}">
+                                        <t t-esc="row['stage_name']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['count']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['total_revenue']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['avg_probability']"/></td>
+                                </tr>
+                            </t>
+                            <t t-if="not pdf['by_stage']">
+                                <tr><td colspan="4" style="text-align:center; color:#999; padding:16px;">No data</td></tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <!-- PIPELINE BY CUSTOMER -->
+                    <div style="background:#4A6FA5; color:#fff; padding:7px 14px; font-weight:700;
+                                font-size:11px; margin-top:14px;">PIPELINE BY CUSTOMER</div>
+                    <table style="width:100%; border-collapse:collapse; font-size:10px;">
+                        <thead>
+                            <tr>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:left;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Customer</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Active</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Quoted $</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Won</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Won $</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Lost</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Win Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="pdf['by_customer']" t-as="row">
+                                <tr t-attf-style="#{'background:#FFF3E0; font-style:italic;' if row['partner_name'] == 'Other' else ('background:#FAFCFE;' if row_index % 2 == 0 else '')}">
+                                    <td style="padding:6px 10px; font-weight:600; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['partner_name']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['active_count']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['quoted_value']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; color:#27AE60; font-weight:600; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['won_count']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['won_value']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; color:#E74C3C; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['lost_count']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['win_rate']"/></td>
+                                </tr>
+                            </t>
+                            <t t-if="not pdf['by_customer']">
+                                <tr><td colspan="7" style="text-align:center; color:#999; padding:16px;">No data</td></tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <!-- FOOTER -->
+                    <div style="margin-top:20px; text-align:center; font-size:8px; color:#888;
+                                border-top:1px solid #ccc; padding-top:8px; line-height:1.6;">
+                        <div style="font-size:9px; color:#666; font-weight:600; margin-bottom:3px;">
+                            Generated <t t-esc="pdf['now_str']"/> &#8212; Miltech Manufacturing</div>
+                        <div style="font-style:italic;">
+                            CONFIDENTIAL &#8212; This document contains proprietary business information
+                            belonging to Miltech Manufacturing. It is intended solely for internal use
+                            by authorized personnel. Unauthorized reproduction, distribution, or
+                            disclosure of this material is strictly prohibited.</div>
+                    </div>
+
+                </div>
+            </t>
+        </t>
+    </t>
+</template>
+
+</odoo>

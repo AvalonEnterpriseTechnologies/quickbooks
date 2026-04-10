@@ -1,7 +1,9 @@
-import base64
+import logging
 
 from odoo import http
 from odoo.http import content_disposition, request
+
+_logger = logging.getLogger(__name__)
 
 
 class MiltechReportController(http.Controller):
@@ -37,16 +39,26 @@ class MiltechReportController(http.Controller):
         csrf=False,
     )
     def download_pdf(self, wizard_id=None, **kw):
-        import logging
         import traceback
-        _logger = logging.getLogger(__name__)
         try:
             wizard_id = int(wizard_id) if wizard_id else None
             report_model = request.env['miltech.report'].sudo()
-            pdf_data = report_model.generate_pdf(wizard_id)
+
+            wizard = report_model.browse(wizard_id) if wizard_id else report_model.create({})
+            if not wizard.exists():
+                wizard = report_model.create({})
+
+            report = request.env.ref(
+                'miltech_report.action_miltech_pdf_report'
+            ).sudo()
+
+            pdf_content, _content_type = report._render_qweb_pdf(
+                'miltech_report.report_miltech_dashboard',
+                res_ids=[wizard.id],
+            )
 
             response = request.make_response(
-                pdf_data,
+                pdf_content,
                 headers=[
                     ('Content-Type', 'application/pdf'),
                     ('Content-Disposition',
@@ -54,6 +66,6 @@ class MiltechReportController(http.Controller):
                 ],
             )
             return response
-        except Exception as e:
+        except Exception:
             _logger.error('PDF export failed:\n%s', traceback.format_exc())
             raise

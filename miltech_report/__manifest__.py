@@ -17,8 +17,10 @@
     'depends': ['crm', 'mail'],
     'data': [
         'security/ir.model.access.csv',
+        'report/miltech_report_action.xml',
         'views/crm_lead_views.xml',
         'views/miltech_report_menu.xml',
+        'views/miltech_pdf_report.xml',
     ],
     'assets': {
         'web.assets_backend': [

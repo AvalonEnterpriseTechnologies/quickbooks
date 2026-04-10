@@ -1,7 +1,4 @@
-import base64
 import io
-import json
-import os
 from datetime import date, timedelta
 
 from odoo import api, fields, models
@@ -343,226 +340,63 @@ class MiltechReport(models.TransientModel):
         }
 
     # -------------------------------------------------------------------------
-    # PDF GENERATION
+    # PDF DATA (used by QWeb report template)
     # -------------------------------------------------------------------------
 
     @api.model
-    def generate_pdf(self, wizard_id=None):
-        """Generate a print-ready PDF dashboard report."""
+    def get_pdf_data(self, wizard_id=None):
+        """Return dashboard data with all values pre-formatted for the QWeb template."""
         data = self.get_dashboard_data(wizard_id)
         kpis = data['kpis']
 
-        filter_desc = self._get_filter_description(wizard_id)
+        def _fmt_money(v):
+            return '${:,.0f}'.format(v) if v else '$0'
 
-        def fmt_money(v):
-            if not v:
-                return '$0'
-            return '${:,.0f}'.format(v)
-
-        def fmt_pct(v):
-            if not v:
-                return '0.0%'
-            return '{:.1f}%'.format(v)
+        def _fmt_pct(v):
+            return '{:.1f}%'.format(v) if v else '0.0%'
 
         kpi_items = [
-            ('Total Opportunities', str(kpis['total_leads']), '#4A6FA5'),
-            ('Total Quoted Value', fmt_money(kpis['total_quoted']), '#F39C12'),
-            ('Quotes Won', str(kpis['won_count']), '#27AE60'),
-            ('Won Revenue', fmt_money(kpis['won_revenue']), '#27AE60'),
-            ('Quotes Lost', str(kpis['lost_count']), '#E74C3C'),
-            ('Engagements', str(kpis.get('engagements', 0)), '#8E44AD'),
-            ('Orders Delivered', str(kpis.get('orders_shipped', 0)), '#2980B9'),
+            {'label': 'Total Opportunities', 'value': str(kpis['total_leads']), 'color': '#4A6FA5'},
+            {'label': 'Total Quoted Value', 'value': _fmt_money(kpis['total_quoted']), 'color': '#F39C12'},
+            {'label': 'Quotes Won', 'value': str(kpis['won_count']), 'color': '#27AE60'},
+            {'label': 'Won Revenue', 'value': _fmt_money(kpis['won_revenue']), 'color': '#27AE60'},
+            {'label': 'Quotes Lost', 'value': str(kpis['lost_count']), 'color': '#E74C3C'},
+            {'label': 'Engagements', 'value': str(kpis.get('engagements', 0)), 'color': '#8E44AD'},
+            {'label': 'Orders Delivered', 'value': str(kpis.get('orders_shipped', 0)), 'color': '#2980B9'},
         ]
-        kpi_cells = ''
-        for label, value, color in kpi_items:
-            kpi_cells += (
-                f'<td style="border:1px solid #ddd; border-top:4px solid {color};'
-                f' padding:10px 8px; text-align:center; width:14.28%;">'
-                f'<div style="font-size:8px; color:#5D6D7E; text-transform:uppercase;'
-                f' font-weight:700; letter-spacing:0.3px;">{label}</div>'
-                f'<div style="font-size:18px; font-weight:700; color:{color};'
-                f' margin-top:3px;">{value}</div></td>'
-            )
-        kpi_cards_html = f'<table style="width:100%; border-collapse:separate; border-spacing:6px; margin:12px 0;"><tr>{kpi_cells}</tr></table>'
 
-        stage_rows = ''
+        stage_rows = []
         for s in data['by_stage']:
-            won_style = ' color:#27AE60; font-weight:700;' if s['is_won'] else ''
-            stage_rows += (
-                f'<tr>'
-                f'<td style="padding:6px 10px;{won_style}">{s["stage_name"]}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">{s["count"]}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">'
-                f'{fmt_money(s["total_revenue"])}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">'
-                f'{fmt_pct(s["avg_probability"])}</td>'
-                f'</tr>'
-            )
-        if not data['by_stage']:
-            stage_rows = (
-                '<tr><td colspan="4" style="text-align:center; color:#999;'
-                ' padding:16px;">No data</td></tr>'
-            )
+            stage_rows.append({
+                'stage_name': s['stage_name'],
+                'is_won': s['is_won'],
+                'count': s['count'],
+                'total_revenue': _fmt_money(s['total_revenue']),
+                'avg_probability': _fmt_pct(s['avg_probability']),
+            })
 
-        cust_rows = ''
-        for idx, c in enumerate(data['by_customer']):
-            bg = '#FFF3E0' if c['partner_name'] == 'Other' else (
-                '#FAFCFE' if idx % 2 == 0 else '#fff'
-            )
-            cust_rows += (
-                f'<tr style="background:{bg};">'
-                f'<td style="padding:6px 10px; font-weight:600;">'
-                f'{c["partner_name"]}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">'
-                f'{c["active_count"]}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">'
-                f'{fmt_money(c["quoted_value"])}</td>'
-                f'<td style="padding:6px 10px; text-align:center; color:#27AE60;'
-                f' font-weight:600;">{c["won_count"]}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">'
-                f'{fmt_money(c["won_value"])}</td>'
-                f'<td style="padding:6px 10px; text-align:center; color:#E74C3C;">'
-                f'{c["lost_count"]}</td>'
-                f'<td style="padding:6px 10px; text-align:center;">'
-                f'{fmt_pct(c.get("win_rate", 0))}</td>'
-                f'</tr>'
-            )
-        if not data['by_customer']:
-            cust_rows = (
-                '<tr><td colspan="7" style="text-align:center; color:#999;'
-                ' padding:16px;">No data</td></tr>'
-            )
+        customer_rows = []
+        for c in data['by_customer']:
+            customer_rows.append({
+                'partner_name': c['partner_name'],
+                'active_count': c['active_count'],
+                'quoted_value': _fmt_money(c['quoted_value']),
+                'won_count': c['won_count'],
+                'won_value': _fmt_money(c['won_value']),
+                'lost_count': c['lost_count'],
+                'win_rate': _fmt_pct(c.get('win_rate', 0)),
+            })
 
         now_str = fields.Datetime.now().strftime('%B %d, %Y at %I:%M %p')
+        filter_desc = self._get_filter_description(wizard_id)
 
-        logo_b64 = self._get_logo_base64()
-        logo_img = (
-            f'<img src="data:image/png;base64,{logo_b64}"'
-            f' style="height:38px; vertical-align:middle;"/>'
-            if logo_b64 else ''
-        )
-
-        html = f'''<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"/>
-<style>
-  body {{ font-family: Arial, Helvetica, sans-serif; color: #333;
-         font-size: 11px; margin: 0; padding: 0; }}
-  .data-table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
-  .data-table th {{ background: #EBF1F8; padding: 7px 10px; text-align: center;
-                    font-weight: 700; color: #333; border-bottom: 2px solid #4A6FA5; }}
-  .data-table th:first-child {{ text-align: left; }}
-  .data-table td {{ border-bottom: 1px solid #eee; }}
-</style>
-</head>
-<body>
-
-<!-- HEADER -->
-<table style="width:100%; background:#1B2A4A; padding:0;" cellpadding="0" cellspacing="0">
-  <tr>
-    <td style="padding:14px 20px; vertical-align:middle; width:50px;">
-      {logo_img}
-    </td>
-    <td style="padding:14px 8px; vertical-align:middle;">
-      <div style="color:#fff; font-size:18px; font-weight:700; letter-spacing:0.5px;">
-        MILTECH CRM DASHBOARD</div>
-      <div style="color:#B0C4DE; font-size:10px; margin-top:2px;">Pipeline Report</div>
-    </td>
-    <td style="padding:14px 20px; vertical-align:middle; text-align:right;">
-      <span style="background:#E74C3C; color:#fff; font-size:8px; font-weight:700;
-                   padding:3px 8px; letter-spacing:0.5px; text-transform:uppercase;">
-        For Internal Use Only</span>
-    </td>
-  </tr>
-</table>
-
-<!-- FILTER BAR -->
-<div style="background:#EBF1F8; padding:6px 20px; font-size:10px; color:#4A6FA5;
-            font-weight:600; text-align:center; margin-bottom:10px;">
-  {filter_desc}
-</div>
-
-<!-- KPI CARDS -->
-{kpi_cards_html}
-
-<!-- PIPELINE BY STAGE -->
-<div style="background:#4A6FA5; color:#fff; padding:7px 14px; font-weight:700;
-            font-size:11px; margin-top:14px;">PIPELINE BY STAGE</div>
-<table class="data-table">
-  <thead>
-    <tr>
-      <th style="text-align:left;">Stage</th>
-      <th>Count</th>
-      <th>Total Revenue</th>
-      <th>Avg Probability</th>
-    </tr>
-  </thead>
-  <tbody>{stage_rows}</tbody>
-</table>
-
-<!-- PIPELINE BY CUSTOMER -->
-<div style="background:#4A6FA5; color:#fff; padding:7px 14px; font-weight:700;
-            font-size:11px; margin-top:14px;">PIPELINE BY CUSTOMER</div>
-<table class="data-table">
-  <thead>
-    <tr>
-      <th style="text-align:left;">Customer</th>
-      <th>Active</th>
-      <th>Quoted $</th>
-      <th>Won</th>
-      <th>Won $</th>
-      <th>Lost</th>
-      <th>Win Rate</th>
-    </tr>
-  </thead>
-  <tbody>{cust_rows}</tbody>
-</table>
-
-<!-- FOOTER -->
-<div style="margin-top:20px; text-align:center; font-size:8px; color:#888;
-            border-top:1px solid #ccc; padding-top:8px; line-height:1.6;">
-  <div style="font-size:9px; color:#666; font-weight:600; margin-bottom:3px;">
-    Generated {now_str} &mdash; Miltech Manufacturing</div>
-  <div style="font-style:italic;">
-    CONFIDENTIAL &mdash; This document contains proprietary business information
-    belonging to Miltech Manufacturing. It is intended solely for internal use
-    by authorized personnel. Unauthorized reproduction, distribution, or
-    disclosure of this material is strictly prohibited.</div>
-</div>
-
-</body>
-</html>'''
-
-        IrReport = self.env['ir.actions.report']
-        pdf_content = IrReport._run_wkhtmltopdf(
-            [html],
-            landscape=False,
-            specific_paperformat_args={
-                'data-report-margin-top': 0,
-                'data-report-header-spacing': 0,
-            },
-        )
-        return pdf_content
-
-    def _get_logo_base64(self):
-        """Read the Miltech logo and return as base64 string."""
-        try:
-            from odoo.modules.module import get_module_resource
-            logo_path = get_module_resource(
-                'miltech_report', 'static', 'src', 'img', 'miltech_logo.png'
-            )
-        except Exception:
-            logo_path = None
-        if not logo_path:
-            logo_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                'static', 'src', 'img', 'miltech_logo.png',
-            )
-        try:
-            with open(logo_path, 'rb') as f:
-                return base64.b64encode(f.read()).decode('ascii')
-        except Exception:
-            return ''
+        return {
+            'kpi_items': kpi_items,
+            'by_stage': stage_rows,
+            'by_customer': customer_rows,
+            'filter_desc': filter_desc,
+            'now_str': now_str,
+        }
 
     def _get_filter_description(self, wizard_id):
         """Build a human-readable string of the active filters."""
