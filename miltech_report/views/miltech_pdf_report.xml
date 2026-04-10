@@ -15,7 +15,7 @@
                                      t-attf-src="data:image/png;base64,#{pdf['logo_b64']}"
                                      style="height:38px; vertical-align:middle;"/>
                             </td>
-                            <td style="padding:14px 8px; vertical-align:middle;">
+                            <td style="padding:14px 8px; vertical-align:middle; text-align:center;">
                                 <div style="color:#fff; font-size:18px; font-weight:700; letter-spacing:0.5px;">
                                     MILTECH CRM DASHBOARD</div>
                                 <div style="color:#B0C4DE; font-size:10px; margin-top:2px;">Pipeline Report</div>
@@ -138,9 +138,9 @@
                     <div style="margin-top:20px; text-align:center; font-size:8px; color:#888;
                                 border-top:1px solid #ccc; padding-top:8px; line-height:1.6;">
                         <div style="font-size:9px; color:#666; font-weight:600; margin-bottom:3px;">
-                            Generated <t t-esc="pdf['now_str']"/> &#8212; Miltech Manufacturing</div>
+                            Generated <t t-esc="pdf['now_str']"/> - Miltech Manufacturing</div>
                         <div style="font-style:italic;">
-                            CONFIDENTIAL &#8212; This document contains proprietary business information
+                            CONFIDENTIAL - This document contains proprietary business information
                             belonging to Miltech Manufacturing. It is intended solely for internal use
                             by authorized personnel. Unauthorized reproduction, distribution, or
                             disclosure of this material is strictly prohibited.</div>
