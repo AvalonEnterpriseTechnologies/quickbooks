@@ -67,7 +67,7 @@
         </div>
 
         <!-- SCROLLABLE CONTENT AREA (Odoo scrolls .o_content natively) -->
-        <div class="o_content" style="background: #f7f9fa;">
+        <div class="o_content" style="background: var(--bs-body-bg, #f7f9fa);">
 
         <!-- LOADING -->
         <t t-if="state.loading">
@@ -83,50 +83,50 @@
                 <!-- KPI CARDS -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px;">
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #4A6FA5;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Total Opportunities</div>
-                        <div style="font-size: 28px; font-weight: 700; color: #1B2A4A; margin-top: 4px;">
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #4A6FA5;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Total Opportunities</div>
+                        <div style="font-size: 28px; font-weight: 700; color: var(--bs-body-color, #1B2A4A); margin-top: 4px;">
                             <t t-esc="state.kpis.total_leads or 0"/>
                         </div>
                     </div>
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #F39C12;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Total Quoted Value</div>
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #F39C12;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Total Quoted Value</div>
                         <div style="font-size: 28px; font-weight: 700; color: #F39C12; margin-top: 4px;">
                             <t t-esc="formatCurrency(state.kpis.total_quoted)"/>
                         </div>
                     </div>
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #27AE60;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Quotes Won</div>
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #27AE60;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Quotes Won</div>
                         <div style="font-size: 28px; font-weight: 700; color: #27AE60; margin-top: 4px;">
                             <t t-esc="state.kpis.won_count or 0"/>
                         </div>
                     </div>
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #27AE60;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Won Revenue</div>
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #27AE60;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Won Revenue</div>
                         <div style="font-size: 28px; font-weight: 700; color: #27AE60; margin-top: 4px;">
                             <t t-esc="formatCurrency(state.kpis.won_revenue)"/>
                         </div>
                     </div>
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #E74C3C;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Quotes Lost</div>
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #E74C3C;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Quotes Lost</div>
                         <div style="font-size: 28px; font-weight: 700; color: #E74C3C; margin-top: 4px;">
                             <t t-esc="state.kpis.lost_count or 0"/>
                         </div>
                     </div>
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #8E44AD;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Engagements</div>
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #8E44AD;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Engagements</div>
                         <div style="font-size: 28px; font-weight: 700; color: #8E44AD; margin-top: 4px;">
                             <t t-esc="state.kpis.engagements or 0"/>
                         </div>
                     </div>
 
-                    <div class="miltech-kpi-card" style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #2980B9;">
-                        <div style="font-size: 11px; color: #5D6D7E; text-transform: uppercase; font-weight: 600;">Orders Delivered</div>
+                    <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #2980B9;">
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Orders Delivered</div>
                         <div style="font-size: 28px; font-weight: 700; color: #2980B9; margin-top: 4px;">
                             <t t-esc="state.kpis.orders_shipped or 0"/>
                         </div>
@@ -135,13 +135,13 @@
                 </div>
 
                 <!-- PIPELINE BY STAGE -->
-                <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 28px;">
+                <div style="background: var(--bs-card-bg, white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 28px;">
                     <div style="background: #4A6FA5; color: white; padding: 12px 20px; font-weight: 700; font-size: 14px; border-radius: 8px 8px 0 0;">
                         PIPELINE BY STAGE
                     </div>
                     <div style="overflow-x: auto;">
                         <table class="table table-sm table-hover mb-0" style="font-size: 13px;">
-                            <thead style="background: #EBF1F8;">
+                            <thead style="background: var(--bs-tertiary-bg, #EBF1F8);">
                                 <tr>
                                     <th style="padding: 10px 16px;">Stage</th>
                                     <th class="text-center" style="padding: 10px 16px;">Count</th>
@@ -171,13 +171,13 @@
                 </div>
 
                 <!-- PIPELINE BY CUSTOMER -->
-                <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 28px;">
+                <div style="background: var(--bs-card-bg, white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 28px;">
                     <div style="background: #4A6FA5; color: white; padding: 12px 20px; font-weight: 700; font-size: 14px; border-radius: 8px 8px 0 0;">
                         PIPELINE BY CUSTOMER
                     </div>
                     <div style="overflow-x: auto;">
                         <table class="table table-sm table-hover mb-0" style="font-size: 13px;">
-                            <thead style="background: #EBF1F8;">
+                            <thead style="background: var(--bs-tertiary-bg, #EBF1F8);">
                                 <tr>
                                     <th style="padding: 10px 16px;">Customer</th>
                                     <th class="text-center" style="padding: 10px 16px;">Active</th>
@@ -190,7 +190,7 @@
                             </thead>
                             <tbody>
                                 <t t-foreach="state.byCustomer" t-as="row" t-key="row.partner_id || 'other'">
-                                    <tr t-att-style="row.partner_name === 'Other' ? 'background: #FFF3E0; font-style: italic;' : (row_index % 2 === 0 ? 'background: #FAFCFE;' : '')"
+                                    <tr t-att-style="row.partner_name === 'Other' ? 'background: var(--bs-warning-bg-subtle, #FFF3E0); font-style: italic;' : (row_index % 2 === 0 ? 'background: var(--bs-tertiary-bg, #FAFCFE);' : '')"
                                         style="cursor: pointer;"
                                         t-on-click="() => this.viewCustomerLeads(row.partner_id)">
                                         <td style="padding: 8px 16px; font-weight: 600;"><t t-esc="row.partner_name"/></td>
