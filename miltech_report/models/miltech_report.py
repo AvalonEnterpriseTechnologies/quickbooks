@@ -341,6 +341,210 @@ class MiltechReport(models.TransientModel):
         }
 
     # -------------------------------------------------------------------------
+    # PDF GENERATION
+    # -------------------------------------------------------------------------
+
+    @api.model
+    def generate_pdf(self, wizard_id=None):
+        """Generate a print-ready PDF dashboard report."""
+        data = self.get_dashboard_data(wizard_id)
+        kpis = data['kpis']
+
+        filter_desc = self._get_filter_description(wizard_id)
+
+        def fmt_money(v):
+            if not v:
+                return '$0'
+            return '${:,.0f}'.format(v)
+
+        def fmt_pct(v):
+            if not v:
+                return '0.0%'
+            return '{:.1f}%'.format(v)
+
+        kpi_cards_html = ''
+        kpi_items = [
+            ('Total Opportunities', str(kpis['total_leads']), '#4A6FA5'),
+            ('Total Quoted Value', fmt_money(kpis['total_quoted']), '#F39C12'),
+            ('Quotes Won', str(kpis['won_count']), '#27AE60'),
+            ('Won Revenue', fmt_money(kpis['won_revenue']), '#27AE60'),
+            ('Quotes Lost', str(kpis['lost_count']), '#E74C3C'),
+            ('Engagements', str(kpis.get('engagements', 0)), '#8E44AD'),
+            ('Orders Delivered', str(kpis.get('orders_shipped', 0)), '#2980B9'),
+        ]
+        for label, value, color in kpi_items:
+            kpi_cards_html += (
+                f'<div style="border:1px solid #ddd; border-top:4px solid {color};'
+                f' border-radius:6px; padding:12px 14px; text-align:center;">'
+                f'<div style="font-size:9px; color:#5D6D7E; text-transform:uppercase;'
+                f' font-weight:700; letter-spacing:0.5px;">{label}</div>'
+                f'<div style="font-size:22px; font-weight:700; color:{color};'
+                f' margin-top:4px;">{value}</div></div>'
+            )
+
+        stage_rows = ''
+        for s in data['by_stage']:
+            won_style = ' color:#27AE60; font-weight:700;' if s['is_won'] else ''
+            stage_rows += (
+                f'<tr>'
+                f'<td style="padding:6px 10px;{won_style}">{s["stage_name"]}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">{s["count"]}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">'
+                f'{fmt_money(s["total_revenue"])}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">'
+                f'{fmt_pct(s["avg_probability"])}</td>'
+                f'</tr>'
+            )
+        if not data['by_stage']:
+            stage_rows = (
+                '<tr><td colspan="4" style="text-align:center; color:#999;'
+                ' padding:16px;">No data</td></tr>'
+            )
+
+        cust_rows = ''
+        for idx, c in enumerate(data['by_customer']):
+            bg = '#FFF3E0' if c['partner_name'] == 'Other' else (
+                '#FAFCFE' if idx % 2 == 0 else '#fff'
+            )
+            cust_rows += (
+                f'<tr style="background:{bg};">'
+                f'<td style="padding:6px 10px; font-weight:600;">'
+                f'{c["partner_name"]}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">'
+                f'{c["active_count"]}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">'
+                f'{fmt_money(c["quoted_value"])}</td>'
+                f'<td style="padding:6px 10px; text-align:center; color:#27AE60;'
+                f' font-weight:600;">{c["won_count"]}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">'
+                f'{fmt_money(c["won_value"])}</td>'
+                f'<td style="padding:6px 10px; text-align:center; color:#E74C3C;">'
+                f'{c["lost_count"]}</td>'
+                f'<td style="padding:6px 10px; text-align:center;">'
+                f'{fmt_pct(c.get("win_rate", 0))}</td>'
+                f'</tr>'
+            )
+        if not data['by_customer']:
+            cust_rows = (
+                '<tr><td colspan="7" style="text-align:center; color:#999;'
+                ' padding:16px;">No data</td></tr>'
+            )
+
+        now_str = fields.Datetime.now().strftime('%B %d, %Y at %I:%M %p')
+
+        html = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/>
+<style>
+  @page {{ size: letter portrait; margin: 0.5in 0.6in; }}
+  body {{ font-family: Arial, Helvetica, sans-serif; color: #333;
+         font-size: 11px; margin: 0; padding: 0; }}
+  .header {{ background: #1B2A4A; color: #fff; padding: 18px 24px;
+             margin: -0.5in -0.6in 0 -0.6in; }}
+  .header h1 {{ margin: 0; font-size: 20px; font-weight: 700;
+                letter-spacing: 1px; }}
+  .header .subtitle {{ color: #B0C4DE; font-size: 11px; margin-top: 3px; }}
+  .filter-bar {{ background: #EBF1F8; padding: 8px 0; margin-top: 14px;
+                 font-size: 10px; color: #4A6FA5; font-weight: 600;
+                 border-radius: 4px; text-align: center; }}
+  .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr);
+               gap: 10px; margin: 16px 0; }}
+  .section-title {{ background: #4A6FA5; color: #fff; padding: 8px 14px;
+                    font-weight: 700; font-size: 12px; border-radius: 6px 6px 0 0;
+                    margin-top: 18px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
+  th {{ background: #EBF1F8; padding: 7px 10px; text-align: center;
+       font-weight: 700; color: #333; border-bottom: 2px solid #4A6FA5; }}
+  th:first-child {{ text-align: left; }}
+  td {{ border-bottom: 1px solid #eee; }}
+  .footer {{ margin-top: 20px; text-align: center; font-size: 9px;
+             color: #999; border-top: 1px solid #ddd; padding-top: 8px; }}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>MILTECH CRM DASHBOARD</h1>
+  <div class="subtitle">Pipeline Report</div>
+</div>
+
+<div class="filter-bar">{filter_desc}</div>
+
+<div class="kpi-grid">{kpi_cards_html}</div>
+
+<div class="section-title">PIPELINE BY STAGE</div>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;">Stage</th>
+      <th>Count</th>
+      <th>Total Revenue</th>
+      <th>Avg Probability</th>
+    </tr>
+  </thead>
+  <tbody>{stage_rows}</tbody>
+</table>
+
+<div class="section-title">PIPELINE BY CUSTOMER</div>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;">Customer</th>
+      <th>Active</th>
+      <th>Quoted $</th>
+      <th>Won</th>
+      <th>Won $</th>
+      <th>Lost</th>
+      <th>Win Rate</th>
+    </tr>
+  </thead>
+  <tbody>{cust_rows}</tbody>
+</table>
+
+<div class="footer">
+  Generated {now_str} &mdash; Miltech Manufacturing
+</div>
+
+</body>
+</html>'''
+
+        IrReport = self.env['ir.actions.report']
+        pdf_content = IrReport._run_wkhtmltopdf(
+            [html],
+            landscape=False,
+            specific_paperformat_args={
+                'data-report-margin-top': 0,
+                'data-report-header-spacing': 0,
+            },
+        )
+        return pdf_content
+
+    def _get_filter_description(self, wizard_id):
+        """Build a human-readable string of the active filters."""
+        if not wizard_id:
+            return 'All Data (No Filters)'
+        wizard = self.browse(wizard_id)
+        if not wizard.exists():
+            return 'All Data (No Filters)'
+
+        parts = []
+        if wizard.date_from and wizard.date_to:
+            parts.append(f'{wizard.date_from} to {wizard.date_to}')
+        elif wizard.date_from:
+            parts.append(f'From {wizard.date_from}')
+        elif wizard.date_to:
+            parts.append(f'Through {wizard.date_to}')
+        if wizard.salesperson_id:
+            parts.append(f'Salesperson: {wizard.salesperson_id.name}')
+        if wizard.partner_id:
+            parts.append(f'Customer: {wizard.partner_id.name}')
+        if wizard.stage_ids:
+            names = ', '.join(wizard.stage_ids.mapped('name'))
+            parts.append(f'Stages: {names}')
+
+        return ' | '.join(parts) if parts else 'All Data (No Filters)'
+
+    # -------------------------------------------------------------------------
     # XLSX GENERATION
     # -------------------------------------------------------------------------
 

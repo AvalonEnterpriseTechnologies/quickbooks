@@ -9,9 +9,14 @@
                 <h2 style="margin: 0; font-weight: 700; font-size: 22px;">MILTECH CRM DASHBOARD</h2>
                 <small style="color: #D6E4F0;">Live data from your CRM pipeline</small>
             </div>
-            <button class="btn btn-light btn-sm" t-on-click="onExportXlsx" style="font-weight: 600;">
-                <i class="fa fa-download me-1"/> Export XLSX
-            </button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-light btn-sm" t-on-click="onExportPdf" style="font-weight: 600;">
+                    <i class="fa fa-file-pdf-o me-1"/> Export PDF
+                </button>
+                <button class="btn btn-light btn-sm" t-on-click="onExportXlsx" style="font-weight: 600;">
+                    <i class="fa fa-download me-1"/> Export XLSX
+                </button>
+            </div>
         </div>
 
         <!-- FILTER BAR (fixed above scroll area) -->

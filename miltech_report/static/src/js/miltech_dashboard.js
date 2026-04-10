@@ -151,8 +151,21 @@ class MiltechDashboard extends Component {
     }
 
     // -------------------------------------------------------------------------
-    // XLSX Export
+    // PDF / XLSX Export
     // -------------------------------------------------------------------------
+
+    async onExportPdf() {
+        this.uiService.block();
+        try {
+            await download({
+                url: "/miltech/pdf_report",
+                data: { wizard_id: this.state.wizardId || 0 },
+            });
+        } catch (e) {
+            console.error("Miltech Dashboard: PDF export failed", e);
+        }
+        this.uiService.unblock();
+    }
 
     async onExportXlsx() {
         this.uiService.block();
