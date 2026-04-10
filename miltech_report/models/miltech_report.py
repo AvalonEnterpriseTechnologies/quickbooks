@@ -1,10 +1,15 @@
 import base64
 import io
 import json
+import logging
 import os
+import subprocess
+import tempfile
 from datetime import date, timedelta
 
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 try:
     from odoo.tools.misc import xlsxwriter
@@ -533,19 +538,54 @@ class MiltechReport(models.TransientModel):
 </body>
 </html>'''
 
-        IrReport = self.env['ir.actions.report']
-        pdf_content = IrReport._run_wkhtmltopdf(
-            [html],
-            landscape=False,
-            specific_paperformat_args={
-                'data-report-margin-top': 10,
-                'data-report-margin-bottom': 10,
-                'data-report-margin-left': 15,
-                'data-report-margin-right': 15,
-                'data-report-header-spacing': 0,
-            },
-        )
-        return pdf_content
+        return self._html_to_pdf(html)
+
+    def _html_to_pdf(self, html):
+        """Convert HTML to PDF using wkhtmltopdf."""
+        try:
+            from odoo.tools.misc import find_in_path
+            wk_bin = find_in_path('wkhtmltopdf')
+        except IOError:
+            wk_bin = 'wkhtmltopdf'
+
+        html_fd, html_path = tempfile.mkstemp(suffix='.html')
+        pdf_fd, pdf_path = tempfile.mkstemp(suffix='.pdf')
+        try:
+            with os.fdopen(html_fd, 'w', encoding='utf-8') as f:
+                f.write(html)
+            os.close(pdf_fd)
+
+            cmd = [
+                wk_bin,
+                '--quiet',
+                '--page-size', 'Letter',
+                '--orientation', 'Portrait',
+                '--margin-top', '10mm',
+                '--margin-bottom', '10mm',
+                '--margin-left', '15mm',
+                '--margin-right', '15mm',
+                '--encoding', 'UTF-8',
+                '--enable-local-file-access',
+                html_path,
+                pdf_path,
+            ]
+            process = subprocess.run(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=60,
+            )
+            if process.returncode not in (0, 1):
+                _logger.error(
+                    'wkhtmltopdf failed (code %s): %s',
+                    process.returncode, process.stderr.decode('utf-8', 'replace'),
+                )
+            with open(pdf_path, 'rb') as f:
+                return f.read()
+        finally:
+            for p in (html_path, pdf_path):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
 
     def _get_logo_base64(self):
         """Read the Miltech logo from the module's static folder and
