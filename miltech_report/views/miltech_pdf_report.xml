@@ -104,9 +104,15 @@
                                 <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
                                            font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Won $</th>
                                 <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Shipped</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Shipped $</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
                                            font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Lost</th>
                                 <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
                                            font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Win Rate</th>
+                                <th style="background:#EBF1F8; padding:7px 10px; text-align:center;
+                                           font-weight:700; color:#333; border-bottom:2px solid #4A6FA5;">Total $</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -122,14 +128,20 @@
                                         <t t-esc="row['won_count']"/></td>
                                     <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
                                         <t t-esc="row['won_value']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; color:#2980B9; font-weight:600; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['shipped_count']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['shipped_value']"/></td>
                                     <td style="padding:6px 10px; text-align:center; color:#E74C3C; border-bottom:1px solid #eee;">
                                         <t t-esc="row['lost_count']"/></td>
                                     <td style="padding:6px 10px; text-align:center; border-bottom:1px solid #eee;">
                                         <t t-esc="row['win_rate']"/></td>
+                                    <td style="padding:6px 10px; text-align:center; font-weight:600; border-bottom:1px solid #eee;">
+                                        <t t-esc="row['total_value']"/></td>
                                 </tr>
                             </t>
                             <t t-if="not pdf['by_customer']">
-                                <tr><td colspan="7" style="text-align:center; color:#999; padding:16px;">No data</td></tr>
+                                <tr><td colspan="10" style="text-align:center; color:#999; padding:16px;">No data</td></tr>
                             </t>
                         </tbody>
                     </table>

@@ -126,7 +126,7 @@
                     </div>
 
                     <div class="miltech-kpi-card" style="background: var(--bs-card-bg, white); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #2980B9;">
-                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Orders Delivered</div>
+                        <div style="font-size: 11px; color: var(--bs-secondary-color, #5D6D7E); text-transform: uppercase; font-weight: 600;">Orders Shipped</div>
                         <div style="font-size: 28px; font-weight: 700; color: #2980B9; margin-top: 4px;">
                             <t t-esc="state.kpis.orders_shipped or 0"/>
                         </div>
@@ -184,8 +184,11 @@
                                     <th class="text-center" style="padding: 10px 16px;">Quoted $</th>
                                     <th class="text-center" style="padding: 10px 16px;">Won</th>
                                     <th class="text-center" style="padding: 10px 16px;">Won $</th>
+                                    <th class="text-center" style="padding: 10px 16px;">Shipped</th>
+                                    <th class="text-center" style="padding: 10px 16px;">Shipped $</th>
                                     <th class="text-center" style="padding: 10px 16px;">Lost</th>
                                     <th class="text-center" style="padding: 10px 16px;">Win Rate</th>
+                                    <th class="text-center" style="padding: 10px 16px;">Total $</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -198,12 +201,15 @@
                                         <td class="text-center" style="padding: 8px 16px;"><t t-esc="formatCurrency(row.quoted_value)"/></td>
                                         <td class="text-center" style="padding: 8px 16px; color: #27AE60; font-weight: 600;"><t t-esc="row.won_count"/></td>
                                         <td class="text-center" style="padding: 8px 16px;"><t t-esc="formatCurrency(row.won_value)"/></td>
+                                        <td class="text-center" style="padding: 8px 16px; color: #2980B9; font-weight: 600;"><t t-esc="row.shipped_count"/></td>
+                                        <td class="text-center" style="padding: 8px 16px;"><t t-esc="formatCurrency(row.shipped_value)"/></td>
                                         <td class="text-center" style="padding: 8px 16px; color: #E74C3C;"><t t-esc="row.lost_count"/></td>
                                         <td class="text-center" style="padding: 8px 16px;"><t t-esc="formatPct(row.win_rate)"/></td>
+                                        <td class="text-center" style="padding: 8px 16px; font-weight: 600;"><t t-esc="formatCurrency(row.total_value)"/></td>
                                     </tr>
                                 </t>
                                 <t t-if="!state.byCustomer.length">
-                                    <tr><td colspan="7" class="text-center text-muted py-3">No data</td></tr>
+                                    <tr><td colspan="10" class="text-center text-muted py-3">No data</td></tr>
                                 </t>
                             </tbody>
                         </table>

@@ -43,6 +43,11 @@ class MiltechReport(models.TransientModel):
         name = (stage.name or '').strip().lower()
         return name in ('shipped', 'delivered')
 
+    def _is_shipped_stage(self, stage):
+        """A stage counts as shipped if its name is Shipped or Delivered."""
+        name = (stage.name or '').strip().lower()
+        return name in ('shipped', 'delivered')
+
     @api.model
     def apply_filters(self, wizard_id, filter_vals):
         """Update the wizard record with new filter values."""
@@ -252,6 +257,8 @@ class MiltechReport(models.TransientModel):
             'quoted_value': 0,
             'won_count': 0,
             'won_value': 0,
+            'shipped_count': 0,
+            'shipped_value': 0,
             'lost_count': 0,
         }
 
@@ -269,6 +276,8 @@ class MiltechReport(models.TransientModel):
                         'quoted_value': 0,
                         'won_count': 0,
                         'won_value': 0,
+                        'shipped_count': 0,
+                        'shipped_value': 0,
                         'lost_count': 0,
                     }
                 bucket = partner_map[pid]
@@ -278,16 +287,21 @@ class MiltechReport(models.TransientModel):
                 bucket['lost_count'] += 1
             elif lead.active:
                 bucket['active_count'] += 1
-                is_won = self._is_won_stage(lead.stage_id)
-                if not is_won:
+                is_shipped = self._is_shipped_stage(lead.stage_id)
+                is_won_or_shipped = self._is_won_stage(lead.stage_id)
+                is_pure_won = is_won_or_shipped and not is_shipped
+                if not is_won_or_shipped:
                     bucket['quoted_value'] += lead.expected_revenue or 0
-                if is_won and lead.id in won_leads_set:
+                if is_shipped and lead.id in won_leads_set:
+                    bucket['shipped_count'] += 1
+                    bucket['shipped_value'] += lead.expected_revenue or 0
+                elif is_pure_won and lead.id in won_leads_set:
                     bucket['won_count'] += 1
                     bucket['won_value'] += lead.expected_revenue or 0
 
         rows = sorted(
             partner_map.values(),
-            key=lambda r: r['won_value'],
+            key=lambda r: r['won_value'] + r['shipped_value'],
             reverse=True,
         )
 
@@ -296,13 +310,15 @@ class MiltechReport(models.TransientModel):
             row['win_rate'] = (
                 round(row['won_count'] / total * 100, 1) if total else 0
             )
+            row['total_value'] = row['won_value'] + row['shipped_value']
 
         if (other['active_count'] or other['won_count']
-                or other['lost_count']):
+                or other['lost_count'] or other['shipped_count']):
             total = other['won_count'] + other['lost_count']
             other['win_rate'] = (
                 round(other['won_count'] / total * 100, 1) if total else 0
             )
+            other['total_value'] = other['won_value'] + other['shipped_value']
             rows.append(other)
 
         return rows
@@ -363,7 +379,7 @@ class MiltechReport(models.TransientModel):
             {'label': 'Won Revenue', 'value': _fmt_money(kpis['won_revenue']), 'color': '#27AE60'},
             {'label': 'Quotes Lost', 'value': str(kpis['lost_count']), 'color': '#E74C3C'},
             {'label': 'Engagements', 'value': str(kpis.get('engagements', 0)), 'color': '#8E44AD'},
-            {'label': 'Orders Delivered', 'value': str(kpis.get('orders_shipped', 0)), 'color': '#2980B9'},
+            {'label': 'Orders Shipped', 'value': str(kpis.get('orders_shipped', 0)), 'color': '#2980B9'},
         ]
 
         stage_rows = []
@@ -384,8 +400,11 @@ class MiltechReport(models.TransientModel):
                 'quoted_value': _fmt_money(c['quoted_value']),
                 'won_count': c['won_count'],
                 'won_value': _fmt_money(c['won_value']),
+                'shipped_count': c.get('shipped_count', 0),
+                'shipped_value': _fmt_money(c.get('shipped_value', 0)),
                 'lost_count': c['lost_count'],
                 'win_rate': _fmt_pct(c.get('win_rate', 0)),
+                'total_value': _fmt_money(c.get('total_value', 0)),
             })
 
         now_str = fields.Datetime.now().strftime('%B %d, %Y at %I:%M %p')
@@ -505,7 +524,7 @@ class MiltechReport(models.TransientModel):
             ('Won Revenue', kpis['won_revenue']),
             ('Quotes Lost', kpis['lost_count']),
             ('Engagements', kpis.get('engagements', 0)),
-            ('Orders Delivered', kpis.get('orders_shipped', 0)),
+            ('Orders Shipped', kpis.get('orders_shipped', 0)),
         ]
         for i, (label, value) in enumerate(kpi_items):
             row = 2 + i
@@ -533,10 +552,11 @@ class MiltechReport(models.TransientModel):
         # SHEET 3: By Customer
         # =====================================================================
         ws3 = workbook.add_worksheet('Pipeline by Customer')
-        ws3.set_column(0, 6, 20)
+        ws3.set_column(0, 9, 20)
         cust_headers = [
             'Customer', 'Active Opps', 'Quoted Value', 'Won',
-            'Won Value', 'Lost', 'Win Rate',
+            'Won Value', 'Shipped', 'Shipped Value', 'Lost', 'Win Rate',
+            'Total $',
         ]
         for i, h in enumerate(cust_headers):
             ws3.write(0, i, h, header_fmt)
@@ -546,8 +566,11 @@ class MiltechReport(models.TransientModel):
             ws3.write(row_idx, 2, c['quoted_value'], money_fmt)
             ws3.write(row_idx, 3, c['won_count'], num_fmt)
             ws3.write(row_idx, 4, c['won_value'], money_fmt)
-            ws3.write(row_idx, 5, c['lost_count'], num_fmt)
-            ws3.write(row_idx, 6, c['win_rate'] / 100, pct_fmt)
+            ws3.write(row_idx, 5, c.get('shipped_count', 0), num_fmt)
+            ws3.write(row_idx, 6, c.get('shipped_value', 0), money_fmt)
+            ws3.write(row_idx, 7, c['lost_count'], num_fmt)
+            ws3.write(row_idx, 8, c['win_rate'] / 100, pct_fmt)
+            ws3.write(row_idx, 9, c.get('total_value', 0), money_fmt)
 
         workbook.close()
         output.seek(0)
