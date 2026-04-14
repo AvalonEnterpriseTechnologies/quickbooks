@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List View -->
+    <record id="shop_schedule_category_view_list" model="ir.ui.view">
+        <field name="name">shop.schedule.category.list</field>
+        <field name="model">shop.schedule.category</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="shop_schedule_category_view_form" model="ir.ui.view">
+        <field name="name">shop.schedule.category.form</field>
+        <field name="model">shop.schedule.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                    </group>
+                    <field name="stage_ids">
+                        <list>
+                            <field name="name"/>
+                            <field name="fold"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="shop_schedule_category_action" model="ir.actions.act_window">
+        <field name="name">Stage Categories</field>
+        <field name="res_model">shop.schedule.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

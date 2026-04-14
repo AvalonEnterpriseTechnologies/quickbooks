@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Top-level application menu -->
+    <menuitem id="shop_schedule_menu_root"
+              name="Shop Schedule"
+              sequence="45"/>
+
+    <!-- Work Orders (main) -->
+    <menuitem id="shop_schedule_menu_orders"
+              name="Work Orders"
+              parent="shop_schedule_menu_root"
+              action="shop_schedule_order_action"
+              sequence="10"/>
+
+    <!-- Configuration parent -->
+    <menuitem id="shop_schedule_menu_config"
+              name="Configuration"
+              parent="shop_schedule_menu_root"
+              groups="group_shop_schedule_manager"
+              sequence="100"/>
+
+    <menuitem id="shop_schedule_menu_stages"
+              name="Stages"
+              parent="shop_schedule_menu_config"
+              action="shop_schedule_stage_action"
+              sequence="10"/>
+
+    <menuitem id="shop_schedule_menu_categories"
+              name="Stage Categories"
+              parent="shop_schedule_menu_config"
+              action="shop_schedule_category_action"
+              sequence="20"/>
+
+    <menuitem id="shop_schedule_menu_tags"
+              name="Tags"
+              parent="shop_schedule_menu_config"
+              action="shop_schedule_tag_action"
+              sequence="30"/>
+</odoo>

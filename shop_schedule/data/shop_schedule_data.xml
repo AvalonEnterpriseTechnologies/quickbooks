@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sequence for auto-generated WO numbers -->
+    <record id="seq_shop_schedule_order" model="ir.sequence">
+        <field name="name">Shop Schedule Work Order</field>
+        <field name="code">shop.schedule.order</field>
+        <field name="prefix">WO</field>
+        <field name="padding">4</field>
+        <field name="number_next">1</field>
+        <field name="number_increment">1</field>
+    </record>
+
+    <!-- Stage Categories -->
+    <record id="category_lathe" model="shop.schedule.category">
+        <field name="name">Lathe</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="category_mill" model="shop.schedule.category">
+        <field name="name">Mill</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="category_other" model="shop.schedule.category">
+        <field name="name">Other</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <!-- Default Stages (based on ProShop WO 26-0032 routing) -->
+    <record id="stage_planning" model="shop.schedule.stage">
+        <field name="name">Planning</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="category_other"/>
+    </record>
+    <record id="stage_saw" model="shop.schedule.stage">
+        <field name="name">Saw</field>
+        <field name="sequence">20</field>
+        <field name="category_id" ref="category_other"/>
+    </record>
+    <record id="stage_lathe" model="shop.schedule.stage">
+        <field name="name">Lathe</field>
+        <field name="sequence">30</field>
+        <field name="category_id" ref="category_lathe"/>
+    </record>
+    <record id="stage_mill" model="shop.schedule.stage">
+        <field name="name">Mill</field>
+        <field name="sequence">40</field>
+        <field name="category_id" ref="category_mill"/>
+    </record>
+    <record id="stage_weld" model="shop.schedule.stage">
+        <field name="name">Weld</field>
+        <field name="sequence">50</field>
+        <field name="category_id" ref="category_other"/>
+    </record>
+    <record id="stage_qc" model="shop.schedule.stage">
+        <field name="name">QC / Inspect</field>
+        <field name="sequence">60</field>
+        <field name="category_id" ref="category_other"/>
+    </record>
+    <record id="stage_deburring" model="shop.schedule.stage">
+        <field name="name">Deburring</field>
+        <field name="sequence">70</field>
+        <field name="category_id" ref="category_other"/>
+    </record>
+    <record id="stage_external" model="shop.schedule.stage">
+        <field name="name">External / Outside Processing</field>
+        <field name="sequence">80</field>
+        <field name="category_id" ref="category_other"/>
+        <field name="fold" eval="True"/>
+    </record>
+    <record id="stage_shipping" model="shop.schedule.stage">
+        <field name="name">Shipping</field>
+        <field name="sequence">90</field>
+        <field name="category_id" ref="category_other"/>
+        <field name="fold" eval="True"/>
+    </record>
+</odoo>

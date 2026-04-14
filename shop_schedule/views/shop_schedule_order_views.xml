@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ════════════════════════════════════════════════════════════
+         KANBAN VIEW
+         ════════════════════════════════════════════════════════════ -->
+    <record id="shop_schedule_order_view_kanban" model="ir.ui.view">
+        <field name="name">shop.schedule.order.kanban</field>
+        <field name="model">shop.schedule.order</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="stage_id"
+                    records_draggable="1"
+                    class="o_kanban_small_column o_opportunity_kanban">
+                <field name="stage_id"/>
+                <field name="color"/>
+                <field name="priority"/>
+                <field name="kanban_state"/>
+                <field name="partner_id"/>
+                <field name="user_id"/>
+                <field name="tag_ids"/>
+                <field name="proshop_wo_number"/>
+                <field name="part_number"/>
+                <field name="part_rev"/>
+                <field name="qty_ordered"/>
+                <field name="date_deadline"/>
+                <field name="date_must_leave"/>
+                <field name="active"/>
+                <progressbar field="kanban_state"
+                             colors='{"normal": "200", "done": "success", "blocked": "danger"}'/>
+                <templates>
+                    <t t-name="card">
+                        <field name="priority" widget="priority"/>
+                        <div class="o_kanban_record_top mb-0">
+                            <div class="o_kanban_record_headings">
+                                <strong class="o_kanban_record_title">
+                                    <field name="proshop_wo_number"/>
+                                    <small t-if="record.name.raw_value" class="text-muted ms-1">
+                                        (<field name="name"/>)
+                                    </small>
+                                </strong>
+                            </div>
+                        </div>
+                        <div class="o_kanban_record_body">
+                            <div t-if="record.partner_id.value">
+                                <field name="partner_id"/>
+                            </div>
+                            <div t-if="record.part_number.raw_value">
+                                <span class="fw-bold"><field name="part_number"/></span>
+                                <span t-if="record.part_rev.raw_value" class="text-muted ms-1">
+                                    Rev <field name="part_rev"/>
+                                </span>
+                            </div>
+                            <div t-if="record.qty_ordered.raw_value">
+                                Qty: <field name="qty_ordered"/>
+                            </div>
+                            <div t-if="record.date_deadline.raw_value" class="text-muted">
+                                Due: <field name="date_deadline"/>
+                            </div>
+                            <div t-if="record.date_must_leave.raw_value" class="text-muted">
+                                Leave by: <field name="date_must_leave"/>
+                            </div>
+                            <field name="tag_ids" widget="many2many_tags"
+                                   options="{'color_field': 'color'}"/>
+                        </div>
+                        <div class="o_kanban_record_bottom">
+                            <div class="oe_kanban_bottom_left"/>
+                            <div class="oe_kanban_bottom_right">
+                                <field name="kanban_state" widget="state_selection"/>
+                                <field name="user_id" widget="many2one_avatar_user"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════════════════════
+         LIST VIEW
+         ════════════════════════════════════════════════════════════ -->
+    <record id="shop_schedule_order_view_list" model="ir.ui.view">
+        <field name="name">shop.schedule.order.list</field>
+        <field name="model">shop.schedule.order</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="proshop_wo_number"/>
+                <field name="partner_id"/>
+                <field name="part_number"/>
+                <field name="part_rev"/>
+                <field name="qty_ordered"/>
+                <field name="stage_id"/>
+                <field name="date_must_leave"/>
+                <field name="date_deadline" widget="remaining_days"/>
+                <field name="priority" widget="priority" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="kanban_state" widget="state_selection" optional="show"/>
+                <field name="wo_type" optional="hide"/>
+                <field name="customer_po" optional="hide"/>
+                <field name="material" optional="hide"/>
+                <field name="est_amount" optional="hide"/>
+                <field name="itar_controlled" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════════════════════
+         FORM VIEW
+         ════════════════════════════════════════════════════════════ -->
+    <record id="shop_schedule_order_view_form" model="ir.ui.view">
+        <field name="name">shop.schedule.order.form</field>
+        <field name="model">shop.schedule.order</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="stage_id" widget="statusbar"
+                           options="{'clickable': '1', 'fold_field': 'fold'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box"/>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Identity">
+                            <field name="proshop_wo_number"/>
+                            <field name="lead_id"/>
+                            <field name="wo_type"/>
+                            <field name="wo_class"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Customer">
+                            <field name="partner_id"/>
+                            <field name="customer_po"/>
+                            <field name="project_code"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Part Details">
+                            <field name="part_number"/>
+                            <field name="part_rev"/>
+                            <field name="part_name"/>
+                            <field name="part_description"/>
+                            <field name="drawing_number"/>
+                            <field name="drawing_rev"/>
+                        </group>
+                        <group string="Material &amp; Quantity">
+                            <field name="qty_ordered"/>
+                            <field name="raw_stock_qty"/>
+                            <field name="material"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Scheduling">
+                            <field name="date_must_leave"/>
+                            <field name="date_deadline"/>
+                            <field name="days_to_ship"/>
+                            <field name="delivery_priority"/>
+                            <field name="priority" widget="priority"/>
+                            <field name="kanban_state" widget="state_selection"/>
+                        </group>
+                        <group string="People">
+                            <field name="project_manager_id"/>
+                            <field name="planner_id"/>
+                            <field name="user_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Financial">
+                            <field name="labor_rate"/>
+                            <field name="est_amount"/>
+                            <field name="per_part_fmv"/>
+                        </group>
+                        <group string="Flags">
+                            <field name="itar_controlled"/>
+                            <field name="is_serialized"/>
+                            <field name="first_article_required"/>
+                            <field name="build_to_inventory"/>
+                            <field name="count_as_ontime"/>
+                            <field name="taken_at_loss"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Operations" name="operations">
+                            <field name="operation_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="op_number"/>
+                                    <field name="name"/>
+                                    <field name="resource"/>
+                                    <field name="status"/>
+                                    <field name="is_complete"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Outside Processing" name="outside_processing">
+                            <group>
+                                <field name="outside_processing"/>
+                            </group>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes"/>
+                        </page>
+                        <page string="Tags" name="tags">
+                            <group>
+                                <field name="tag_ids" widget="many2many_tags"
+                                       options="{'color_field': 'color'}"/>
+                                <field name="color" widget="color_picker"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════════════════════
+         SEARCH VIEW
+         ════════════════════════════════════════════════════════════ -->
+    <record id="shop_schedule_order_view_search" model="ir.ui.view">
+        <field name="name">shop.schedule.order.search</field>
+        <field name="model">shop.schedule.order</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="proshop_wo_number"/>
+                <field name="partner_id"/>
+                <field name="part_number"/>
+                <field name="customer_po"/>
+                <field name="user_id"/>
+                <field name="lead_id"/>
+                <separator/>
+                <filter string="My Orders" name="my_orders"
+                        domain="[('user_id', '=', uid)]"/>
+                <filter string="Overdue" name="overdue"
+                        domain="[('date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Blocked" name="blocked"
+                        domain="[('kanban_state', '=', 'blocked')]"/>
+                <filter string="ITAR" name="itar"
+                        domain="[('itar_controlled', '=', True)]"/>
+                <filter string="First Article" name="first_article"
+                        domain="[('first_article_required', '=', True)]"/>
+                <separator/>
+                <filter string="Archived" name="archived"
+                        domain="[('active', '=', False)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Stage" name="group_stage"
+                            context="{'group_by': 'stage_id'}"/>
+                    <filter string="Stage Category" name="group_stage_category"
+                            context="{'group_by': 'stage_category_id'}"/>
+                    <filter string="Customer" name="group_customer"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter string="Operator" name="group_operator"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter string="Planner" name="group_planner"
+                            context="{'group_by': 'planner_id'}"/>
+                    <filter string="Priority" name="group_priority"
+                            context="{'group_by': 'priority'}"/>
+                    <filter string="WO Type" name="group_wo_type"
+                            context="{'group_by': 'wo_type'}"/>
+                    <filter string="Due Date" name="group_deadline"
+                            context="{'group_by': 'date_deadline'}"/>
+                </group>
+                <searchpanel>
+                    <field name="stage_category_id" icon="fa-tags"
+                           enable_counters="1"/>
+                    <field name="stage_id" icon="fa-columns"
+                           select="multi" enable_counters="1"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════════════════════
+         CALENDAR VIEW
+         ════════════════════════════════════════════════════════════ -->
+    <record id="shop_schedule_order_view_calendar" model="ir.ui.view">
+        <field name="name">shop.schedule.order.calendar</field>
+        <field name="model">shop.schedule.order</field>
+        <field name="arch" type="xml">
+            <calendar date_start="date_deadline" color="stage_id"
+                      event_limit="5" quick_create="0">
+                <field name="proshop_wo_number"/>
+                <field name="partner_id"/>
+                <field name="part_number"/>
+                <field name="stage_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════════════════════
+         ACTION
+         ════════════════════════════════════════════════════════════ -->
+    <record id="shop_schedule_order_action" model="ir.actions.act_window">
+        <field name="name">Work Orders</field>
+        <field name="res_model">shop.schedule.order</field>
+        <field name="view_mode">kanban,list,form,calendar</field>
+        <field name="search_view_id" ref="shop_schedule_order_view_search"/>
+        <field name="context">{'search_default_group_stage': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first work order
+            </p>
+            <p>
+                Track jobs through your shop floor — drag and drop work orders
+                between machine stages to update their status.
+            </p>
+        </field>
+    </record>
+
+</odoo>
