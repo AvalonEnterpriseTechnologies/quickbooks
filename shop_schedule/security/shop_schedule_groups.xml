@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="module_category_shop_schedule" model="ir.module.category">
-        <field name="name">Shop Schedule</field>
-        <field name="sequence">25</field>
-    </record>
-
     <record id="group_shop_schedule_user" model="res.groups">
-        <field name="name">User</field>
-        <field name="category_id" ref="module_category_shop_schedule"/>
+        <field name="name">Shop Schedule: User</field>
     </record>
 
     <record id="group_shop_schedule_manager" model="res.groups">
-        <field name="name">Manager</field>
-        <field name="category_id" ref="module_category_shop_schedule"/>
+        <field name="name">Shop Schedule: Manager</field>
         <field name="implied_ids" eval="[(4, ref('group_shop_schedule_user'))]"/>
     </record>
 </odoo>
