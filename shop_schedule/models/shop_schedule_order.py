@@ -160,8 +160,8 @@ class ShopScheduleOrder(models.Model):
 
     # ── Helpers ─────────────────────────────────────────────────────
 
-    def _group_expand_stage_ids(self, stages, domain, order):
-        return self.env['shop.schedule.stage'].search([], order=order)
+    def _group_expand_stage_ids(self, stages, domain):
+        return self.env['shop.schedule.stage'].search([])
 
     @api.model_create_multi
     def create(self, vals_list):
