@@ -240,7 +240,7 @@
                 <filter string="My Orders" name="my_orders"
                         domain="[('user_id', '=', uid)]"/>
                 <filter string="Overdue" name="overdue"
-                        domain="[('date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('date_deadline', '&lt;', (context_today()).strftime('%Y-%m-%d'))]"/>
                 <filter string="Blocked" name="blocked"
                         domain="[('kanban_state', '=', 'blocked')]"/>
                 <filter string="ITAR" name="itar"
@@ -269,12 +269,6 @@
                     <filter string="Due Date" name="group_deadline"
                             context="{'group_by': 'date_deadline'}"/>
                 </group>
-                <searchpanel>
-                    <field name="stage_category_id" icon="fa-tags"
-                           enable_counters="1"/>
-                    <field name="stage_id" icon="fa-columns"
-                           select="multi" enable_counters="1"/>
-                </searchpanel>
             </search>
         </field>
     </record>
