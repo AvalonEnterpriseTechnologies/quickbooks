@@ -3,6 +3,7 @@
     <!-- Top-level application menu -->
     <menuitem id="shop_schedule_menu_root"
               name="Shop Schedule"
+              web_icon="shop_schedule,static/description/icon.png"
               sequence="45"/>
 
     <!-- Work Orders (main) -->
