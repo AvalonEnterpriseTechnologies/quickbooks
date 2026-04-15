@@ -1,11 +1,11 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_shop_schedule_order_user,shop.schedule.order user,model_shop_schedule_order,group_shop_schedule_user,1,1,1,0
+access_shop_schedule_order_user,shop.schedule.order user,model_shop_schedule_order,base.group_user,1,1,1,0
 access_shop_schedule_order_manager,shop.schedule.order manager,model_shop_schedule_order,group_shop_schedule_manager,1,1,1,1
-access_shop_schedule_stage_user,shop.schedule.stage user,model_shop_schedule_stage,group_shop_schedule_user,1,0,0,0
+access_shop_schedule_stage_user,shop.schedule.stage user,model_shop_schedule_stage,base.group_user,1,0,0,0
 access_shop_schedule_stage_manager,shop.schedule.stage manager,model_shop_schedule_stage,group_shop_schedule_manager,1,1,1,1
-access_shop_schedule_category_user,shop.schedule.category user,model_shop_schedule_category,group_shop_schedule_user,1,0,0,0
+access_shop_schedule_category_user,shop.schedule.category user,model_shop_schedule_category,base.group_user,1,0,0,0
 access_shop_schedule_category_manager,shop.schedule.category manager,model_shop_schedule_category,group_shop_schedule_manager,1,1,1,1
-access_shop_schedule_tag_user,shop.schedule.tag user,model_shop_schedule_tag,group_shop_schedule_user,1,1,1,0
+access_shop_schedule_tag_user,shop.schedule.tag user,model_shop_schedule_tag,base.group_user,1,1,1,0
 access_shop_schedule_tag_manager,shop.schedule.tag manager,model_shop_schedule_tag,group_shop_schedule_manager,1,1,1,1
-access_shop_schedule_operation_user,shop.schedule.operation user,model_shop_schedule_operation,group_shop_schedule_user,1,1,1,0
+access_shop_schedule_operation_user,shop.schedule.operation user,model_shop_schedule_operation,base.group_user,1,1,1,0
 access_shop_schedule_operation_manager,shop.schedule.operation manager,model_shop_schedule_operation,group_shop_schedule_manager,1,1,1,1
