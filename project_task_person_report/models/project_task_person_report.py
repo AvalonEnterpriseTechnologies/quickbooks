@@ -13,6 +13,14 @@ CLOSED_TASK_STATES = [
     'closed',
 ]
 
+CLOSED_STAGE_NAME_FRAGMENTS = [
+    'done',
+    'completed',
+    'closed',
+    'finished',
+    'cancel',
+]
+
 
 class ProjectTaskPersonReportWizard(models.TransientModel):
     _name = 'project.task.person.report.wizard'
@@ -164,6 +172,8 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
             and 'fold' in self.env['project.task.type']._fields
         ):
             domain += ['|', ('stage_id', '=', False), ('stage_id.fold', '=', False)]
+            for fragment in CLOSED_STAGE_NAME_FRAGMENTS:
+                domain.append(('stage_id.name', 'not ilike', fragment))
 
         return domain
 
