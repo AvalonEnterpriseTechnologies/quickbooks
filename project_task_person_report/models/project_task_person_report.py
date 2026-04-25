@@ -65,9 +65,12 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
 
     def action_print_pdf(self):
         self._refresh_lines()
-        return self.env.ref(
-            'project_task_person_report.action_report_project_task_person'
-        ).report_action(self)
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/project_task_person_report/pdf/%s' % self.id,
+            'target': 'self',
+        }
 
     def _refresh_lines(self):
         for wizard in self:
