@@ -39,7 +39,7 @@
     <menuitem
         id="menu_project_task_person_report"
         name="Open Tasks by Person"
-        parent="project.menu_project_reports_all"
+        parent="project.menu_project_report"
         action="action_project_task_person_report_open"
         sequence="50"
         groups="project.group_project_user"/>
