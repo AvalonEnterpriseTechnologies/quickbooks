@@ -3,6 +3,17 @@ from collections import defaultdict
 from odoo import api, fields, models
 
 
+CLOSED_TASK_STATES = [
+    '1_done',
+    '1_canceled',
+    'done',
+    'cancel',
+    'cancelled',
+    'canceled',
+    'closed',
+]
+
+
 class ProjectTaskPersonReportWizard(models.TransientModel):
     _name = 'project.task.person.report.wizard'
     _description = 'Project Open Tasks by Person Report'
@@ -139,7 +150,21 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
 
     def _get_open_task_domain(self, Task):
         domain = self._get_project_task_domain(Task)
-        domain.append(('state', 'not in', ['1_done', '1_canceled']))
+
+        if 'is_closed' in Task._fields:
+            domain.append(('is_closed', '=', False))
+        elif 'state' in Task._fields:
+            domain.append(('state', 'not in', CLOSED_TASK_STATES))
+
+        if 'date_end' in Task._fields:
+            domain.append(('date_end', '=', False))
+
+        if (
+            'stage_id' in Task._fields
+            and 'fold' in self.env['project.task.type']._fields
+        ):
+            domain += ['|', ('stage_id', '=', False), ('stage_id.fold', '=', False)]
+
         return domain
 
     def _get_late_task_domain(self, Task, user=None):
