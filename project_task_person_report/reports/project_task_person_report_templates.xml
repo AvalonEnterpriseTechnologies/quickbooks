@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="project_task_person_report_paperformat_letter" model="report.paperformat">
+        <field name="name">Project Tasks by Person Letter</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">15</field>
+        <field name="margin_right">15</field>
+        <field name="header_spacing">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="dpi">90</field>
+    </record>
+
     <record id="action_report_project_task_person" model="ir.actions.report">
         <field name="name">Open Tasks by Person</field>
         <field name="model">project.task.person.report.wizard</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">project_task_person_report.report_project_task_person</field>
         <field name="report_file">project_task_person_report.report_project_task_person</field>
+        <field name="paperformat_id" ref="project_task_person_report_paperformat_letter"/>
         <field name="print_report_name">'Open Tasks by Person - %s' % object.report_date</field>
     </record>
 
