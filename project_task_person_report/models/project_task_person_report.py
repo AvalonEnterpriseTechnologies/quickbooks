@@ -6,7 +6,14 @@ from odoo import api, fields, models
 class ProjectTaskPersonReportWizard(models.TransientModel):
     _name = 'project.task.person.report.wizard'
     _description = 'Project Open Tasks by Person Report'
+    _rec_name = 'name'
 
+    name = fields.Char(
+        string='Name',
+        required=True,
+        readonly=True,
+        default='Project Open Tasks by Person Report',
+    )
     report_date = fields.Date(
         string='Report Date',
         required=True,
@@ -26,7 +33,7 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
         wizard._refresh_lines()
         return {
             'type': 'ir.actions.act_window',
-            'name': 'Open Tasks by Person',
+            'name': 'Project Open Tasks by Person Report',
             'res_model': self._name,
             'view_mode': 'form',
             'res_id': wizard.id,
