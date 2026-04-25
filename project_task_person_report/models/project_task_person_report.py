@@ -82,15 +82,7 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
 
     def _get_project_counts_by_creator(self):
         Project = self.env['project.project']
-        domain = self._get_project_domain(Project)
-
-        counts = defaultdict(int)
-        groups = Project.read_group(domain, ['create_uid'], ['create_uid'])
-        for group in groups:
-            user_value = group.get('create_uid')
-            if user_value:
-                counts[user_value[0]] = group.get('__count', 0)
-        return counts
+        return self._get_counts_by_creator(Project, self._get_project_domain(Project))
 
     def _get_project_domain(self, Project):
         domain = []
@@ -102,12 +94,13 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
 
     def _get_task_counts_by_creator(self):
         Task = self.env['project.task']
+        return self._get_counts_by_creator(Task, self._get_project_task_domain(Task))
+
+    def _get_counts_by_creator(self, Model, domain):
         counts = defaultdict(int)
-        groups = Task.read_group(self._get_project_task_domain(Task), ['create_uid'], ['create_uid'])
-        for group in groups:
-            user_value = group.get('create_uid')
-            if user_value:
-                counts[user_value[0]] = group.get('__count', 0)
+        for record in Model.search(domain):
+            if record.create_uid:
+                counts[record.create_uid.id] += 1
         return counts
 
     def _get_open_task_counts_by_assignee(self):
