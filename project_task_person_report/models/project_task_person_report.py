@@ -204,6 +204,20 @@ class ProjectTaskPersonReportLine(models.TransientModel):
     open_task_count = fields.Integer(string='Open Tasks', readonly=True)
     late_task_count = fields.Integer(string='Late Tasks', readonly=True)
 
+    def action_view_open_tasks(self):
+        self.ensure_one()
+        Task = self.env['project.task']
+        domain = self.env['project.task.person.report.wizard']._get_open_task_domain(Task)
+        domain.append(('user_ids', 'in', self.user_id.ids))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Open Tasks - %s' % self.user_id.name,
+            'res_model': 'project.task',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'target': 'current',
+        }
+
     def action_view_late_tasks(self):
         self.ensure_one()
         Task = self.env['project.task']

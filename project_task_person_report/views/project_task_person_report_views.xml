@@ -24,6 +24,12 @@
                             <field name="open_project_count" class="text-primary fw-bold" sum="Total Projects Created" width="135px"/>
                             <field name="task_created_count" class="text-info fw-bold" sum="Total Tasks Created" width="125px"/>
                             <field name="open_task_count" class="text-success fw-bold" sum="Total Open Tasks" width="110px"/>
+                            <button
+                                name="action_view_open_tasks"
+                                type="object"
+                                string="View Open Tasks"
+                                class="btn-link text-success"
+                                invisible="open_task_count == 0"/>
                             <field name="late_task_count" class="text-danger fw-bold" sum="Total Late Tasks" width="120px"/>
                             <button
                                 name="action_view_late_tasks"
