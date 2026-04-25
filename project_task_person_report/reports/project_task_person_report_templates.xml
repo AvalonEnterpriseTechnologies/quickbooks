@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_project_task_person" model="ir.actions.report">
+        <field name="name">Open Tasks by Person</field>
+        <field name="model">project.task.person.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">project_task_person_report.report_project_task_person</field>
+        <field name="report_file">project_task_person_report.report_project_task_person</field>
+        <field name="print_report_name">'Open Tasks by Person - %s' % object.report_date</field>
+    </record>
+
+    <template id="report_project_task_person">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="o" t-value="doc"/>
+                <t t-call="web.external_layout">
+                    <t t-set="total_open_projects" t-value="sum(doc.line_ids.mapped('open_project_count'))"/>
+                    <t t-set="total_open_tasks" t-value="sum(doc.line_ids.mapped('open_task_count'))"/>
+                    <t t-set="total_late_tasks" t-value="sum(doc.line_ids.mapped('late_task_count'))"/>
+
+                    <div class="page">
+                        <style>
+                            .project-person-report-title {
+                                background: #1f4e79;
+                                color: #ffffff;
+                                padding: 18px 22px;
+                                border-radius: 6px;
+                                margin-bottom: 18px;
+                            }
+                            .project-person-report-title h2 {
+                                color: #ffffff;
+                                margin: 0 0 6px 0;
+                            }
+                            .project-person-report-summary {
+                                width: 100%;
+                                margin-bottom: 18px;
+                                border-collapse: separate;
+                                border-spacing: 8px 0;
+                            }
+                            .project-person-report-card {
+                                border: 1px solid #d8dee6;
+                                border-radius: 6px;
+                                padding: 12px;
+                                background: #f7f9fb;
+                                text-align: center;
+                            }
+                            .project-person-report-card .value {
+                                font-size: 24px;
+                                font-weight: 700;
+                                color: #1f4e79;
+                            }
+                            .project-person-report-card .label {
+                                color: #52616f;
+                                font-size: 12px;
+                                text-transform: uppercase;
+                            }
+                            .project-person-report-table th {
+                                background: #e9eff5;
+                                color: #243447;
+                            }
+                            .project-person-report-table tfoot td {
+                                font-weight: 700;
+                                background: #f0f4f8;
+                            }
+                        </style>
+
+                        <div class="project-person-report-title">
+                            <h2>Open Tasks by Person</h2>
+                            <div>
+                                Project reporting summary of active projects opened,
+                                open tasks, and late open tasks by person.
+                            </div>
+                            <div class="mt8">
+                                <strong>Report Date:</strong>
+                                <span t-field="doc.report_date"/>
+                            </div>
+                        </div>
+
+                        <table class="project-person-report-summary">
+                            <tr>
+                                <td class="project-person-report-card">
+                                    <div class="value" t-esc="total_open_projects"/>
+                                    <div class="label">Open Projects Opened</div>
+                                </td>
+                                <td class="project-person-report-card">
+                                    <div class="value" t-esc="total_open_tasks"/>
+                                    <div class="label">Open Tasks</div>
+                                </td>
+                                <td class="project-person-report-card">
+                                    <div class="value" t-esc="total_late_tasks"/>
+                                    <div class="label">Late Open Tasks</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm project-person-report-table">
+                            <thead>
+                                <tr>
+                                    <th>Person</th>
+                                    <th class="text-end">Open Projects Opened</th>
+                                    <th class="text-end">Open Tasks</th>
+                                    <th class="text-end">Late Open Tasks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-if="not doc.line_ids">
+                                    <td colspan="4" class="text-center">No open projects or tasks found.</td>
+                                </tr>
+                                <tr t-foreach="doc.line_ids" t-as="line">
+                                    <td>
+                                        <span t-field="line.user_id"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="line.open_project_count"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="line.open_task_count"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="line.late_task_count"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>Total</td>
+                                    <td class="text-end" t-esc="total_open_projects"/>
+                                    <td class="text-end" t-esc="total_open_tasks"/>
+                                    <td class="text-end" t-esc="total_late_tasks"/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
