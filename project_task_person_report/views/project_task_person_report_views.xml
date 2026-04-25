@@ -19,9 +19,16 @@
                     <field name="line_ids" nolabel="1">
                         <list string="Open Tasks by Person" create="0" delete="0" edit="0">
                             <field name="user_id"/>
-                            <field name="open_project_count" sum="Total Open Projects"/>
-                            <field name="open_task_count" sum="Total Open Tasks"/>
-                            <field name="late_task_count" sum="Total Late Tasks"/>
+                            <field name="open_project_count" class="text-primary fw-bold" sum="Total Projects Created"/>
+                            <field name="task_created_count" class="text-info fw-bold" sum="Total Tasks Created"/>
+                            <field name="open_task_count" class="text-success fw-bold" sum="Total Open Tasks"/>
+                            <field name="late_task_count" class="text-danger fw-bold" sum="Total Late Tasks"/>
+                            <button
+                                name="action_view_late_tasks"
+                                type="object"
+                                string="View Late Tasks"
+                                class="btn-link text-danger"
+                                invisible="late_task_count == 0"/>
                         </list>
                     </field>
                 </sheet>

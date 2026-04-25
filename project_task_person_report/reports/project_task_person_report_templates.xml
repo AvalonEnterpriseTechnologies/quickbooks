@@ -29,6 +29,7 @@
                 <t t-set="o" t-value="doc"/>
                 <t t-call="web.external_layout">
                     <t t-set="total_open_projects" t-value="sum(doc.line_ids.mapped('open_project_count'))"/>
+                    <t t-set="total_tasks_created" t-value="sum(doc.line_ids.mapped('task_created_count'))"/>
                     <t t-set="total_open_tasks" t-value="sum(doc.line_ids.mapped('open_task_count'))"/>
                     <t t-set="total_late_tasks" t-value="sum(doc.line_ids.mapped('late_task_count'))"/>
 
@@ -63,6 +64,18 @@
                                 font-weight: 700;
                                 color: #1f4e79;
                             }
+                            .project-person-report-card .value.projects {
+                                color: #1f4e79;
+                            }
+                            .project-person-report-card .value.tasks-created {
+                                color: #6f42c1;
+                            }
+                            .project-person-report-card .value.open {
+                                color: #198754;
+                            }
+                            .project-person-report-card .value.late {
+                                color: #dc3545;
+                            }
                             .project-person-report-card .label {
                                 color: #52616f;
                                 font-size: 12px;
@@ -76,13 +89,29 @@
                                 font-weight: 700;
                                 background: #f0f4f8;
                             }
+                            .project-person-report-projects {
+                                color: #1f4e79;
+                                font-weight: 700;
+                            }
+                            .project-person-report-tasks-created {
+                                color: #6f42c1;
+                                font-weight: 700;
+                            }
+                            .project-person-report-open {
+                                color: #198754;
+                                font-weight: 700;
+                            }
+                            .project-person-report-late {
+                                color: #dc3545;
+                                font-weight: 700;
+                            }
                         </style>
 
                         <div class="project-person-report-title">
                             <h2>Open Tasks by Person</h2>
                             <div>
-                                Project reporting summary of active projects opened,
-                                open tasks, and late open tasks by person.
+                                Project reporting summary of projects created,
+                                tasks created, open tasks, and late open tasks by person.
                             </div>
                             <div class="mt8">
                                 <strong>Report Date:</strong>
@@ -93,15 +122,19 @@
                         <table class="project-person-report-summary">
                             <tr>
                                 <td class="project-person-report-card">
-                                    <div class="value" t-esc="total_open_projects"/>
-                                    <div class="label">Open Projects Opened</div>
+                                    <div class="value projects" t-esc="total_open_projects"/>
+                                    <div class="label">Projects Created</div>
                                 </td>
                                 <td class="project-person-report-card">
-                                    <div class="value" t-esc="total_open_tasks"/>
+                                    <div class="value tasks-created" t-esc="total_tasks_created"/>
+                                    <div class="label">Tasks Created</div>
+                                </td>
+                                <td class="project-person-report-card">
+                                    <div class="value open" t-esc="total_open_tasks"/>
                                     <div class="label">Open Tasks</div>
                                 </td>
                                 <td class="project-person-report-card">
-                                    <div class="value" t-esc="total_late_tasks"/>
+                                    <div class="value late" t-esc="total_late_tasks"/>
                                     <div class="label">Late Open Tasks</div>
                                 </td>
                             </tr>
@@ -111,26 +144,30 @@
                             <thead>
                                 <tr>
                                     <th>Person</th>
-                                    <th class="text-end">Open Projects Opened</th>
+                                    <th class="text-end">Projects Created</th>
+                                    <th class="text-end">Tasks Created</th>
                                     <th class="text-end">Open Tasks</th>
                                     <th class="text-end">Late Open Tasks</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-if="not doc.line_ids">
-                                    <td colspan="4" class="text-center">No open projects or tasks found.</td>
+                                    <td colspan="5" class="text-center">No projects or tasks found.</td>
                                 </tr>
                                 <tr t-foreach="doc.line_ids" t-as="line">
                                     <td>
                                         <span t-field="line.user_id"/>
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end project-person-report-projects">
                                         <span t-field="line.open_project_count"/>
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end project-person-report-tasks-created">
+                                        <span t-field="line.task_created_count"/>
+                                    </td>
+                                    <td class="text-end project-person-report-open">
                                         <span t-field="line.open_task_count"/>
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end project-person-report-late">
                                         <span t-field="line.late_task_count"/>
                                     </td>
                                 </tr>
@@ -138,9 +175,10 @@
                             <tfoot>
                                 <tr>
                                     <td>Total</td>
-                                    <td class="text-end" t-esc="total_open_projects"/>
-                                    <td class="text-end" t-esc="total_open_tasks"/>
-                                    <td class="text-end" t-esc="total_late_tasks"/>
+                                    <td class="text-end project-person-report-projects" t-esc="total_open_projects"/>
+                                    <td class="text-end project-person-report-tasks-created" t-esc="total_tasks_created"/>
+                                    <td class="text-end project-person-report-open" t-esc="total_open_tasks"/>
+                                    <td class="text-end project-person-report-late" t-esc="total_late_tasks"/>
                                 </tr>
                             </tfoot>
                         </table>

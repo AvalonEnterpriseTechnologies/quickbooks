@@ -52,9 +52,15 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
             })
 
     def _prepare_line_commands(self):
-        project_counts = self._get_open_project_counts_by_creator()
+        project_counts = self._get_project_counts_by_creator()
+        task_created_counts = self._get_task_counts_by_creator()
         task_counts, late_counts = self._get_open_task_counts_by_assignee()
-        user_ids = set(project_counts) | set(task_counts) | set(late_counts)
+        user_ids = (
+            set(project_counts)
+            | set(task_created_counts)
+            | set(task_counts)
+            | set(late_counts)
+        )
         users = self.env['res.users'].browse(user_ids).exists().sorted(
             lambda user: (user.name or '').lower()
         )
@@ -66,6 +72,7 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
                 {
                     'user_id': user.id,
                     'open_project_count': project_counts[user.id],
+                    'task_created_count': task_created_counts[user.id],
                     'open_task_count': task_counts[user.id],
                     'late_task_count': late_counts[user.id],
                 },
@@ -73,9 +80,9 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
             for user in users
         ]
 
-    def _get_open_project_counts_by_creator(self):
+    def _get_project_counts_by_creator(self):
         Project = self.env['project.project']
-        domain = self._get_open_project_domain(Project)
+        domain = self._get_project_domain(Project)
 
         counts = defaultdict(int)
         groups = Project.read_group(domain, ['create_uid'], ['create_uid'])
@@ -85,13 +92,23 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
                 counts[user_value[0]] = group.get('__count', 0)
         return counts
 
-    def _get_open_project_domain(self, Project):
+    def _get_project_domain(self, Project):
         domain = []
         if 'active' in Project._fields:
             domain.append(('active', '=', True))
         if 'is_template' in Project._fields:
             domain.append(('is_template', '!=', True))
         return domain
+
+    def _get_task_counts_by_creator(self):
+        Task = self.env['project.task']
+        counts = defaultdict(int)
+        groups = Task.read_group(self._get_project_task_domain(Task), ['create_uid'], ['create_uid'])
+        for group in groups:
+            user_value = group.get('create_uid')
+            if user_value:
+                counts[user_value[0]] = group.get('__count', 0)
+        return counts
 
     def _get_open_task_counts_by_assignee(self):
         Task = self.env['project.task']
@@ -108,7 +125,7 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
 
         return counts, late_counts
 
-    def _get_open_task_domain(self, Task):
+    def _get_project_task_domain(self, Task):
         domain = []
 
         if 'active' in Task._fields:
@@ -118,7 +135,21 @@ class ProjectTaskPersonReportWizard(models.TransientModel):
         if 'has_project_template' in Task._fields:
             domain.append(('has_project_template', '!=', True))
 
+        return domain
+
+    def _get_open_task_domain(self, Task):
+        domain = self._get_project_task_domain(Task)
         domain.append(('state', 'not in', ['1_done', '1_canceled']))
+        return domain
+
+    def _get_late_task_domain(self, Task, user=None):
+        domain = self._get_open_task_domain(Task)
+        domain += [
+            ('date_deadline', '!=', False),
+            ('date_deadline', '<', fields.Date.context_today(self)),
+        ]
+        if user:
+            domain.append(('user_ids', 'in', user.ids))
         return domain
 
 
@@ -133,6 +164,23 @@ class ProjectTaskPersonReportLine(models.TransientModel):
         ondelete='cascade',
     )
     user_id = fields.Many2one('res.users', string='Person', required=True, readonly=True)
-    open_project_count = fields.Integer(string='Open Projects', readonly=True)
+    open_project_count = fields.Integer(string='Projects Created', readonly=True)
+    task_created_count = fields.Integer(string='Tasks Created', readonly=True)
     open_task_count = fields.Integer(string='Open Tasks', readonly=True)
     late_task_count = fields.Integer(string='Late Tasks', readonly=True)
+
+    def action_view_late_tasks(self):
+        self.ensure_one()
+        Task = self.env['project.task']
+        domain = self.env['project.task.person.report.wizard']._get_late_task_domain(
+            Task,
+            self.user_id,
+        )
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Late Tasks - %s' % self.user_id.name,
+            'res_model': 'project.task',
+            'view_mode': 'list,form',
+            'domain': domain,
+            'target': 'current',
+        }
