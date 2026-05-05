@@ -56,7 +56,8 @@ class QBSyncPayroll(models.AbstractModel):
                     continue
                 vals = {
                     'company_id': config.company_id.id,
-                    'employee_id': employee.id if employee else False,
+                    'odoo_employee_id': employee.id if employee else False,
+                    'employee_name': employee.name if employee else False,
                     'qb_employee_id': qb_employee_id,
                     'qb_compensation_id': qb_comp_id,
                     'name': comp.get('name') or qb_comp_id,

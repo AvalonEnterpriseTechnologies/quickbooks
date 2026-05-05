@@ -9,8 +9,9 @@ class QuickbooksPayrollCompensation(models.Model):
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
     )
-    employee_id = fields.Many2one('hr.employee', string='Employee')
     qb_employee_id = fields.Char(required=True, index=True)
+    odoo_employee_id = fields.Integer(string='Odoo Employee ID', index=True)
+    employee_name = fields.Char(string='Employee')
     qb_compensation_id = fields.Char(required=True, index=True)
     name = fields.Char(required=True)
     compensation_type = fields.Char()
