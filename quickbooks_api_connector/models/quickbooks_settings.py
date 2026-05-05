@@ -49,6 +49,10 @@ class ResConfigSettings(models.TransientModel):
     qb_last_sync_date = fields.Datetime(related='qb_config_id.last_sync_date', readonly=True)
     qb_realm_id = fields.Char(related='qb_config_id.realm_id', readonly=True)
     qb_error_message = fields.Text(related='qb_config_id.error_message', readonly=True)
+    qb_webhook_endpoint_url = fields.Char(
+        related='qb_config_id.webhook_endpoint_url',
+        readonly=True,
+    )
 
     qb_client_id = fields.Char(
         string='Client ID', groups='base.group_system',

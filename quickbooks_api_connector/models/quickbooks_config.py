@@ -52,6 +52,12 @@ class QuickbooksConfig(models.Model):
         default='sandbox', required=True,
     )
     webhook_verifier_token = fields.Char(string='Webhook Verifier Token')
+    webhook_endpoint_url = fields.Char(
+        string='Webhook Endpoint URL',
+        compute='_compute_webhook_endpoint_url',
+        help='Paste this URL into the Intuit Developer Portal under '
+             'Webhooks. Intuit will return a Verifier Token to paste below.',
+    )
     oauth_state = fields.Char(string='OAuth State', copy=False, readonly=True)
     state = fields.Selection(
         [('draft', 'Not Connected'),
@@ -137,6 +143,15 @@ class QuickbooksConfig(models.Model):
         'unique(company_id)',
         'Only one QuickBooks configuration per company is allowed.',
     )
+
+    def _compute_webhook_endpoint_url(self):
+        base_url = (
+            self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        ).rstrip('/')
+        for rec in self:
+            rec.webhook_endpoint_url = (
+                '%s/qb/webhook' % base_url if base_url else False
+            )
 
     def _get_fernet(self):
         if Fernet is None:

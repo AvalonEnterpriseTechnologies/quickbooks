@@ -15,12 +15,27 @@ class QuickbooksSetupWizard(models.TransientModel):
         default=lambda self: self.env.company,
     )
     environment = fields.Selection(
-        [('sandbox', 'Sandbox'), ('production', 'Production')],
+        [('sandbox', 'Development (Sandbox)'), ('production', 'Production')],
         default='sandbox', required=True,
     )
     client_id = fields.Char(string='Client ID', required=True)
     client_secret = fields.Char(string='Client Secret', required=True)
-    webhook_verifier_token = fields.Char(string='Webhook Verifier Token')
+    webhook_endpoint_url = fields.Char(
+        string='Odoo Webhook URL',
+        compute='_compute_webhook_endpoint_url',
+        help='Paste this URL into the Intuit Developer Portal under '
+             'Webhooks. Intuit will return a Verifier Token to paste into '
+             'Settings > QuickBooks after you finish connecting.',
+    )
+
+    def _compute_webhook_endpoint_url(self):
+        base_url = (
+            self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        ).rstrip('/')
+        for rec in self:
+            rec.webhook_endpoint_url = (
+                '%s/qb/webhook' % base_url if base_url else False
+            )
 
     def action_save_and_connect(self):
         """Create or update the QB config, then initiate OAuth flow."""
@@ -34,7 +49,6 @@ class QuickbooksSetupWizard(models.TransientModel):
             'environment': self.environment,
             'client_id': self.client_id,
             'client_secret': self.client_secret,
-            'webhook_verifier_token': self.webhook_verifier_token,
         }
         if config:
             config.write(vals)

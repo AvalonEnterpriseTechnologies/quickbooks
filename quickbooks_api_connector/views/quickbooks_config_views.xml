@@ -63,6 +63,14 @@
                         <field name="last_sync_date" readonly="1"/>
                     </group>
 
+                    <group string="Webhook Setup"
+                           invisible="state != 'connected'">
+                        <field name="webhook_endpoint_url" readonly="1"
+                               widget="CopyClipboardChar"/>
+                        <field name="webhook_verifier_token" password="True"
+                               placeholder="Paste the verifier token from Intuit's Webhooks tab"/>
+                    </group>
+
                     <notebook groups="quickbooks_api_connector.group_qb_manager">
                         <page string="Sync Defaults">
                             <group>
@@ -121,7 +129,6 @@
 
                     <group invisible="1">
                         <field name="company_id"/>
-                        <field name="webhook_verifier_token"/>
                     </group>
                 </sheet>
             </form>

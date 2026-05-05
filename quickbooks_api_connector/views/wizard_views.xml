@@ -11,7 +11,16 @@
                     <field name="environment"/>
                     <field name="client_id"/>
                     <field name="client_secret" password="True"/>
-                    <field name="webhook_verifier_token" password="True"/>
+                </group>
+                <group string="Odoo Webhook URL (optional, for live updates)">
+                    <field name="webhook_endpoint_url" readonly="1"
+                           widget="CopyClipboardChar" nolabel="1"/>
+                    <div colspan="2" class="text-muted small">
+                        Optional. While you're in the Intuit Developer Portal, you can
+                        also open the Webhooks tab and paste this URL there. Intuit will
+                        generate a Verifier Token - save it; you'll paste it into
+                        Settings &gt; QuickBooks after this wizard finishes.
+                    </div>
                 </group>
                 <footer>
                     <button name="action_save_and_connect"
