@@ -116,9 +116,7 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_inventory_valuation_accounts = fields.Boolean(
         string='Sync Inventory Valuation Accounts', default=True,
     )
-    qb_default_warehouse_id = fields.Many2one(
-        'stock.warehouse', string='Default Inventory Warehouse',
-    )
+    qb_default_warehouse_id = fields.Integer(string='Default Inventory Warehouse ID')
     qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
     qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=True)
 
@@ -269,7 +267,7 @@ class ResConfigSettings(models.TransientModel):
                 ),
                 'qb_default_warehouse_id': getattr(
                     config, 'qb_default_warehouse_id', False,
-                ).id if getattr(config, 'qb_default_warehouse_id', False) else False,
+                ) or False,
                 'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
                 'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', True),
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
@@ -336,7 +334,7 @@ class ResConfigSettings(models.TransientModel):
             'sync_journal_entries': self.qb_sync_journal_entries,
             'sync_credit_memos': self.qb_sync_credit_memos,
             'sync_estimates': self.qb_sync_estimates,
-            'qb_default_warehouse_id': self.qb_default_warehouse_id.id or False,
+            'qb_default_warehouse_id': self.qb_default_warehouse_id or False,
         }
         if self.qb_client_secret:
             vals['client_secret'] = self.qb_client_secret

@@ -91,11 +91,7 @@ class QuickbooksConfig(models.Model):
     sync_inventory_valuation_accounts = fields.Boolean(
         default=True, string='Sync Inventory Valuation Accounts',
     )
-    qb_default_warehouse_id = fields.Many2one(
-        'stock.warehouse',
-        string='Default Inventory Warehouse',
-        domain="[('company_id', '=', company_id)]",
-    )
+    qb_default_warehouse_id = fields.Integer(string='Default Inventory Warehouse ID')
     sync_vendor_credits = fields.Boolean(default=True, string='Sync Vendor Credits')
     sync_refund_receipts = fields.Boolean(default=True, string='Sync Refund Receipts')
 

@@ -106,7 +106,8 @@
                                     <field name="sync_inventory_qty"/>
                                     <field name="sync_inventory_adjustments"/>
                                     <field name="sync_inventory_valuation_accounts"/>
-                                    <field name="qb_default_warehouse_id"/>
+                                    <field name="qb_default_warehouse_id"
+                                           string="Default Inventory Warehouse ID"/>
                                     <field name="sync_attachments"/>
                                 </group>
                             </group>
