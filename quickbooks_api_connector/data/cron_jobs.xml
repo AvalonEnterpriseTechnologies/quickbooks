@@ -44,5 +44,16 @@
         <field name="interval_type">days</field>
         <field name="active">True</field>
     </record>
+
+    <!-- Daily read-only payroll checks pull; Intuit Payroll GraphQL is rate-sensitive -->
+    <record id="ir_cron_qb_payroll_checks" model="ir.cron">
+        <field name="name">QuickBooks: Pull Payroll Checks</field>
+        <field name="model_id" ref="model_qb_sync_payroll_checks"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_pull_for_all_companies()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
 </data>
 </odoo>

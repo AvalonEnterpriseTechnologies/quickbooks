@@ -193,9 +193,11 @@ class QBSyncProducts(models.AbstractModel):
             return
 
         qb_qty = float(qb_data.get('QtyOnHand', 0))
-        warehouse = self.env['stock.warehouse'].search(
-            [('company_id', '=', config.company_id.id)], limit=1,
-        )
+        warehouse = getattr(config, 'qb_default_warehouse_id', False)
+        if not warehouse:
+            warehouse = self.env['stock.warehouse'].search(
+                [('company_id', '=', config.company_id.id)], limit=1,
+            )
         if not warehouse:
             return
         location = warehouse.lot_stock_id

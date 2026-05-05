@@ -24,11 +24,16 @@ class QuickbooksMigrationWizard(models.TransientModel):
     migrate_tax_codes = fields.Boolean(default=True, string='Tax Codes')
     migrate_customers = fields.Boolean(default=True, string='Customers')
     migrate_vendors = fields.Boolean(default=True, string='Vendors')
+    migrate_projects = fields.Boolean(default=True, string='Projects')
     migrate_products = fields.Boolean(default=True, string='Products / Items')
     migrate_invoices = fields.Boolean(default=True, string='Invoices')
     migrate_bills = fields.Boolean(default=True, string='Bills')
     migrate_payments = fields.Boolean(default=True, string='Payments')
     migrate_journal_entries = fields.Boolean(default=False, string='Journal Entries')
+    migrate_inventory_adjustments = fields.Boolean(
+        default=False, string='Inventory Adjustments',
+    )
+    migrate_payroll = fields.Boolean(default=False, string='Payroll Read Data')
 
     def action_start_migration(self):
         """Queue migration jobs in dependency order."""
@@ -48,6 +53,8 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('customer')
         if self.migrate_vendors:
             ordered_entities.append('vendor')
+        if self.migrate_projects:
+            ordered_entities.append('project')
         if self.migrate_products:
             ordered_entities.append('product')
         if self.migrate_invoices:
@@ -59,6 +66,13 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('bill_payment')
         if self.migrate_journal_entries:
             ordered_entities.append('journal_entry')
+        if self.migrate_inventory_adjustments:
+            ordered_entities.append('inventory_adjustment')
+        if self.migrate_payroll:
+            ordered_entities.extend([
+                'payroll_employee', 'payroll_compensation', 'payroll_pay_item',
+                'payroll_schedule', 'payroll_check', 'work_location',
+            ])
 
         directions = []
         if self.direction in ('import', 'both'):

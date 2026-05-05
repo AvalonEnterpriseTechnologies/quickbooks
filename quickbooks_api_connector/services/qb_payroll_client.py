@@ -29,6 +29,59 @@ query PayrollEmployeeCompensations {
 }
 """
 
+PAYROLL_EMPLOYEES_QUERY = """
+query PayrollEmployees {
+    payrollEmployees {
+        id
+        displayName
+        employmentStatus
+        workLocationId
+        payScheduleId
+        hireDate
+        terminationDate
+    }
+}
+"""
+
+PAYROLL_PAY_ITEMS_QUERY = """
+query PayrollPayItems {
+    payrollPayItems {
+        id
+        name
+        type
+        active
+    }
+}
+"""
+
+PAYROLL_PAY_SCHEDULES_QUERY = """
+query PayrollPaySchedules {
+    payrollPaySchedules {
+        id
+        name
+        frequency
+        active
+        nextPayDate
+    }
+}
+"""
+
+PAYROLL_CHECKS_QUERY = """
+query PayrollChecks($startDate: String, $endDate: String) {
+    payrollChecks(startDate: $startDate, endDate: $endDate) {
+        id
+        employeeId
+        displayName
+        checkDate
+        payPeriodStart
+        payPeriodEnd
+        grossPay
+        netPay
+        status
+    }
+}
+"""
+
 MAX_RETRIES_5XX = 3
 
 
@@ -80,3 +133,19 @@ class QBPayrollClient(models.AbstractModel):
 
     def fetch_compensations(self, config):
         return self._execute_graphql(config, PAYROLL_COMPENSATIONS_QUERY)
+
+    def fetch_payroll_employees(self, config):
+        return self._execute_graphql(config, PAYROLL_EMPLOYEES_QUERY)
+
+    def fetch_pay_items(self, config):
+        return self._execute_graphql(config, PAYROLL_PAY_ITEMS_QUERY)
+
+    def fetch_pay_schedules(self, config):
+        return self._execute_graphql(config, PAYROLL_PAY_SCHEDULES_QUERY)
+
+    def fetch_checks(self, config, start_date=None, end_date=None):
+        variables = {
+            'startDate': start_date.isoformat() if hasattr(start_date, 'isoformat') else start_date,
+            'endDate': end_date.isoformat() if hasattr(end_date, 'isoformat') else end_date,
+        }
+        return self._execute_graphql(config, PAYROLL_CHECKS_QUERY, variables)

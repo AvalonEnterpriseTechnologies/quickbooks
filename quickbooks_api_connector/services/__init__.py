@@ -19,6 +19,7 @@ from . import sync_expenses
 from . import sync_employees
 from . import sync_departments
 from . import sync_time_activities
+from . import sync_projects
 from . import sync_classes
 from . import sync_deposits
 from . import sync_transfers
@@ -30,5 +31,11 @@ from . import sync_exchange_rates
 from . import sync_company_info
 from . import qb_payroll_client
 from . import sync_payroll
+from . import sync_payroll_employees
+from . import sync_payroll_pay_items
+from . import sync_payroll_schedules
+from . import sync_payroll_checks
+from . import sync_work_locations
+from . import sync_inventory_adjustments
 from . import qbt_api_client
 from . import sync_timesheets

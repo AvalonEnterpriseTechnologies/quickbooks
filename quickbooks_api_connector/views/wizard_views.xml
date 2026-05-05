@@ -44,6 +44,7 @@
                     <group>
                         <field name="sync_customers"/>
                         <field name="sync_vendors"/>
+                        <field name="sync_projects"/>
                         <field name="sync_products"/>
                         <field name="sync_invoices"/>
                     </group>
@@ -52,6 +53,8 @@
                         <field name="sync_payments"/>
                         <field name="sync_journal_entries"/>
                         <field name="sync_credit_memos"/>
+                        <field name="sync_inventory_adjustments"/>
+                        <field name="sync_payroll"/>
                     </group>
                 </group>
                 <footer>
@@ -92,6 +95,7 @@
                         <field name="migrate_tax_codes"/>
                         <field name="migrate_customers"/>
                         <field name="migrate_vendors"/>
+                        <field name="migrate_projects"/>
                         <field name="migrate_products"/>
                     </group>
                     <group>
@@ -99,6 +103,8 @@
                         <field name="migrate_bills"/>
                         <field name="migrate_payments"/>
                         <field name="migrate_journal_entries"/>
+                        <field name="migrate_inventory_adjustments"/>
+                        <field name="migrate_payroll"/>
                     </group>
                 </group>
                 <footer>

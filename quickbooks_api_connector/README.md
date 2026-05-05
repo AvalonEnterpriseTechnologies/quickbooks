@@ -17,7 +17,9 @@ Standalone QuickBooks Online connector for Odoo 19. Can be installed independent
 
 - **OAuth 2.0** connection to QuickBooks Online (sandbox + production)
 - **One-time setup wizard** for Intuit app credentials, followed by a sync-only settings panel
-- **Bidirectional sync**: customers, vendors, products, invoices, bills, payments, journal entries, credit memos, estimates, vendor credits, purchase orders, expenses, sales receipts, refund receipts, deposits, transfers, classes, departments, employees, time activities, attachments, payment terms, and tax codes where QBO permits writes
+- **Bidirectional sync**: customers, vendors, products, projects, invoices, bills, payments, journal entries, credit memos, estimates, vendor credits, purchase orders, expenses, sales receipts, refund receipts, deposits, transfers, classes, departments, employees, time activities, inventory adjustments, attachments, payment terms, and tax codes where QBO permits writes
+- **Payroll read sync**: compensations, payroll employees, pay items, pay schedules, and payroll checks through Intuit's read-only Payroll GraphQL API
+- **Expanded team/inventory sync**: employee work locations, employment status, pay schedules, stock quantities, and Odoo-led inventory adjustments
 - **Async queue** with cron-based processing, retry with exponential backoff
 - **Conflict resolution**: last-modified, Odoo-wins, QBO-wins, or manual review
 - **Configurable field mappings** per entity type

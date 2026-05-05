@@ -180,6 +180,20 @@ ENTITY_META = {
         'name_field': 'name',
         'qb_display_field': 'Description',
     },
+    'project': {
+        'model': 'project.project',
+        'qb_name': 'Customer',
+        'qb_id_field': 'qb_project_id',
+        'name_field': 'name',
+        'qb_display_field': 'DisplayName',
+    },
+    'inventory_adjustment': {
+        'model': 'stock.move',
+        'qb_name': 'ItemAdjustment',
+        'qb_id_field': 'qb_inventory_adjustment_id',
+        'name_field': 'reference',
+        'qb_display_field': 'PrivateNote',
+    },
 }
 
 
@@ -258,6 +272,11 @@ class QBRecordMatcher(models.AbstractModel):
     def _fallback_model(self, entity_type):
         return {
             'payroll_compensation': 'quickbooks.payroll.compensation',
+            'payroll_employee': 'quickbooks.payroll.employee',
+            'payroll_pay_item': 'quickbooks.payroll.pay.item',
+            'payroll_schedule': 'quickbooks.payroll.pay.schedule',
+            'payroll_check': 'quickbooks.payroll.check',
+            'work_location': 'quickbooks.work.location',
             'timesheet': 'account.analytic.line',
         }.get(entity_type, 'quickbooks.sync.queue')
 

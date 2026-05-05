@@ -1,24 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_hr_employee_form_qb" model="ir.ui.view">
-        <field name="name">hr.employee.form.qb</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="hr.view_employee_form"/>
+    <record id="view_project_project_form_qb" model="ir.ui.view">
+        <field name="name">project.project.form.qb</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="QuickBooks" name="quickbooks_tab"
                       groups="quickbooks_api_connector.group_qb_user">
                     <group>
                         <group string="QuickBooks IDs">
-                            <field name="qb_employee_id" readonly="1"/>
-                            <field name="qb_work_location_id"/>
-                            <field name="qb_pay_schedule_id"/>
+                            <field name="qb_project_id" readonly="1"/>
+                            <field name="qb_customer_id" readonly="1"/>
                             <field name="qb_sync_token" readonly="1"/>
-                        </group>
-                        <group string="Team Status">
-                            <field name="qb_employment_status"/>
-                            <field name="qb_termination_date"
-                                   invisible="qb_employment_status != 'terminated'"/>
                         </group>
                         <group string="Sync Status">
                             <field name="qb_last_synced" readonly="1"/>

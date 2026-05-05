@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector',
-    'version': '19.0.2.3.0',
+    'version': '19.0.3.0.0',
     'category': 'Accounting',
     'summary': 'Full QuickBooks Online connector for Odoo 19 — Accounting, Payroll, Time',
     'description': """
@@ -13,7 +13,7 @@
           refund receipts, deposits, transfers, classes, payment terms
         - Extended sync (prompted to install when enabled in Settings):
           purchase orders (purchase), expenses (hr_expense),
-          employees/departments (hr), timesheets (hr_timesheet),
+          employees/departments (hr), projects (project), timesheets (hr_timesheet),
           inventory quantities (stock), sales (sale)
         - QuickBooks Payroll API (GraphQL) integration
         - QuickBooks Time API (TSheets) integration
@@ -56,6 +56,7 @@
         'views/res_partner_views.xml',
         'views/product_views.xml',
         'views/account_move_views.xml',
+        'views/payroll_views.xml',
         'views/oauth_result_template.xml',
     ],
     'post_init_hook': '_post_init_hook',

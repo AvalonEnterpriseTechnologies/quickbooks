@@ -10,6 +10,7 @@ from . import quickbooks_payroll_employee
 from . import quickbooks_payroll_pay_item
 from . import quickbooks_payroll_pay_schedule
 from . import quickbooks_payroll_check
+from . import quickbooks_work_location
 from . import res_partner
 from . import product_product
 from . import account_account

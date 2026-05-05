@@ -27,6 +27,7 @@ ENTITY_SERVICE_MAP = {
     'employee': 'qb.sync.employees',
     'department': 'qb.sync.departments',
     'time_activity': 'qb.sync.time.activities',
+    'project': 'qb.sync.projects',
     'class': 'qb.sync.classes',
     'deposit': 'qb.sync.deposits',
     'transfer': 'qb.sync.transfers',
@@ -37,6 +38,12 @@ ENTITY_SERVICE_MAP = {
     'exchange_rate': 'qb.sync.exchange.rates',
     'company_info': 'qb.sync.company.info',
     'payroll_compensation': 'qb.sync.payroll',
+    'payroll_employee': 'qb.sync.payroll.employees',
+    'payroll_pay_item': 'qb.sync.payroll.pay.items',
+    'payroll_schedule': 'qb.sync.payroll.schedules',
+    'payroll_check': 'qb.sync.payroll.checks',
+    'work_location': 'qb.sync.work.locations',
+    'inventory_adjustment': 'qb.sync.inventory.adjustments',
     'timesheet': 'qb.sync.timesheets',
 }
 
@@ -70,6 +77,7 @@ CDC_QBO_TO_ENTITY = {
     'Transfer': 'transfer',
     'Vendor': 'vendor',
     'VendorCredit': 'vendor_credit',
+    'Project': 'project',
 }
 
 
@@ -147,7 +155,7 @@ class QBSyncEngine(models.AbstractModel):
             'company_info', 'exchange_rate',
             'account', 'tax_code', 'term',
             'department', 'class',
-            'customer', 'vendor', 'employee', 'product',
+            'customer', 'vendor', 'employee', 'project', 'product',
             'invoice', 'bill', 'credit_memo', 'estimate', 'vendor_credit',
             'sales_receipt', 'refund_receipt',
             'purchase_order', 'expense',
@@ -155,7 +163,9 @@ class QBSyncEngine(models.AbstractModel):
             'deposit', 'transfer',
             'journal_entry',
             'time_activity',
-            'payroll_compensation', 'timesheet',
+            'payroll_employee', 'payroll_compensation', 'payroll_pay_item',
+            'payroll_schedule', 'payroll_check', 'work_location', 'timesheet',
+            'inventory_adjustment',
             'attachment',
         ]
         toggle_map = {
@@ -183,8 +193,15 @@ class QBSyncEngine(models.AbstractModel):
             'employee': getattr(config, 'sync_employees', False),
             'department': getattr(config, 'sync_departments', False),
             'time_activity': getattr(config, 'sync_time_activities', False),
+            'project': getattr(config, 'sync_projects', False),
             'payroll_compensation': getattr(config, 'payroll_enabled', False),
+            'payroll_employee': getattr(config, 'payroll_enabled', False),
+            'payroll_pay_item': getattr(config, 'payroll_enabled', False),
+            'payroll_schedule': getattr(config, 'payroll_enabled', False),
+            'payroll_check': getattr(config, 'payroll_enabled', False),
+            'work_location': getattr(config, 'payroll_enabled', False),
             'timesheet': getattr(config, 'qbt_enabled', False),
+            'inventory_adjustment': getattr(config, 'sync_inventory_adjustments', False),
             'class': getattr(config, 'sync_classes', False),
             'term': getattr(config, 'sync_terms', False),
             'attachment': getattr(config, 'sync_attachments', False),

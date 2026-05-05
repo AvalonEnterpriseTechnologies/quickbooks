@@ -31,6 +31,16 @@ class QBSyncEmployees(models.AbstractModel):
             'work_phone': (qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber', False),
             'mobile_phone': (qb_data.get('Mobile') or {}).get('FreeFormNumber', False),
             'qb_employee_id': str(qb_data.get('Id', '')),
+            'qb_work_location_id': str(
+                (qb_data.get('WorkLocationRef') or {}).get('value') or ''
+            ),
+            'qb_pay_schedule_id': str(
+                (qb_data.get('PayScheduleRef') or {}).get('value') or ''
+            ),
+            'qb_employment_status': self._normalize_employment_status(
+                qb_data.get('EmploymentStatus') or qb_data.get('Active')
+            ),
+            'qb_termination_date': qb_data.get('ReleasedDate') or False,
             'qb_sync_token': str(qb_data.get('SyncToken', '')),
             'qb_last_synced': fields.Datetime.now(),
             'qb_sync_error': False,
@@ -44,7 +54,10 @@ class QBSyncEmployees(models.AbstractModel):
         if hire_date and 'first_contract_date' in self.env['hr.employee']._fields:
             vals['first_contract_date'] = hire_date[:10]
 
-        return vals
+        return {
+            key: value for key, value in vals.items()
+            if key in self.env['hr.employee']._fields
+        }
 
     def _odoo_to_qb_employee(self, employee):
         name_parts = (employee.name or '').split(' ', 1)
@@ -59,7 +72,50 @@ class QBSyncEmployees(models.AbstractModel):
             data['PrimaryPhone'] = {'FreeFormNumber': employee.work_phone}
         if employee.mobile_phone:
             data['Mobile'] = {'FreeFormNumber': employee.mobile_phone}
+        if getattr(employee, 'qb_work_location_id', False):
+            data['WorkLocationRef'] = {'value': employee.qb_work_location_id}
+        if getattr(employee, 'qb_pay_schedule_id', False):
+            data['PayScheduleRef'] = {'value': employee.qb_pay_schedule_id}
+        if getattr(employee, 'qb_employment_status', False):
+            data['EmploymentStatus'] = self._qbo_employment_status(
+                employee.qb_employment_status
+            )
+        if getattr(employee, 'qb_termination_date', False):
+            data['ReleasedDate'] = employee.qb_termination_date.isoformat()
+        address = getattr(employee, 'address_id', False)
+        if address:
+            data['PrimaryAddr'] = {
+                'Line1': address.street or '',
+                'City': address.city or '',
+                'CountrySubDivisionCode': address.state_id.code if address.state_id else '',
+                'PostalCode': address.zip or '',
+                'Country': address.country_id.code if address.country_id else '',
+            }
         return {k: v for k, v in data.items() if v is not None}
+
+    @staticmethod
+    def _normalize_employment_status(status):
+        if status is True:
+            return 'active'
+        if status is False:
+            return 'inactive'
+        status = str(status or '').lower()
+        if 'term' in status or 'release' in status:
+            return 'terminated'
+        if 'leave' in status:
+            return 'leave'
+        if 'inactive' in status:
+            return 'inactive'
+        return 'active'
+
+    @staticmethod
+    def _qbo_employment_status(status):
+        return {
+            'active': 'Active',
+            'terminated': 'Terminated',
+            'leave': 'Leave',
+            'inactive': 'Inactive',
+        }.get(status or 'active', 'Active')
 
     def push(self, client, config, job):
         if not self._check_model():

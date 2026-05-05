@@ -27,7 +27,15 @@ class QBReconciliation(models.AbstractModel):
         results = {}
         for entity_type in entity_types:
             meta = ENTITY_META.get(entity_type)
-            if not meta or entity_type in ('attachment', 'payroll_compensation', 'timesheet'):
+            if (
+                not meta
+                or meta.get('model') not in self.env
+                or entity_type in (
+                    'attachment', 'payroll_compensation', 'payroll_employee',
+                    'payroll_pay_item', 'payroll_schedule', 'payroll_check',
+                    'work_location', 'timesheet', 'inventory_adjustment',
+                )
+            ):
                 continue
             try:
                 results[entity_type] = self._reconcile_entity(client, config, entity_type, meta)
@@ -60,6 +68,7 @@ class QBReconciliation(models.AbstractModel):
             'employee': 'sync_employees',
             'department': 'sync_departments',
             'time_activity': 'sync_time_activities',
+            'project': 'sync_projects',
             'class': 'sync_classes',
             'term': 'sync_terms',
             'vendor_credit': 'sync_vendor_credits',

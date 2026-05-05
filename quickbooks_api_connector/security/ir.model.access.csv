@@ -8,6 +8,16 @@ access_qb_field_mapping_manager,quickbooks.field.mapping.manager,model_quickbook
 access_qb_field_mapping_user,quickbooks.field.mapping.user,model_quickbooks_field_mapping,group_qb_user,1,0,0,0
 access_qb_payroll_compensation_manager,quickbooks.payroll.compensation.manager,model_quickbooks_payroll_compensation,group_qb_manager,1,1,1,1
 access_qb_payroll_compensation_user,quickbooks.payroll.compensation.user,model_quickbooks_payroll_compensation,group_qb_user,1,0,0,0
+access_qb_payroll_employee_manager,quickbooks.payroll.employee.manager,model_quickbooks_payroll_employee,group_qb_manager,1,1,1,1
+access_qb_payroll_employee_user,quickbooks.payroll.employee.user,model_quickbooks_payroll_employee,group_qb_user,1,0,0,0
+access_qb_payroll_pay_item_manager,quickbooks.payroll.pay.item.manager,model_quickbooks_payroll_pay_item,group_qb_manager,1,1,1,1
+access_qb_payroll_pay_item_user,quickbooks.payroll.pay.item.user,model_quickbooks_payroll_pay_item,group_qb_user,1,0,0,0
+access_qb_payroll_pay_schedule_manager,quickbooks.payroll.pay.schedule.manager,model_quickbooks_payroll_pay_schedule,group_qb_manager,1,1,1,1
+access_qb_payroll_pay_schedule_user,quickbooks.payroll.pay.schedule.user,model_quickbooks_payroll_pay_schedule,group_qb_user,1,0,0,0
+access_qb_payroll_check_manager,quickbooks.payroll.check.manager,model_quickbooks_payroll_check,group_qb_manager,1,1,1,1
+access_qb_payroll_check_user,quickbooks.payroll.check.user,model_quickbooks_payroll_check,group_qb_user,1,0,0,0
+access_qb_work_location_manager,quickbooks.work.location.manager,model_quickbooks_work_location,group_qb_manager,1,1,1,1
+access_qb_work_location_user,quickbooks.work.location.user,model_quickbooks_work_location,group_qb_user,1,0,0,0
 access_qb_setup_wizard,quickbooks.setup.wizard,model_quickbooks_setup_wizard,group_qb_manager,1,1,1,1
 access_qb_sync_wizard,quickbooks.sync.wizard,model_quickbooks_sync_wizard,group_qb_manager,1,1,1,1
 access_qb_migration_wizard,quickbooks.migration.wizard,model_quickbooks_migration_wizard,group_qb_manager,1,1,1,1

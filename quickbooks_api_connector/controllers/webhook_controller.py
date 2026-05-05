@@ -41,6 +41,12 @@ CLOUD_EVENT_TYPE_MAP = {
     'qbo.account.created.v1': ('account', 'create'),
     'qbo.account.updated.v1': ('account', 'update'),
     'qbo.account.deleted.v1': ('account', 'delete'),
+    'qbo.project.created.v1': ('project', 'create'),
+    'qbo.project.updated.v1': ('project', 'update'),
+    'qbo.project.deleted.v1': ('project', 'delete'),
+    'qbo.itemadjustment.created.v1': ('inventory_adjustment', 'create'),
+    'qbo.itemadjustment.updated.v1': ('inventory_adjustment', 'update'),
+    'qbo.itemadjustment.deleted.v1': ('inventory_adjustment', 'delete'),
 }
 
 # Fallback for legacy format entity names
@@ -55,6 +61,8 @@ LEGACY_ENTITY_MAP = {
     'JournalEntry': 'journal_entry',
     'CreditMemo': 'credit_memo',
     'Account': 'account',
+    'Project': 'project',
+    'ItemAdjustment': 'inventory_adjustment',
 }
 
 

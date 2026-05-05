@@ -42,3 +42,23 @@ class TestSyncEmployees(QuickbooksTestCommon):
 
         emp.invalidate_recordset()
         self.assertEqual(emp.name, 'John Doe')
+
+    def test_employee_team_fields_roundtrip(self):
+        client = self._mock_client()
+        qb_data = self._make_qb_employee()['Employee']
+        qb_data.update({
+            'WorkLocationRef': {'value': 'WL1'},
+            'PayScheduleRef': {'value': 'PS1'},
+            'EmploymentStatus': 'Terminated',
+            'ReleasedDate': '2026-04-30',
+        })
+        client.read.return_value = {'Employee': qb_data}
+        job = MagicMock(qb_entity_id='800')
+
+        self.env['qb.sync.employees'].pull(client, self.config, job)
+
+        emp = self.env['hr.employee'].search([('qb_employee_id', '=', '800')], limit=1)
+        self.assertEqual(emp.qb_work_location_id, 'WL1')
+        self.assertEqual(emp.qb_pay_schedule_id, 'PS1')
+        self.assertEqual(emp.qb_employment_status, 'terminated')
+        self.assertEqual(str(emp.qb_termination_date), '2026-04-30')

@@ -43,9 +43,29 @@ class QBSyncTimesheets(models.AbstractModel):
         if employee and employee.qb_employee_id:
             payload['user_id'] = int(employee.qb_employee_id)
         jobcode = getattr(line, 'account_id', False)
-        if jobcode and getattr(jobcode, 'qb_class_id', False):
+        project_id = self._project_jobcode_id(line)
+        if project_id:
+            payload['jobcode_id'] = int(project_id)
+        elif jobcode and getattr(jobcode, 'qb_class_id', False):
             payload['jobcode_id'] = int(jobcode.qb_class_id)
         return {key: value for key, value in payload.items() if value not in (False, None)}
+
+    def _project_jobcode_id(self, line):
+        if 'project.project' not in self.env:
+            return False
+        Project = self.env['project.project']
+        account = getattr(line, 'account_id', False)
+        if not account:
+            return False
+        domain = []
+        if 'analytic_account_id' in Project._fields:
+            domain = [('analytic_account_id', '=', account.id)]
+        elif 'account_id' in Project._fields:
+            domain = [('account_id', '=', account.id)]
+        if not domain:
+            return False
+        project = Project.search(domain + [('qb_project_id', '!=', False)], limit=1)
+        return project.qb_project_id if project else False
 
     def push(self, client, config, job):
         if not getattr(config, 'qbt_enabled', False):

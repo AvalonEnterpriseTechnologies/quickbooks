@@ -23,11 +23,14 @@ class QuickbooksSyncWizard(models.TransientModel):
     sync_customers = fields.Boolean(default=True)
     sync_vendors = fields.Boolean(default=True)
     sync_products = fields.Boolean(default=True)
+    sync_projects = fields.Boolean(default=True)
     sync_invoices = fields.Boolean(default=True)
     sync_bills = fields.Boolean(default=True)
     sync_payments = fields.Boolean(default=True)
     sync_journal_entries = fields.Boolean(default=True)
     sync_credit_memos = fields.Boolean(default=True)
+    sync_inventory_adjustments = fields.Boolean(default=False)
+    sync_payroll = fields.Boolean(default=False)
 
     def action_run_sync(self):
         """Queue sync jobs for the selected entities."""
@@ -40,6 +43,7 @@ class QuickbooksSyncWizard(models.TransientModel):
         entity_flags = [
             ('customer', self.sync_customers),
             ('vendor', self.sync_vendors),
+            ('project', self.sync_projects),
             ('product', self.sync_products),
             ('invoice', self.sync_invoices),
             ('bill', self.sync_bills),
@@ -47,6 +51,13 @@ class QuickbooksSyncWizard(models.TransientModel):
             ('bill_payment', self.sync_payments),
             ('journal_entry', self.sync_journal_entries),
             ('credit_memo', self.sync_credit_memos),
+            ('inventory_adjustment', self.sync_inventory_adjustments),
+            ('payroll_employee', self.sync_payroll),
+            ('payroll_compensation', self.sync_payroll),
+            ('payroll_pay_item', self.sync_payroll),
+            ('payroll_schedule', self.sync_payroll),
+            ('payroll_check', self.sync_payroll),
+            ('work_location', self.sync_payroll),
         ]
         directions = []
         if self.sync_direction in ('both', 'push'):

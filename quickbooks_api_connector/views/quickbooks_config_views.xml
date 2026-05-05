@@ -102,12 +102,17 @@
                                     <field name="sync_employees"/>
                                     <field name="sync_departments"/>
                                     <field name="sync_time_activities"/>
+                                    <field name="sync_projects"/>
                                     <field name="sync_inventory_qty"/>
+                                    <field name="sync_inventory_adjustments"/>
+                                    <field name="sync_inventory_valuation_accounts"/>
+                                    <field name="qb_default_warehouse_id"/>
                                     <field name="sync_attachments"/>
                                 </group>
                             </group>
                             <group string="Advanced APIs">
                                 <field name="payroll_enabled"/>
+                                <field name="payroll_create_draft_payslips"/>
                                 <field name="qbt_enabled"/>
                             </group>
                         </page>

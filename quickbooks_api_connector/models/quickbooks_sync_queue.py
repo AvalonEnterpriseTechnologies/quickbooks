@@ -34,6 +34,7 @@ QB_ENTITY_TYPES = [
     ('employee', 'Employee'),
     ('department', 'Department'),
     ('time_activity', 'Time Activity'),
+    ('project', 'Project'),
     ('class', 'Class'),
     ('term', 'Payment Term'),
     ('attachment', 'Attachment'),
@@ -41,6 +42,12 @@ QB_ENTITY_TYPES = [
     ('exchange_rate', 'Exchange Rate'),
     ('company_info', 'Company Info'),
     ('payroll_compensation', 'Payroll Compensation'),
+    ('payroll_employee', 'Payroll Employee'),
+    ('payroll_pay_item', 'Payroll Pay Item'),
+    ('payroll_schedule', 'Payroll Pay Schedule'),
+    ('payroll_check', 'Payroll Check'),
+    ('work_location', 'Work Location'),
+    ('inventory_adjustment', 'Inventory Adjustment'),
     ('timesheet', 'Timesheet (QBT)'),
 ]
 
