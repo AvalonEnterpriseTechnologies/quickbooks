@@ -1,11 +1,41 @@
+from odoo.exceptions import UserError
+
 from . import models
 from . import controllers
 from . import wizards
 from . import services
 
 
+REQUIRED_MODULES = ('account',)
+
+
+def _ensure_required_modules_installed(env):
+    """Hard-fail the install if a required Odoo module is not actually installed.
+
+    The manifest already lists `account` in `depends`, which makes Odoo's module
+    loader install it as part of the dependency graph. This runtime check is a
+    belt-and-braces guard for unusual installation paths (manual database
+    surgery, broken upgrades, partial restores) where a dependency could end up
+    in a state other than `installed` while this module is being initialized.
+    """
+    Module = env['ir.module.module'].sudo()
+    missing = []
+    for tech_name in REQUIRED_MODULES:
+        record = Module.search([('name', '=', tech_name)], limit=1)
+        if not record or record.state != 'installed':
+            missing.append(tech_name)
+    if missing:
+        raise UserError(
+            "QuickBooks API Connector requires the following Odoo module(s) "
+            "to be installed first: %s. Install them from Apps and then "
+            "retry installing the QuickBooks connector." % ", ".join(missing)
+        )
+
+
 def _post_init_hook(env):
     """Grant QB groups to admin and optionally register with SLATE integration registry."""
+    _ensure_required_modules_installed(env)
+
     admin = env.ref('base.user_admin', raise_if_not_found=False)
     if not admin:
         return
