@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import logging
+import urllib.parse
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -167,6 +168,84 @@ class QuickbooksConfig(models.Model):
             rec.webhook_endpoint_url = (
                 '%s/qb/webhook' % base_url if base_url else False
             )
+
+    def _get_public_base_url(self):
+        return (
+            self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        ).rstrip('/')
+
+    @staticmethod
+    def _is_local_url(url):
+        host = (urllib.parse.urlparse(url).hostname or '').lower()
+        return host in ('localhost', '127.0.0.1', '::1')
+
+    def validate_setup_locally(self):
+        """Validate Odoo-side QuickBooks setup without calling a QBO company API."""
+        self.ensure_one()
+        errors = []
+
+        if not self.client_id:
+            errors.append('Client ID is missing.')
+        if not self.client_secret_encrypted or not self.client_secret:
+            errors.append('Client Secret is missing or cannot be decrypted.')
+        if self.environment not in ('sandbox', 'production'):
+            errors.append('Environment must be Development (Sandbox) or Production.')
+
+        base_url = self._get_public_base_url()
+        if not base_url:
+            errors.append('Odoo Base URL (web.base.url) is not configured.')
+        elif not base_url.startswith('https://') and not self._is_local_url(base_url):
+            errors.append(
+                'Odoo Base URL must use HTTPS for Intuit OAuth. Current value: %s'
+                % base_url
+            )
+
+        if not self.oauth_redirect_uri:
+            errors.append('OAuth Redirect URI could not be generated.')
+        if not self.webhook_endpoint_url:
+            errors.append('Webhook URL could not be generated.')
+
+        if errors:
+            raise UserError('\n'.join(errors))
+
+        auth_service = self.env['qb.auth.service']
+        auth_params = {
+            'client_id': self.client_id,
+            'scope': auth_service._get_scopes(self),
+            'redirect_uri': self.oauth_redirect_uri,
+            'response_type': 'code',
+            'state': 'local_validation',
+        }
+        authorization_url = '%s?%s' % (
+            'https://appcenter.intuit.com/connect/oauth2',
+            urllib.parse.urlencode(auth_params),
+        )
+        api_base_url = auth_service.get_api_base_url(self)
+        return {
+            'oauth_redirect_uri': self.oauth_redirect_uri,
+            'webhook_endpoint_url': self.webhook_endpoint_url,
+            'authorization_url': authorization_url,
+            'api_base_url': api_base_url,
+        }
+
+    def action_validate_setup_locally(self):
+        self.ensure_one()
+        result = self.validate_setup_locally()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'QuickBooks setup looks ready',
+                'message': (
+                    'Odoo can save/decrypt the credentials and generate the '
+                    'OAuth Redirect URI and Webhook URL. Copy the OAuth '
+                    'Redirect URI into Intuit before connecting. API base: %s'
+                    % result['api_base_url']
+                ),
+                'type': 'success',
+                'sticky': True,
+            },
+        }
 
     def _get_fernet(self):
         if Fernet is None:

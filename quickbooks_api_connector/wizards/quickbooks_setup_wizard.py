@@ -103,6 +103,11 @@ class QuickbooksSetupWizard(models.TransientModel):
             },
         }
 
+    def action_test_setup_locally(self):
+        """Save credentials and validate local setup without opening Intuit."""
+        config = self._save_config()
+        return config.action_validate_setup_locally()
+
     def action_save_and_connect(self):
         """Create or update the QB config, then initiate OAuth flow."""
         config = self._save_config()

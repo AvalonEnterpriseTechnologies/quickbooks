@@ -43,6 +43,9 @@
                                         string="Connect to QuickBooks"
                                         type="object" class="btn-primary me-2"
                                         invisible="qb_state == 'connected'"/>
+                                <button name="action_qb_validate_setup"
+                                        string="Test Setup in Odoo"
+                                        type="object" class="btn-secondary me-2"/>
                                 <button name="action_qb_sync_now"
                                         string="Sync Now"
                                         type="object" class="btn-primary me-2"

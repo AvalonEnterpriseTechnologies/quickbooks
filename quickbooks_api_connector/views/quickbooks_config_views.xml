@@ -15,8 +15,12 @@
                             type="object" class="btn-primary"
                             icon="fa-plug"
                             invisible="state != 'draft'"/>
+                    <button name="action_validate_setup_locally"
+                            string="Test Setup in Odoo"
+                            type="object" class="btn-secondary"
+                            icon="fa-check"/>
                     <button name="action_test_connection"
-                            string="Test Connection"
+                            string="Test QuickBooks Company Connection"
                             type="object" class="btn-secondary"
                             icon="fa-refresh"
                             invisible="state != 'connected'"/>

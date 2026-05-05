@@ -392,6 +392,10 @@ class ResConfigSettings(models.TransientModel):
             'quickbooks_api_connector.action_quickbooks_setup_wizard',
         ).read()[0]
 
+    def action_qb_validate_setup(self):
+        config = self._get_or_create_qb_config()
+        return config.action_validate_setup_locally()
+
     def action_qb_disconnect(self):
         config = self._get_or_create_qb_config()
         config.action_disconnect()

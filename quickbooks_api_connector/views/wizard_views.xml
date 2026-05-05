@@ -34,6 +34,9 @@
                     <button name="action_save_credentials"
                             string="Save Credentials"
                             type="object" class="btn-primary"/>
+                    <button name="action_test_setup_locally"
+                            string="Test Setup in Odoo"
+                            type="object" class="btn-secondary"/>
                     <button name="action_save_and_connect"
                             string="Connect to QuickBooks"
                             type="object" class="btn-secondary"
