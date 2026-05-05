@@ -31,9 +31,13 @@
                     </div>
                 </group>
                 <footer>
-                    <button name="action_save_and_connect"
-                            string="Save &amp; Connect"
+                    <button name="action_save_credentials"
+                            string="Save Credentials"
                             type="object" class="btn-primary"/>
+                    <button name="action_save_and_connect"
+                            string="Connect to QuickBooks"
+                            type="object" class="btn-secondary"
+                            confirm="Before connecting, confirm that the OAuth Redirect URI shown above has been added exactly to the Intuit Developer Portal Redirect URIs list."/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

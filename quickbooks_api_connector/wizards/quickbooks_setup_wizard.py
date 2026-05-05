@@ -68,8 +68,7 @@ class QuickbooksSetupWizard(models.TransientModel):
             })
         return res
 
-    def action_save_and_connect(self):
-        """Create or update the QB config, then initiate OAuth flow."""
+    def _save_config(self):
         self.ensure_one()
         Config = self.env['quickbooks.config']
         config = Config.search([
@@ -85,5 +84,26 @@ class QuickbooksSetupWizard(models.TransientModel):
             config.write(vals)
         else:
             config = Config.create(vals)
+        return config
 
+    def action_save_credentials(self):
+        """Save credentials without leaving Odoo for the Intuit OAuth flow."""
+        self._save_config()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'QuickBooks credentials saved',
+                'message': (
+                    'Add the OAuth Redirect URI to Intuit, then click '
+                    'Connect to QuickBooks.'
+                ),
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
+    def action_save_and_connect(self):
+        """Create or update the QB config, then initiate OAuth flow."""
+        config = self._save_config()
         return config.action_connect_qb()
