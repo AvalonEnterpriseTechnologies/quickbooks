@@ -51,6 +51,12 @@ class QuickbooksConfig(models.Model):
         [('sandbox', 'Sandbox'), ('production', 'Production')],
         default='sandbox', required=True,
     )
+    oauth_redirect_uri = fields.Char(
+        string='OAuth Redirect URI',
+        compute='_compute_oauth_redirect_uri',
+        help='Add this exact URI to the Intuit Developer Portal Redirect URIs '
+             'before connecting.',
+    )
     webhook_verifier_token = fields.Char(string='Webhook Verifier Token')
     webhook_endpoint_url = fields.Char(
         string='Webhook Endpoint URL',
@@ -143,6 +149,15 @@ class QuickbooksConfig(models.Model):
         'unique(company_id)',
         'Only one QuickBooks configuration per company is allowed.',
     )
+
+    def _compute_oauth_redirect_uri(self):
+        base_url = (
+            self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        ).rstrip('/')
+        for rec in self:
+            rec.oauth_redirect_uri = (
+                '%s/qb/oauth/callback' % base_url if base_url else False
+            )
 
     def _compute_webhook_endpoint_url(self):
         base_url = (

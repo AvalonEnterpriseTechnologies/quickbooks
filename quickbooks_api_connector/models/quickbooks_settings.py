@@ -49,6 +49,11 @@ class ResConfigSettings(models.TransientModel):
     qb_last_sync_date = fields.Datetime(related='qb_config_id.last_sync_date', readonly=True)
     qb_realm_id = fields.Char(related='qb_config_id.realm_id', readonly=True)
     qb_error_message = fields.Text(related='qb_config_id.error_message', readonly=True)
+    qb_oauth_redirect_uri = fields.Char(
+        string='OAuth Redirect URI',
+        compute='_compute_qb_oauth_redirect_uri',
+        readonly=True,
+    )
     qb_webhook_endpoint_url = fields.Char(
         related='qb_config_id.webhook_endpoint_url',
         readonly=True,
@@ -147,6 +152,15 @@ class ResConfigSettings(models.TransientModel):
         for rec in self:
             rec.qb_config_id = Config.search(
                 [('company_id', '=', rec.company_id.id)], limit=1,
+            )
+
+    def _compute_qb_oauth_redirect_uri(self):
+        base_url = (
+            self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        ).rstrip('/')
+        for rec in self:
+            rec.qb_oauth_redirect_uri = (
+                '%s/qb/oauth/callback' % base_url if base_url else False
             )
 
     @api.depends_context('uid')

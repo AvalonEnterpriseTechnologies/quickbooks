@@ -12,6 +12,14 @@
                     <field name="client_id"/>
                     <field name="client_secret" password="True"/>
                 </group>
+                <group string="Intuit OAuth Redirect URI (required)">
+                    <field name="oauth_redirect_uri" readonly="1"
+                           widget="CopyClipboardChar" nolabel="1"/>
+                    <div colspan="2" class="text-muted small">
+                        Add this exact URI to your Intuit app's Redirect URIs
+                        before clicking Save &amp; Connect.
+                    </div>
+                </group>
                 <group string="Odoo Webhook URL (optional, for live updates)">
                     <field name="webhook_endpoint_url" readonly="1"
                            widget="CopyClipboardChar" nolabel="1"/>

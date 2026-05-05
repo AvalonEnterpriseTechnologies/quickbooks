@@ -20,6 +20,12 @@ class QuickbooksSetupWizard(models.TransientModel):
     )
     client_id = fields.Char(string='Client ID', required=True)
     client_secret = fields.Char(string='Client Secret', required=True)
+    oauth_redirect_uri = fields.Char(
+        string='OAuth Redirect URI',
+        compute='_compute_oauth_redirect_uri',
+        help='Add this exact URI to the Intuit Developer Portal Redirect URIs '
+             'before connecting.',
+    )
     webhook_endpoint_url = fields.Char(
         string='Odoo Webhook URL',
         compute='_compute_webhook_endpoint_url',
@@ -27,6 +33,15 @@ class QuickbooksSetupWizard(models.TransientModel):
              'Webhooks. Intuit will return a Verifier Token to paste into '
              'Settings > QuickBooks after you finish connecting.',
     )
+
+    def _compute_oauth_redirect_uri(self):
+        base_url = (
+            self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        ).rstrip('/')
+        for rec in self:
+            rec.oauth_redirect_uri = (
+                '%s/qb/oauth/callback' % base_url if base_url else False
+            )
 
     def _compute_webhook_endpoint_url(self):
         base_url = (

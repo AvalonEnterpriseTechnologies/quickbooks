@@ -63,6 +63,15 @@
                         <field name="last_sync_date" readonly="1"/>
                     </group>
 
+                    <group string="OAuth Setup">
+                        <field name="oauth_redirect_uri" readonly="1"
+                               widget="CopyClipboardChar"/>
+                        <div colspan="2" class="text-muted small">
+                            This URI must be registered exactly in the Intuit Developer
+                            Portal Redirect URIs list before connecting.
+                        </div>
+                    </group>
+
                     <group string="Webhook Setup"
                            invisible="state != 'connected'">
                         <field name="webhook_endpoint_url" readonly="1"
