@@ -28,6 +28,21 @@ class AccountPayment(models.Model):
                 payment._trigger_qb_sync('create')
         return res
 
+    def write(self, vals):
+        res = super().write(vals)
+        if self.env.context.get('skip_qb_sync'):
+            return res
+        qb_fields = {
+            'amount', 'date', 'partner_id', 'journal_id', 'payment_method_line_id',
+            'memo', 'ref', 'currency_id',
+        }
+        if qb_fields & set(vals):
+            for payment in self.filtered(
+                lambda p: not p.qb_do_not_sync and p.state == 'posted'
+            ):
+                payment._trigger_qb_sync('update')
+        return res
+
     def _trigger_qb_sync(self, operation):
         self.ensure_one()
         if self.partner_type == 'customer':

@@ -16,6 +16,7 @@ _logger = logging.getLogger(__name__)
 
 QBT_BASE_URL = 'https://rest.tsheets.com/api/v1'
 QBT_MAX_REQUESTS_PER_5MIN = 300
+QBT_MAX_RETRIES_429 = 5
 
 
 class QBTApiClient(models.AbstractModel):
@@ -67,7 +68,7 @@ class _QBTClient:
                     now = time.time()
             self._request_timestamps.append(now)
 
-    def get(self, endpoint, params=None):
+    def get(self, endpoint, params=None, retries=0):
         if http_requests is None:
             raise UserError('The "requests" library is required.')
         self._wait_for_rate_limit()
@@ -76,14 +77,16 @@ class _QBTClient:
             url, headers=self._get_headers(), params=params, timeout=60,
         )
         if resp.status_code == 429:
+            if retries >= QBT_MAX_RETRIES_429:
+                raise UserError('QBT rate limit exceeded after %d retries.' % retries)
             _logger.warning('QBT 429 – backing off 60s')
             time.sleep(60)
-            return self.get(endpoint, params)
+            return self.get(endpoint, params, retries=retries + 1)
         if resp.status_code >= 400:
             raise UserError('QBT API error %d: %s' % (resp.status_code, resp.text[:200]))
         return resp.json()
 
-    def post(self, endpoint, payload):
+    def post(self, endpoint, payload, retries=0):
         if http_requests is None:
             raise UserError('The "requests" library is required.')
         self._wait_for_rate_limit()
@@ -91,6 +94,12 @@ class _QBTClient:
         resp = http_requests.post(
             url, json=payload, headers=self._get_headers(), timeout=60,
         )
+        if resp.status_code == 429:
+            if retries >= QBT_MAX_RETRIES_429:
+                raise UserError('QBT rate limit exceeded after %d retries.' % retries)
+            _logger.warning('QBT 429 – backing off 60s')
+            time.sleep(60)
+            return self.post(endpoint, payload, retries=retries + 1)
         if resp.status_code >= 400:
             raise UserError('QBT API error %d: %s' % (resp.status_code, resp.text[:200]))
         return resp.json()

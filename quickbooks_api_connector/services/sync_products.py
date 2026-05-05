@@ -14,12 +14,16 @@ class QBSyncProducts(models.AbstractModel):
     def _odoo_to_qb_item(self, product):
         """Map Odoo product.product to QBO Item."""
         item_type = 'NonInventory'
-        if product.type == 'consu':
+        is_storable = (
+            product.is_storable if 'is_storable' in product._fields
+            else product.type == 'product'
+        )
+        if is_storable:
+            item_type = 'Inventory'
+        elif product.type == 'consu':
             item_type = 'NonInventory'
         elif product.type == 'service':
             item_type = 'Service'
-        elif product.type == 'product':
-            item_type = 'Inventory'
 
         data = {
             'Name': (product.name or '')[:100],
@@ -68,7 +72,6 @@ class QBSyncProducts(models.AbstractModel):
             'default_code': qb_data.get('Sku') or False,
             'list_price': qb_data.get('UnitPrice', 0.0),
             'standard_price': qb_data.get('PurchaseCost', 0.0),
-            'type': odoo_type,
             'active': qb_data.get('Active', True),
             'description_sale': qb_data.get('Description', ''),
             'qb_item_id': str(qb_data.get('Id', '')),
@@ -76,6 +79,11 @@ class QBSyncProducts(models.AbstractModel):
             'qb_last_synced': fields.Datetime.now(),
             'qb_sync_error': False,
         }
+        if 'is_storable' in self.env['product.product']._fields:
+            vals['type'] = 'consu' if odoo_type == 'product' else odoo_type
+            vals['is_storable'] = qb_type == 'Inventory'
+        else:
+            vals['type'] = odoo_type
         return vals
 
     def _find_qb_account(self, product, account_type):
@@ -107,6 +115,13 @@ class QBSyncProducts(models.AbstractModel):
 
         payload = self._odoo_to_qb_item(product)
         qb_id = product.qb_item_id
+
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity_data = matcher.find_qbo_match(client, 'product', product)
+            if entity_data:
+                qb_id = str(entity_data.get('Id', ''))
+                matcher.link_odoo_record(product, 'product', entity_data)
 
         if qb_id:
             existing = client.read('Item', qb_id)
@@ -148,11 +163,11 @@ class QBSyncProducts(models.AbstractModel):
         vals = self._qb_item_to_odoo(qb_data)
         qb_id = str(qb_data.get('Id', ''))
 
-        existing = self.env['product.product'].search([
-            ('qb_item_id', '=', qb_id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('product', qb_data, config.company_id)
 
         if existing:
+            matcher.link_odoo_record(existing, 'product', qb_data)
             resolver = self.env['qb.conflict.resolver']
             decision = resolver.resolve(config, existing, qb_data, 'product')
             if decision == 'qbo':
@@ -203,7 +218,7 @@ class QBSyncProducts(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Item', where_clause=where)
         Product = self.env['product.product']
@@ -211,8 +226,10 @@ class QBSyncProducts(models.AbstractModel):
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_item_to_odoo(qb_data)
-            existing = Product.search([('qb_item_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('product', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'product', qb_data)
                 resolver = self.env['qb.conflict.resolver']
                 if resolver.resolve(config, existing, qb_data, 'product') == 'qbo':
                     existing.with_context(skip_qb_sync=True).write(vals)
@@ -225,6 +242,9 @@ class QBSyncProducts(models.AbstractModel):
         products = self.env['product.product'].search([
             ('qb_item_id', '=', False),
             ('qb_do_not_sync', '=', False),
+            '|',
+            ('company_id', '=', False),
+            ('company_id', '=', config.company_id.id),
         ])
         queue = self.env['quickbooks.sync.queue']
         for product in products:

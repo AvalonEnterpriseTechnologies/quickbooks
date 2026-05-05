@@ -13,6 +13,7 @@ class QBSyncCompanyInfo(models.AbstractModel):
         return self._pull_company_info(client, config)
 
     def push(self, client, config, job):
+        _logger.info('QBO CompanyInfo updates are not pushed automatically.')
         return {}
 
     def _pull_company_info(self, client, config):
@@ -102,4 +103,4 @@ class QBSyncCompanyInfo(models.AbstractModel):
         self._pull_company_info(client, config)
 
     def push_all(self, client, config, entity_type):
-        pass
+        _logger.info('Skipping CompanyInfo push_all; company metadata is pulled from QBO.')

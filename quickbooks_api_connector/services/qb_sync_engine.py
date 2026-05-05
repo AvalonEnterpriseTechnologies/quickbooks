@@ -19,7 +19,7 @@ ENTITY_SERVICE_MAP = {
     'bill_payment': 'qb.sync.payments',
     'journal_entry': 'qb.sync.journal.entries',
     'credit_memo': 'qb.sync.invoices',
-    'estimate': 'qb.sync.invoices',
+    'estimate': 'qb.sync.estimates',
     'tax_code': 'qb.sync.tax.codes',
     'sales_receipt': 'qb.sync.sales.receipts',
     'purchase_order': 'qb.sync.purchase.orders',
@@ -42,8 +42,35 @@ ENTITY_SERVICE_MAP = {
 
 PULL_ONLY_ENTITIES = frozenset([
     'account', 'tax_code', 'term', 'attachment',
-    'exchange_rate', 'company_info', 'refund_receipt',
+    'exchange_rate', 'company_info',
 ])
+
+CDC_QBO_TO_ENTITY = {
+    'Account': 'account',
+    'Bill': 'bill',
+    'BillPayment': 'bill_payment',
+    'Class': 'class',
+    'CreditMemo': 'credit_memo',
+    'Customer': 'customer',
+    'Department': 'department',
+    'Deposit': 'deposit',
+    'Employee': 'employee',
+    'Estimate': 'estimate',
+    'Invoice': 'invoice',
+    'Item': 'product',
+    'JournalEntry': 'journal_entry',
+    'Payment': 'payment',
+    'Purchase': 'expense',
+    'PurchaseOrder': 'purchase_order',
+    'RefundReceipt': 'refund_receipt',
+    'SalesReceipt': 'sales_receipt',
+    'TaxCode': 'tax_code',
+    'Term': 'term',
+    'TimeActivity': 'time_activity',
+    'Transfer': 'transfer',
+    'Vendor': 'vendor',
+    'VendorCredit': 'vendor_credit',
+}
 
 
 class QBSyncEngine(models.AbstractModel):
@@ -68,6 +95,8 @@ class QBSyncEngine(models.AbstractModel):
         try:
             if job.direction == 'push':
                 result = service.push(client, config, job)
+                if getattr(config, 'verify_after_push', True):
+                    self._verify_push_readback(client, config, job, result or {})
             else:
                 result = service.pull(client, config, job)
 
@@ -119,13 +148,14 @@ class QBSyncEngine(models.AbstractModel):
             'account', 'tax_code', 'term',
             'department', 'class',
             'customer', 'vendor', 'employee', 'product',
-            'invoice', 'bill', 'credit_memo', 'vendor_credit',
+            'invoice', 'bill', 'credit_memo', 'estimate', 'vendor_credit',
             'sales_receipt', 'refund_receipt',
             'purchase_order', 'expense',
             'payment', 'bill_payment',
             'deposit', 'transfer',
             'journal_entry',
             'time_activity',
+            'payroll_compensation', 'timesheet',
             'attachment',
         ]
         toggle_map = {
@@ -153,10 +183,13 @@ class QBSyncEngine(models.AbstractModel):
             'employee': getattr(config, 'sync_employees', False),
             'department': getattr(config, 'sync_departments', False),
             'time_activity': getattr(config, 'sync_time_activities', False),
+            'payroll_compensation': getattr(config, 'payroll_enabled', False),
+            'timesheet': getattr(config, 'qbt_enabled', False),
             'class': getattr(config, 'sync_classes', False),
             'term': getattr(config, 'sync_terms', False),
             'attachment': getattr(config, 'sync_attachments', False),
         }
+        cdc_records = self._collect_cdc_records(client, config, entity_order)
 
         for entity_type in entity_order:
             if not toggle_map.get(entity_type, False):
@@ -166,7 +199,10 @@ class QBSyncEngine(models.AbstractModel):
                 continue
             try:
                 service = self.env[service_name]
-                service.pull_all(client, config, entity_type)
+                if entity_type in cdc_records:
+                    self._enqueue_cdc_records(config, entity_type, cdc_records[entity_type])
+                else:
+                    service.pull_all(client, config, entity_type)
                 if entity_type not in PULL_ONLY_ENTITIES:
                     service.push_all(client, config, entity_type)
             except Exception:
@@ -199,6 +235,48 @@ class QBSyncEngine(models.AbstractModel):
             priority=priority,
         )
 
+    def _collect_cdc_records(self, client, config, entity_order):
+        if not config.last_sync_date:
+            return {}
+        qbo_names = [
+            qbo_name for qbo_name, entity_type in CDC_QBO_TO_ENTITY.items()
+            if entity_type in entity_order
+        ]
+        try:
+            changed_since = self.env['qb.api.client'].format_qbo_datetime(
+                config.last_sync_date,
+            )
+            return {
+                CDC_QBO_TO_ENTITY[qbo_name]: records
+                for qbo_name, records in client.cdc(
+                    ','.join(qbo_names), changed_since,
+                ).items()
+                if qbo_name in CDC_QBO_TO_ENTITY
+            }
+        except Exception:
+            _logger.exception(
+                'CDC incremental sync failed for company %s; falling back to query sync',
+                config.company_id.name,
+            )
+            return {}
+
+    def _enqueue_cdc_records(self, config, entity_type, records):
+        queue = self.env['quickbooks.sync.queue']
+        for qb_data in records:
+            qb_id = str(qb_data.get('Id', ''))
+            if not qb_id:
+                continue
+            queue.enqueue(
+                entity_type=entity_type,
+                direction='pull',
+                operation='update',
+                qb_entity_id=qb_id,
+                company=config.company_id,
+                idempotency_key='cdc_%s_%s_%s' % (
+                    config.realm_id, entity_type, qb_id,
+                ),
+            )
+
     def _fire_integration_event(self, job, event_type, duration_ms, **kwargs):
         direction = 'push' if job.direction == 'push' else 'pull'
         fire_integration_event(
@@ -209,3 +287,70 @@ class QBSyncEngine(models.AbstractModel):
             records_processed=1,
             **kwargs,
         )
+
+    def _verify_push_readback(self, client, config, job, result):
+        qb_id = result.get('qb_id') or job.qb_entity_id
+        if not qb_id:
+            return
+        matcher = self.env['qb.record.matcher']
+        qb_data = matcher.read_qbo_entity(client, job.entity_type, qb_id)
+        if not qb_data:
+            self.env['quickbooks.sync.log'].log_sync(
+                company_id=job.company_id.id,
+                entity_type=job.entity_type,
+                direction='push',
+                operation='read',
+                odoo_record_id=job.odoo_record_id,
+                odoo_model=job.odoo_model,
+                qb_entity_id=qb_id,
+                state='warning',
+                error_message='Post-push read-back could not find the QBO record.',
+            )
+            self.env['quickbooks.sync.queue'].enqueue(
+                entity_type=job.entity_type,
+                direction='pull',
+                operation='update',
+                qb_entity_id=qb_id,
+                company=config.company_id,
+                idempotency_key='verify_pull_%s_%s_%s' % (
+                    config.realm_id, job.entity_type, qb_id,
+                ),
+            )
+            return
+
+        drift = self._push_readback_drift(job, qb_data)
+        if drift:
+            self.env['quickbooks.sync.log'].log_sync(
+                company_id=job.company_id.id,
+                entity_type=job.entity_type,
+                direction='push',
+                operation='read',
+                odoo_record_id=job.odoo_record_id,
+                odoo_model=job.odoo_model,
+                qb_entity_id=qb_id,
+                state='warning',
+                error_message='Post-push read-back drift: %s' % '; '.join(drift),
+            )
+
+    def _push_readback_drift(self, job, qb_data):
+        if not job.odoo_model or not job.odoo_record_id:
+            return []
+        record = self.env[job.odoo_model].browse(job.odoo_record_id)
+        if not record.exists():
+            return []
+        drift = []
+        qb_token = str(qb_data.get('SyncToken') or '')
+        if qb_token and 'qb_sync_token' in record._fields and record.qb_sync_token != qb_token:
+            drift.append('SyncToken Odoo=%s QBO=%s' % (record.qb_sync_token, qb_token))
+        meta = self.env['qb.record.matcher'].get_meta(job.entity_type)
+        qb_name = qb_data.get(meta.get('qb_display_field')) if meta else None
+        odoo_name = ''
+        if job.odoo_model == 'res.partner':
+            odoo_name = record.name
+        elif job.odoo_model == 'product.product':
+            odoo_name = record.name
+        elif job.odoo_model == 'account.move':
+            odoo_name = record.ref or record.name
+        if qb_name and odoo_name and qb_name != odoo_name:
+            drift.append('Name Odoo=%s QBO=%s' % (odoo_name, qb_name))
+        return drift

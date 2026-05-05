@@ -33,8 +33,44 @@ class QBSyncTimesheets(models.AbstractModel):
 
         return vals
 
+    def _odoo_timesheet_to_qbt(self, line):
+        payload = {
+            'date': line.date.isoformat() if line.date else False,
+            'duration': int(round((line.unit_amount or 0.0) * 3600)),
+            'notes': line.name or '',
+        }
+        employee = getattr(line, 'employee_id', False)
+        if employee and employee.qb_employee_id:
+            payload['user_id'] = int(employee.qb_employee_id)
+        jobcode = getattr(line, 'account_id', False)
+        if jobcode and getattr(jobcode, 'qb_class_id', False):
+            payload['jobcode_id'] = int(jobcode.qb_class_id)
+        return {key: value for key, value in payload.items() if value not in (False, None)}
+
     def push(self, client, config, job):
-        return {}
+        if not getattr(config, 'qbt_enabled', False):
+            return {}
+        line = self.env['account.analytic.line'].browse(job.odoo_record_id)
+        if not line.exists():
+            return {}
+
+        qbt_client = self.env['qbt.api.client'].get_client(config)
+        payload = self._odoo_timesheet_to_qbt(line)
+        if line.qb_timesheet_id:
+            resp = qbt_client.post(
+                'timesheets/%s' % line.qb_timesheet_id,
+                {'data': payload},
+            )
+            ts_id = line.qb_timesheet_id
+        else:
+            resp = qbt_client.post('timesheets', {'data': [payload]})
+            results = resp.get('results', {}).get('timesheets', {})
+            ts_id = next(iter(results.keys()), '')
+        line.write({
+            'qb_timesheet_id': str(ts_id),
+            'qb_last_synced': fields.Datetime.now(),
+        })
+        return {'qb_id': str(ts_id)}
 
     def pull(self, client, config, job):
         if not getattr(config, 'qbt_enabled', False):
@@ -85,4 +121,19 @@ class QBSyncTimesheets(models.AbstractModel):
             page += 1
 
     def push_all(self, client, config, entity_type):
-        pass
+        if not getattr(config, 'qbt_enabled', False):
+            return
+        lines = self.env['account.analytic.line'].search([
+            ('qb_timesheet_id', '=', False),
+            ('unit_amount', '>', 0),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for line in lines:
+            queue.enqueue(
+                entity_type='timesheet',
+                direction='push',
+                operation='create',
+                odoo_record_id=line.id,
+                odoo_model='account.analytic.line',
+                company=config.company_id,
+            )

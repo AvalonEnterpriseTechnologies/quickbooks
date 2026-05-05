@@ -14,9 +14,18 @@ class QuickbooksOAuthController(http.Controller):
         state = kwargs.get('state')
         realm_id = kwargs.get('realmId')
         error = kwargs.get('error')
+        config = request.env['quickbooks.config'].sudo().search([
+            ('oauth_state', '=', state),
+        ], limit=1) if state else request.env['quickbooks.config'].sudo().browse()
 
         if error:
             _logger.error('OAuth error: %s', error)
+            if config:
+                config.write({
+                    'state': 'error',
+                    'oauth_state': False,
+                    'error_message': 'Authorization denied: %s' % error,
+                })
             return request.render(
                 'quickbooks_api_connector.qb_oauth_result_template',
                 {'success': False, 'message': 'Authorization denied: %s' % error},
@@ -28,18 +37,13 @@ class QuickbooksOAuthController(http.Controller):
                 {'success': False, 'message': 'Missing authorization code or realm ID.'},
             )
 
-        config = request.env['quickbooks.config'].sudo().search([
-            ('company_id', '=', request.env.company.id),
-        ], limit=1)
-
         if not config:
             return request.render(
                 'quickbooks_api_connector.qb_oauth_result_template',
-                {'success': False, 'message': 'No QuickBooks configuration found.'},
+                {'success': False, 'message': 'Security validation failed (state mismatch).'},
             )
 
-        stored_state = config.error_message
-        if stored_state != state:
+        if config.oauth_state != state:
             _logger.warning('CSRF state mismatch in QB OAuth callback')
             return request.render(
                 'quickbooks_api_connector.qb_oauth_result_template',
@@ -51,6 +55,7 @@ class QuickbooksOAuthController(http.Controller):
             auth_service.exchange_code_for_tokens(config, code)
             config.write({
                 'realm_id': realm_id,
+                'oauth_state': False,
                 'error_message': False,
             })
 
@@ -71,6 +76,7 @@ class QuickbooksOAuthController(http.Controller):
             _logger.exception('OAuth callback processing failed')
             config.write({
                 'state': 'error',
+                'oauth_state': False,
                 'error_message': str(e),
             })
             return request.render(

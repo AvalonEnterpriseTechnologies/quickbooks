@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 try:
     import requests as http_requests
@@ -28,6 +29,8 @@ query PayrollEmployeeCompensations {
 }
 """
 
+MAX_RETRIES_5XX = 3
+
 
 class QBPayrollClient(models.AbstractModel):
     _name = 'qb.payroll.client'
@@ -38,7 +41,7 @@ class QBPayrollClient(models.AbstractModel):
             return QBO_GRAPHQL_SANDBOX
         return QBO_GRAPHQL_PRODUCTION
 
-    def _execute_graphql(self, config, query, variables=None):
+    def _execute_graphql(self, config, query, variables=None, retries=0):
         if http_requests is None:
             raise UserError('The "requests" library is required.')
 
@@ -56,6 +59,15 @@ class QBPayrollClient(models.AbstractModel):
             payload['variables'] = variables
 
         resp = http_requests.post(url, json=payload, headers=headers, timeout=60)
+        if resp.status_code in (500, 502, 503, 504):
+            if retries >= MAX_RETRIES_5XX:
+                raise UserError('Payroll API error: %s' % resp.text[:200])
+            wait = min(2 ** retries * 5, 60)
+            _logger.warning('Payroll GraphQL %s – backing off %ds', resp.status_code, wait)
+            time.sleep(wait)
+            return self._execute_graphql(
+                config, query, variables=variables, retries=retries + 1,
+            )
         if resp.status_code != 200:
             _logger.error('Payroll GraphQL error %s: %s', resp.status_code, resp.text[:500])
             raise UserError('Payroll API error: %s' % resp.text[:200])

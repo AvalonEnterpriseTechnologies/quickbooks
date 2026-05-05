@@ -48,6 +48,12 @@ class QBSyncExpenses(models.AbstractModel):
         payload = {k: v for k, v in payload.items() if v is not None}
 
         qb_id = expense.qb_purchase_id
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity = matcher.find_qbo_match(client, 'expense', expense)
+            if entity:
+                qb_id = str(entity.get('Id', ''))
+                matcher.link_odoo_record(expense, 'expense', entity)
         if qb_id:
             existing = client.read('Purchase', qb_id)
             entity = existing.get('Purchase', {})
@@ -78,10 +84,10 @@ class QBSyncExpenses(models.AbstractModel):
             return {}
 
         vals = self._qb_purchase_to_odoo(qb_data)
-        existing = self.env['hr.expense'].search(
-            [('qb_purchase_id', '=', str(qb_data['Id']))], limit=1,
-        )
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('expense', qb_data, config.company_id)
         if existing:
+            matcher.link_odoo_record(existing, 'expense', qb_data)
             existing.with_context(skip_qb_sync=True).write(vals)
         return {'qb_id': str(qb_data.get('Id', ''))}
 
@@ -91,16 +97,34 @@ class QBSyncExpenses(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Purchase', where_clause=where)
         Expense = self.env['hr.expense']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_purchase_to_odoo(qb_data)
-            existing = Expense.search([('qb_purchase_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('expense', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'expense', qb_data)
                 existing.with_context(skip_qb_sync=True).write(vals)
 
     def push_all(self, client, config, entity_type):
-        pass
+        if not self._check_model():
+            return
+        expenses = self.env['hr.expense'].search([
+            ('qb_purchase_id', '=', False),
+            ('qb_do_not_sync', '=', False),
+            ('company_id', '=', config.company_id.id),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for expense in expenses:
+            queue.enqueue(
+                entity_type='expense',
+                direction='push',
+                operation='create',
+                odoo_record_id=expense.id,
+                odoo_model='hr.expense',
+                company=config.company_id,
+            )

@@ -2,8 +2,8 @@ import json
 import logging
 import time
 import threading
-from collections import deque
-from datetime import timedelta
+from collections import defaultdict, deque
+from datetime import timezone
 
 try:
     import requests as http_requests
@@ -19,6 +19,8 @@ QBO_API_VERSION = 'v3'
 MAX_REQUESTS_PER_MINUTE = 450  # headroom below 500 limit
 MAX_CONCURRENT = 8
 MAX_RETRIES_429 = 5
+MAX_RETRIES_5XX = 3
+QBO_DUPLICATE_ERROR_CODES = {'6240', '610', '6210', '6140', '6211', '6000', '6045'}
 
 
 class QBApiClient(models.AbstractModel):
@@ -29,13 +31,25 @@ class QBApiClient(models.AbstractModel):
         """Return a configured _QBClient instance."""
         return _QBClient(self.env, config)
 
+    @api.model
+    def format_qbo_datetime(self, value):
+        """Format an Odoo datetime as the UTC ISO string QBO query filters expect."""
+        if not value:
+            return ''
+        dt_value = fields.Datetime.to_datetime(value)
+        if dt_value.tzinfo is None:
+            dt_value = dt_value.replace(tzinfo=timezone.utc)
+        else:
+            dt_value = dt_value.astimezone(timezone.utc)
+        return dt_value.strftime('%Y-%m-%dT%H:%M:%SZ')
+
 
 class _QBClient:
     """Rate-limited HTTP client for the QBO REST API v3."""
 
-    _lock = threading.Lock()
-    _request_timestamps: deque = deque()
-    _semaphore = threading.Semaphore(MAX_CONCURRENT)
+    _locks = defaultdict(threading.Lock)
+    _request_timestamps = defaultdict(deque)
+    _semaphores = defaultdict(lambda: threading.Semaphore(MAX_CONCURRENT))
 
     def __init__(self, env, config):
         self.env = env
@@ -61,22 +75,29 @@ class _QBClient:
             'Content-Type': 'application/json',
         }
 
+    @property
+    def _realm_key(self):
+        return self.config.realm_id or 'unconfigured'
+
     def _wait_for_rate_limit(self):
-        """Sliding-window rate limiter."""
-        with self._lock:
+        """Sliding-window rate limiter scoped to the QBO realm/company."""
+        realm_key = self._realm_key
+        timestamps = self._request_timestamps[realm_key]
+        with self._locks[realm_key]:
             now = time.time()
-            while len(self._request_timestamps) >= MAX_REQUESTS_PER_MINUTE:
-                oldest = self._request_timestamps[0]
+            while len(timestamps) >= MAX_REQUESTS_PER_MINUTE:
+                oldest = timestamps[0]
                 if now - oldest > 60:
-                    self._request_timestamps.popleft()
+                    timestamps.popleft()
                 else:
                     wait = 60 - (now - oldest) + 0.1
                     _logger.debug('Rate limit: sleeping %.1fs', wait)
                     time.sleep(wait)
                     now = time.time()
-            self._request_timestamps.append(now)
+            timestamps.append(now)
 
-    def _execute(self, method, endpoint, payload=None, retries=0):
+    def _execute(self, method, endpoint, payload=None, retries=0,
+                 refreshed_after_401=False, server_retries=0):
         """Execute an API request with rate limiting and retry logic."""
         if http_requests is None:
             raise UserError(
@@ -94,11 +115,12 @@ class _QBClient:
         if payload is not None:
             kwargs['json'] = payload
 
-        self._semaphore.acquire()
+        semaphore = self._semaphores[self._realm_key]
+        semaphore.acquire()
         try:
             resp = http_requests.request(method, url, **kwargs)
         finally:
-            self._semaphore.release()
+            semaphore.release()
 
         if resp.status_code == 429:
             if retries >= MAX_RETRIES_429:
@@ -106,16 +128,42 @@ class _QBClient:
             wait = min(2 ** retries * 5, 60)
             _logger.warning('429 from QBO – backing off %ds (attempt %d)', wait, retries + 1)
             time.sleep(wait)
-            return self._execute(method, endpoint, payload, retries + 1)
+            return self._execute(
+                method, endpoint, payload, retries + 1,
+                refreshed_after_401=refreshed_after_401,
+                server_retries=server_retries,
+            )
 
         if resp.status_code == 401:
+            if refreshed_after_401:
+                raise QBApiError(resp.status_code, resp.text[:2000], url)
             _logger.info('401 from QBO – refreshing token and retrying')
             self._auth_service.refresh_token(self.config)
-            return self._execute(method, endpoint, payload, retries)
+            return self._execute(
+                method, endpoint, payload, retries,
+                refreshed_after_401=True, server_retries=server_retries,
+            )
+
+        if resp.status_code in (500, 502, 503, 504):
+            if server_retries >= MAX_RETRIES_5XX:
+                raise QBApiError(resp.status_code, resp.text[:2000], url)
+            wait = min(2 ** server_retries * 5, 60)
+            _logger.warning(
+                'QBO server error %s – backing off %ds (attempt %d)',
+                resp.status_code, wait, server_retries + 1,
+            )
+            time.sleep(wait)
+            return self._execute(
+                method, endpoint, payload, retries,
+                refreshed_after_401=refreshed_after_401,
+                server_retries=server_retries + 1,
+            )
 
         if resp.status_code >= 400:
             error_detail = resp.text[:2000]
             _logger.error('QBO API error %s %s: %s', method, url, error_detail)
+            if resp.status_code == 400 and self._is_duplicate_error(resp):
+                raise QBApiDuplicateError(resp.status_code, error_detail, url)
             raise QBApiError(resp.status_code, error_detail, url)
 
         if resp.status_code == 204:
@@ -196,6 +244,20 @@ class _QBClient:
             start_position += page_size
         return results
 
+    @staticmethod
+    def _is_duplicate_error(resp):
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {}
+        errors = payload.get('Fault', {}).get('Error', [])
+        for error in errors:
+            code = str(error.get('code', ''))
+            detail = '%s %s' % (error.get('Message', ''), error.get('Detail', ''))
+            if code in QBO_DUPLICATE_ERROR_CODES or 'duplicate' in detail.lower():
+                return True
+        return 'duplicate' in resp.text.lower()
+
 
 class QBApiError(Exception):
     """Raised when the QBO API returns an error response."""
@@ -205,3 +267,7 @@ class QBApiError(Exception):
         self.detail = detail
         self.url = url
         super().__init__('QBO API %d: %s' % (status_code, detail[:200]))
+
+
+class QBApiDuplicateError(QBApiError):
+    """Raised when QBO rejects a create because a matching record already exists."""

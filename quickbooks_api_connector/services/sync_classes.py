@@ -23,6 +23,12 @@ class QBSyncClasses(models.AbstractModel):
             return {}
         payload = {'Name': account.name}
         qb_id = account.qb_class_id
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity = matcher.find_qbo_match(client, 'class', account)
+            if entity:
+                qb_id = str(entity.get('Id', ''))
+                matcher.link_odoo_record(account, 'class', entity)
         if qb_id:
             existing = client.read('Class', qb_id)
             entity = existing.get('Class', {})
@@ -49,10 +55,10 @@ class QBSyncClasses(models.AbstractModel):
         if not qb_data:
             return {}
         vals = self._qb_class_to_odoo(qb_data)
-        existing = self.env['account.analytic.account'].search(
-            [('qb_class_id', '=', str(qb_data['Id']))], limit=1,
-        )
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('class', qb_data, config.company_id)
         if existing:
+            matcher.link_odoo_record(existing, 'class', qb_data)
             existing.write(vals)
         else:
             plan = self.env['account.analytic.plan'].search([], limit=1)
@@ -65,15 +71,17 @@ class QBSyncClasses(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Class', where_clause=where)
         AAA = self.env['account.analytic.account']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_class_to_odoo(qb_data)
-            existing = AAA.search([('qb_class_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('class', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'class', qb_data)
                 existing.write(vals)
             else:
                 plan = self.env['account.analytic.plan'].search([], limit=1)
@@ -82,4 +90,16 @@ class QBSyncClasses(models.AbstractModel):
                 AAA.create(vals)
 
     def push_all(self, client, config, entity_type):
-        pass
+        accounts = self.env['account.analytic.account'].search([
+            ('qb_class_id', '=', False),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for account in accounts:
+            queue.enqueue(
+                entity_type='class',
+                direction='push',
+                operation='create',
+                odoo_record_id=account.id,
+                odoo_model='account.analytic.account',
+                company=config.company_id,
+            )

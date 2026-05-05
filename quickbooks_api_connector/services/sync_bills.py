@@ -180,6 +180,13 @@ class QBSyncBills(models.AbstractModel):
         payload = self._odoo_bill_to_qb(move)
         qb_id = move.qb_bill_id
 
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity_data = matcher.find_qbo_match(client, 'bill', move)
+            if entity_data:
+                qb_id = str(entity_data.get('Id', ''))
+                matcher.link_odoo_record(move, 'bill', entity_data)
+
         if qb_id:
             existing = client.read('Bill', qb_id)
             entity_data = existing.get('Bill', {})
@@ -220,12 +227,11 @@ class QBSyncBills(models.AbstractModel):
         vals = self._qb_bill_to_odoo(qb_data, config)
         qb_id = str(qb_data.get('Id', ''))
 
-        existing = self.env['account.move'].search([
-            ('qb_bill_id', '=', qb_id),
-            ('company_id', '=', config.company_id.id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('bill', qb_data, config.company_id)
 
         if existing:
+            matcher.link_odoo_record(existing, 'bill', qb_data)
             resolver = self.env['qb.conflict.resolver']
             decision = resolver.resolve(config, existing, qb_data, 'bill')
             if decision == 'qbo':
@@ -249,7 +255,7 @@ class QBSyncBills(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Bill', where_clause=where)
         Move = self.env['account.move']
@@ -258,12 +264,11 @@ class QBSyncBills(models.AbstractModel):
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_bill_to_odoo(qb_data, config)
 
-            existing = Move.search([
-                ('qb_bill_id', '=', qb_id),
-                ('company_id', '=', config.company_id.id),
-            ], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('bill', qb_data, config.company_id)
 
             if existing:
+                matcher.link_odoo_record(existing, 'bill', qb_data)
                 resolver = self.env['qb.conflict.resolver']
                 if resolver.resolve(config, existing, qb_data, 'bill') == 'qbo':
                     vals.pop('invoice_line_ids', None)

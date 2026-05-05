@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import secrets
+import urllib.parse
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -14,7 +15,8 @@ QBO_SANDBOX_BASE = 'https://sandbox-quickbooks.api.intuit.com'
 QBO_PRODUCTION_BASE = 'https://quickbooks.api.intuit.com'
 
 SCOPES_BASE = 'com.intuit.quickbooks.accounting'
-SCOPES_PAYROLL = 'com.intuit.quickbooks.accounting payroll.compensation.read'
+SCOPE_PAYROLL_COMPENSATION = 'payroll.compensation.read'
+SCOPE_OPENID_PROFILE = 'openid profile email'
 
 
 class QBAuthService(models.AbstractModel):
@@ -25,19 +27,26 @@ class QBAuthService(models.AbstractModel):
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         return '%s/qb/oauth/callback' % base_url.rstrip('/')
 
+    def _get_scopes(self, config):
+        scopes = [SCOPES_BASE]
+        if getattr(config, 'payroll_enabled', False):
+            scopes.append(SCOPE_PAYROLL_COMPENSATION)
+        if getattr(config, 'qbt_enabled', False):
+            scopes.extend(SCOPE_OPENID_PROFILE.split())
+        return ' '.join(dict.fromkeys(scopes))
+
     def get_authorization_url(self, config):
         state = secrets.token_urlsafe(32)
-        config.sudo().write({'error_message': state})
+        config.sudo().write({'oauth_state': state})
 
-        scopes = SCOPES_PAYROLL if getattr(config, 'payroll_enabled', False) else SCOPES_BASE
         params = {
             'client_id': config.client_id,
-            'scope': scopes,
+            'scope': self._get_scopes(config),
             'redirect_uri': self._get_redirect_uri(),
             'response_type': 'code',
             'state': state,
         }
-        query = '&'.join('%s=%s' % (k, v) for k, v in params.items())
+        query = urllib.parse.urlencode(params)
         return '%s?%s' % (QBO_AUTH_BASE, query)
 
     def exchange_code_for_tokens(self, config, code):

@@ -25,7 +25,7 @@ class QBConflictResolver(models.AbstractModel):
         if strategy == 'odoo_wins':
             return 'odoo'
         if strategy == 'qbo_wins':
-            return 'qb'
+            return 'qbo'
         if strategy == 'manual':
             return 'conflict'
 

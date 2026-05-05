@@ -31,6 +31,12 @@ class QBSyncDepartments(models.AbstractModel):
             return {}
         payload = {'Name': dept.name}
         qb_id = dept.qb_department_id
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity = matcher.find_qbo_match(client, 'department', dept)
+            if entity:
+                qb_id = str(entity.get('Id', ''))
+                matcher.link_odoo_record(dept, 'department', entity)
         if qb_id:
             existing = client.read('Department', qb_id)
             entity = existing.get('Department', {})
@@ -59,10 +65,10 @@ class QBSyncDepartments(models.AbstractModel):
         if not qb_data:
             return {}
         vals = self._qb_department_to_odoo(qb_data)
-        existing = self.env['hr.department'].search(
-            [('qb_department_id', '=', str(qb_data['Id']))], limit=1,
-        )
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('department', qb_data, config.company_id)
         if existing:
+            matcher.link_odoo_record(existing, 'department', qb_data)
             existing.write(vals)
         else:
             self.env['hr.department'].create(vals)
@@ -74,18 +80,34 @@ class QBSyncDepartments(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Department', where_clause=where)
         Dept = self.env['hr.department']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_department_to_odoo(qb_data)
-            existing = Dept.search([('qb_department_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('department', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'department', qb_data)
                 existing.write(vals)
             else:
                 Dept.create(vals)
 
     def push_all(self, client, config, entity_type):
-        pass
+        if not self._check_model():
+            return
+        departments = self.env['hr.department'].search([
+            ('qb_department_id', '=', False),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for department in departments:
+            queue.enqueue(
+                entity_type='department',
+                direction='push',
+                operation='create',
+                odoo_record_id=department.id,
+                odoo_model='hr.department',
+                company=config.company_id,
+            )

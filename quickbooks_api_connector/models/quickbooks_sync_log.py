@@ -41,7 +41,6 @@ class QuickbooksSyncLog(models.Model):
          ('term', 'Payment Term'),
          ('attachment', 'Attachment'),
          ('vendor_credit', 'Vendor Credit'),
-         ('refund_receipt', 'Refund Receipt'),
          ('exchange_rate', 'Exchange Rate'),
          ('company_info', 'Company Info'),
          ('payroll_compensation', 'Payroll Compensation'),

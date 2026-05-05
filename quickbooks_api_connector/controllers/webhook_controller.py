@@ -183,6 +183,15 @@ class QuickbooksWebhookController(http.Controller):
                     operation_str = 'update'
 
                 entity_id = str(entity.get('id', ''))
+                last_updated = (
+                    entity.get('lastUpdated') or
+                    entity.get('lastUpdatedTime') or
+                    entity.get('LastUpdatedTime') or
+                    ''
+                )
+                idempotency_key = 'legacy_%s_%s_%s_%s' % (
+                    realm_id, entity_type, entity_id, last_updated,
+                )
 
                 request.env['quickbooks.sync.queue'].sudo().enqueue(
                     entity_type=entity_type,
@@ -190,6 +199,7 @@ class QuickbooksWebhookController(http.Controller):
                     operation=operation_str,
                     qb_entity_id=entity_id,
                     company=config.company_id,
+                    idempotency_key=idempotency_key,
                 )
 
         _logger.info('Processed legacy webhook payload')

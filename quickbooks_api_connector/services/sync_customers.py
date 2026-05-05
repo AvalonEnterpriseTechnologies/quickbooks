@@ -174,10 +174,18 @@ class QBSyncCustomers(models.AbstractModel):
 
         payload = mapper(partner)
 
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity_data = matcher.find_qbo_match(client, job.entity_type, partner)
+            if entity_data:
+                qb_id = str(entity_data.get('Id', ''))
+                matcher.link_odoo_record(partner, job.entity_type, entity_data)
+
         if qb_id:
             # Update existing
-            existing = client.read(qb_entity_name, qb_id)
-            entity_data = existing.get(qb_entity_name, {})
+            if 'entity_data' not in locals() or not entity_data:
+                existing = client.read(qb_entity_name, qb_id)
+                entity_data = existing.get(qb_entity_name, {})
             payload['Id'] = qb_id
             payload['SyncToken'] = entity_data.get('SyncToken', '0')
             payload['sparse'] = True
@@ -225,11 +233,11 @@ class QBSyncCustomers(models.AbstractModel):
         vals = mapper(qb_data)
         qb_id = str(qb_data.get('Id', ''))
 
-        existing = self.env['res.partner'].search([
-            (qb_id_field, '=', qb_id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match(job.entity_type, qb_data, config.company_id)
 
         if existing:
+            matcher.link_odoo_record(existing, job.entity_type, qb_data)
             resolver = self.env['qb.conflict.resolver']
             decision = resolver.resolve(config, existing, qb_data, job.entity_type)
             if decision == 'qbo':
@@ -255,7 +263,7 @@ class QBSyncCustomers(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
 
         records = client.query_all(qb_entity_name, where_clause=where)
@@ -264,8 +272,10 @@ class QBSyncCustomers(models.AbstractModel):
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = mapper(qb_data)
-            existing = Partner.search([(qb_id_field, '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match(entity_type, qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, entity_type, qb_data)
                 resolver = self.env['qb.conflict.resolver']
                 decision = resolver.resolve(config, existing, qb_data, entity_type)
                 if decision == 'qbo':
@@ -283,6 +293,9 @@ class QBSyncCustomers(models.AbstractModel):
             (rank_field, '>', 0),
             (qb_id_field, '=', False),
             ('qb_do_not_sync', '=', False),
+            '|',
+            ('company_id', '=', False),
+            ('company_id', '=', config.company_id.id),
         ])
         queue = self.env['quickbooks.sync.queue']
         for partner in partners:

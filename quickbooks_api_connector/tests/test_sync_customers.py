@@ -142,6 +142,30 @@ class TestSyncCustomers(QuickbooksTestCommon):
         partner.invalidate_recordset()
         self.assertEqual(partner.name, 'Updated Name')
 
+    def test_pull_links_existing_partner_by_email_without_duplicate(self):
+        partner = self.env['res.partner'].with_context(skip_qb_sync=True).create({
+            'name': 'Unlinked Customer',
+            'email': 'test@example.com',
+            'customer_rank': 1,
+        })
+        client = self._mock_client()
+        client.read.return_value = self._make_qb_customer(qb_id='103')
+
+        job = MagicMock()
+        job.entity_type = 'customer'
+        job.qb_entity_id = '103'
+        job.odoo_record_id = None
+        job.write = MagicMock()
+
+        self.env['qb.sync.customers'].pull(client, self.config, job)
+
+        partner.invalidate_recordset()
+        self.assertEqual(partner.qb_customer_id, '103')
+        self.assertEqual(
+            self.env['res.partner'].search_count([('email', '=', 'test@example.com')]),
+            1,
+        )
+
     def test_vendor_mapping(self):
         """Test vendor-specific field mapping."""
         partner = self.env['res.partner'].with_context(skip_qb_sync=True).create({

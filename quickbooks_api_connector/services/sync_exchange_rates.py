@@ -13,6 +13,7 @@ class QBSyncExchangeRates(models.AbstractModel):
         return {}
 
     def push(self, client, config, job):
+        _logger.info('QBO ExchangeRate is treated as pull-only by this connector.')
         return {}
 
     def pull_all(self, client, config, entity_type):
@@ -75,4 +76,4 @@ class QBSyncExchangeRates(models.AbstractModel):
                 )
 
     def push_all(self, client, config, entity_type):
-        pass
+        _logger.info('Skipping ExchangeRate push_all; exchange rates are pulled from QBO.')

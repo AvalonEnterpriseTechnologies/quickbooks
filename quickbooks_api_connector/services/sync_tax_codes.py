@@ -71,7 +71,37 @@ class QBSyncTaxCodes(models.AbstractModel):
         return {'qb_id': qb_id}
 
     def push(self, client, config, job):
-        return {}
+        tax = self.env['account.tax'].browse(job.odoo_record_id)
+        if not tax.exists():
+            return {}
+        if tax.qb_taxcode_id:
+            _logger.info(
+                'Skipping QBO TaxCode update for %s; existing tax codes are immutable',
+                tax.name,
+            )
+            return {'qb_id': tax.qb_taxcode_id}
+
+        payload = {
+            'TaxCode': tax.name[:100],
+            'TaxRateDetails': [{
+                'TaxRateName': '%s Rate' % tax.name[:90],
+                'RateValue': tax.amount,
+                'TaxAgencyId': '1',
+                'TaxApplicableOn': (
+                    'Sales' if tax.type_tax_use == 'sale' else 'Purchase'
+                ),
+            }],
+        }
+        resp = client.post('taxservice/taxcode', payload)
+        tax_code = resp.get('TaxCode', {})
+        tax_rate = (resp.get('TaxRateDetails') or [{}])[0]
+        tax.write({
+            'qb_taxcode_id': str(tax_code.get('Id', '')),
+            'qb_taxrate_id': str(tax_rate.get('TaxRateId', '')),
+            'qb_sync_token': str(tax_code.get('SyncToken', '')),
+            'qb_last_synced': fields.Datetime.now(),
+        })
+        return {'qb_id': str(tax_code.get('Id', ''))}
 
     def pull_all(self, client, config, entity_type):
         tax_rates = self._fetch_tax_rates(client)
@@ -82,20 +112,34 @@ class QBSyncTaxCodes(models.AbstractModel):
             self._upsert_purchase_tax(qb_data, tax_rates, config)
 
     def push_all(self, client, config, entity_type):
-        pass
+        taxes = self.env['account.tax'].search([
+            ('company_id', '=', config.company_id.id),
+            ('qb_taxcode_id', '=', False),
+            ('type_tax_use', 'in', ('sale', 'purchase')),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for tax in taxes:
+            queue.enqueue(
+                entity_type='tax_code',
+                direction='push',
+                operation='create',
+                odoo_record_id=tax.id,
+                odoo_model='account.tax',
+                company=config.company_id,
+            )
 
     def _upsert_sale_tax(self, qb_data, tax_rates, config):
         vals = self._qb_taxcode_to_odoo_sale(qb_data, tax_rates)
         qb_id = vals['qb_taxcode_id']
         Tax = self.env['account.tax']
 
-        existing = Tax.search([
-            ('qb_taxcode_id', '=', qb_id),
-            ('type_tax_use', '=', 'sale'),
-            ('company_id', '=', config.company_id.id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('tax_code', qb_data, config.company_id)
+        if existing and existing.type_tax_use != 'sale':
+            existing = Tax.browse()
 
         if existing:
+            matcher.link_odoo_record(existing, 'tax_code', qb_data)
             update_vals = {
                 'name': vals['name'],
                 'qb_sync_token': vals['qb_sync_token'],
@@ -117,13 +161,13 @@ class QBSyncTaxCodes(models.AbstractModel):
         qb_id = vals['qb_taxcode_id']
         Tax = self.env['account.tax']
 
-        existing = Tax.search([
-            ('qb_taxcode_id', '=', qb_id),
-            ('type_tax_use', '=', 'purchase'),
-            ('company_id', '=', config.company_id.id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('tax_code', qb_data, config.company_id)
+        if existing and existing.type_tax_use != 'purchase':
+            existing = Tax.browse()
 
         if existing:
+            matcher.link_odoo_record(existing, 'tax_code', qb_data)
             update_vals = {
                 'name': vals['name'],
                 'qb_sync_token': vals['qb_sync_token'],

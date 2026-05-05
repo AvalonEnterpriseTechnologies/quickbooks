@@ -5,6 +5,11 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+try:
+    from psycopg2 import errors as pg_errors
+except ImportError:
+    pg_errors = None
+
 _logger = logging.getLogger(__name__)
 
 QB_ENTITY_TYPES = [
@@ -33,7 +38,6 @@ QB_ENTITY_TYPES = [
     ('term', 'Payment Term'),
     ('attachment', 'Attachment'),
     ('vendor_credit', 'Vendor Credit'),
-    ('refund_receipt', 'Refund Receipt'),
     ('exchange_rate', 'Exchange Rate'),
     ('company_info', 'Company Info'),
     ('payroll_compensation', 'Payroll Compensation'),
@@ -105,6 +109,13 @@ class QuickbooksSyncQueue(models.Model):
                 qb_entity_id=None, company=None,
                 priority=10, idempotency_key=None):
         company = company or self.env.company
+        if idempotency_key:
+            existing = self.sudo().search([
+                ('idempotency_key', '=', idempotency_key),
+            ], limit=1)
+            if existing:
+                _logger.debug('Duplicate queue job skipped: %s', idempotency_key)
+                return existing
         vals = {
             'company_id': company.id,
             'entity_type': entity_type,
@@ -119,9 +130,16 @@ class QuickbooksSyncQueue(models.Model):
         try:
             return self.sudo().create(vals)
         except Exception as e:
-            if 'idempotency_uniq' in str(e):
+            if (
+                pg_errors is not None
+                and isinstance(e, pg_errors.UniqueViolation)
+                and idempotency_key
+            ):
+                self.env.cr.rollback()
                 _logger.debug('Duplicate queue job skipped: %s', idempotency_key)
-                return self.browse()
+                return self.sudo().search([
+                    ('idempotency_key', '=', idempotency_key),
+                ], limit=1)
             raise
 
     def action_retry(self):

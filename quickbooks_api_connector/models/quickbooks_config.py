@@ -52,6 +52,7 @@ class QuickbooksConfig(models.Model):
         default='sandbox', required=True,
     )
     webhook_verifier_token = fields.Char(string='Webhook Verifier Token')
+    oauth_state = fields.Char(string='OAuth State', copy=False, readonly=True)
     state = fields.Selection(
         [('draft', 'Not Connected'),
          ('connected', 'Connected'),
@@ -96,7 +97,17 @@ class QuickbooksConfig(models.Model):
          ('odoo_wins', 'Odoo Always Wins'),
          ('qbo_wins', 'QuickBooks Always Wins'),
          ('manual', 'Manual Review')],
-        default='last_modified', required=True,
+        default='odoo_wins', required=True,
+    )
+    verify_after_push = fields.Boolean(
+        string='Verify QBO After Push',
+        default=True,
+        help='Read the QBO record after push and log a warning if key fields drift.',
+    )
+    match_by_name = fields.Boolean(
+        string='Allow Name-Based Matching',
+        default=False,
+        help='Use exact normalized names as a final deduplication fallback.',
     )
     auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
@@ -193,6 +204,38 @@ class QuickbooksConfig(models.Model):
             'target': 'self',
         }
 
+    @api.model
+    def action_open_or_setup(self):
+        config = self.search([('company_id', '=', self.env.company.id)], limit=1)
+        if not config or not config.client_id or not config.client_secret_encrypted:
+            return self.env.ref(
+                'quickbooks_api_connector.action_quickbooks_setup_wizard',
+            ).read()[0]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'QuickBooks Sync',
+            'res_model': 'res.config.settings',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {'module': 'quickbooks_api_connector'},
+        }
+
+    def action_sync_now(self):
+        self.ensure_one()
+        if self.state != 'connected':
+            raise UserError('QuickBooks is not connected for this company.')
+        self.env['qb.sync.engine'].run_full_sync(self)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'QuickBooks Sync',
+                'message': 'QuickBooks sync completed.',
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
     def action_disconnect(self):
         self.ensure_one()
         self.write({
@@ -202,6 +245,7 @@ class QuickbooksConfig(models.Model):
             'refresh_token_expiry': False,
             'realm_id': False,
             'qb_company_name': False,
+            'oauth_state': False,
             'state': 'draft',
         })
 

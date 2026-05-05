@@ -17,6 +17,14 @@ class TestOAuth(QuickbooksTestCommon):
         self.assertIn('scope=com.intuit.quickbooks.accounting', url)
         self.assertIn('redirect_uri=', url)
         self.assertIn('state=', url)
+        self.assertTrue(self.config.oauth_state)
+
+    def test_authorization_url_encodes_multi_scope(self):
+        """Payroll-enabled auth URLs must percent-encode space-delimited scopes."""
+        self.config.payroll_enabled = True
+        auth_service = self.env['qb.auth.service']
+        url = auth_service.get_authorization_url(self.config)
+        self.assertIn('com.intuit.quickbooks.accounting+payroll.compensation.read', url)
 
     @patch('requests.post')
     def test_exchange_code_success(self, mock_post):

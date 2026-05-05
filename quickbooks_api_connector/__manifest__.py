@@ -7,7 +7,7 @@
         Comprehensive QuickBooks Online integration for Odoo 19.
 
         Features:
-        - OAuth 2.0 connection to QuickBooks Online
+        - One-time OAuth 2.0 setup wizard and sync-only settings panel
         - Bidirectional sync: customers, vendors, products, invoices,
           bills, payments, journal entries, tax codes, vendor credits,
           refund receipts, deposits, transfers, classes, payment terms

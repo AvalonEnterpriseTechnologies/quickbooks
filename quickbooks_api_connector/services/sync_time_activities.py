@@ -37,7 +37,7 @@ class QBSyncTimeActivities(models.AbstractModel):
 
     def _odoo_to_qb_timeactivity(self, line):
         hours = int(line.unit_amount)
-        minutes = int((line.unit_amount - hours) * 60)
+        minutes = int(round((line.unit_amount - hours) * 60))
         data = {
             'TxnDate': line.date.isoformat() if line.date else None,
             'NameOf': 'Employee',
@@ -57,6 +57,13 @@ class QBSyncTimeActivities(models.AbstractModel):
 
         payload = self._odoo_to_qb_timeactivity(line)
         qb_id = line.qb_timeactivity_id
+
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity = matcher.find_qbo_match(client, 'time_activity', line)
+            if entity:
+                qb_id = str(entity.get('Id', ''))
+                matcher.link_odoo_record(line, 'time_activity', entity)
 
         if qb_id:
             existing = client.read('TimeActivity', qb_id)
@@ -85,10 +92,10 @@ class QBSyncTimeActivities(models.AbstractModel):
         if not qb_data:
             return {}
         vals = self._qb_timeactivity_to_odoo(qb_data)
-        existing = self.env['account.analytic.line'].search(
-            [('qb_timeactivity_id', '=', str(qb_data['Id']))], limit=1,
-        )
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('time_activity', qb_data, config.company_id)
         if existing:
+            matcher.link_odoo_record(existing, 'time_activity', qb_data)
             existing.write(vals)
         else:
             self.env['account.analytic.line'].create(vals)
@@ -98,18 +105,33 @@ class QBSyncTimeActivities(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('TimeActivity', where_clause=where)
         AAL = self.env['account.analytic.line']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_timeactivity_to_odoo(qb_data)
-            existing = AAL.search([('qb_timeactivity_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('time_activity', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'time_activity', qb_data)
                 existing.write(vals)
             else:
                 AAL.create(vals)
 
     def push_all(self, client, config, entity_type):
-        pass
+        lines = self.env['account.analytic.line'].search([
+            ('qb_timeactivity_id', '=', False),
+            ('unit_amount', '>', 0),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for line in lines:
+            queue.enqueue(
+                entity_type='time_activity',
+                direction='push',
+                operation='create',
+                odoo_record_id=line.id,
+                odoo_model='account.analytic.line',
+                company=config.company_id,
+            )

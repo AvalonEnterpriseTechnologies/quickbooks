@@ -61,6 +61,13 @@ class QBSyncPurchaseOrders(models.AbstractModel):
         payload = self._odoo_to_qb_po(order)
         qb_id = order.qb_po_id
 
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity = matcher.find_qbo_match(client, 'purchase_order', order)
+            if entity:
+                qb_id = str(entity.get('Id', ''))
+                matcher.link_odoo_record(order, 'purchase_order', entity)
+
         if qb_id:
             existing = client.read('PurchaseOrder', qb_id)
             entity = existing.get('PurchaseOrder', {})
@@ -91,10 +98,10 @@ class QBSyncPurchaseOrders(models.AbstractModel):
             return {}
 
         vals = self._qb_po_to_odoo(qb_data)
-        existing = self.env['purchase.order'].search(
-            [('qb_po_id', '=', str(qb_data['Id']))], limit=1,
-        )
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('purchase_order', qb_data, config.company_id)
         if existing:
+            matcher.link_odoo_record(existing, 'purchase_order', qb_data)
             existing.write(vals)
         return {'qb_id': str(qb_data.get('Id', ''))}
 
@@ -104,15 +111,17 @@ class QBSyncPurchaseOrders(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('PurchaseOrder', where_clause=where)
         PO = self.env['purchase.order']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_po_to_odoo(qb_data)
-            existing = PO.search([('qb_po_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('purchase_order', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'purchase_order', qb_data)
                 existing.write(vals)
 
     def push_all(self, client, config, entity_type):

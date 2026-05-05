@@ -31,3 +31,11 @@ def _post_init_hook(env):
             config_model='quickbooks.config',
             sync_log_model='quickbooks.sync.log',
         )
+
+    env.cr.execute(
+        """
+        UPDATE quickbooks_config
+           SET conflict_resolution = 'odoo_wins'
+         WHERE conflict_resolution IS NULL
+        """
+    )

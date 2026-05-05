@@ -103,6 +103,40 @@ class TestSyncInvoices(QuickbooksTestCommon):
         self.assertTrue(move)
         self.assertEqual(move.move_type, 'out_invoice')
 
+    def test_pull_links_existing_invoice_by_doc_number_without_duplicate(self):
+        move = self.env['account.move'].with_context(skip_qb_sync=True).create({
+            'move_type': 'out_invoice',
+            'partner_id': self.customer.id,
+            'invoice_date': '2026-01-15',
+            'ref': 'INV-001',
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id,
+                'name': 'Test line item',
+                'quantity': 2,
+                'price_unit': 99.99,
+            })],
+        })
+        client = self._mock_client()
+        client.read.return_value = self._make_qb_invoice(qb_id='452')
+
+        job = MagicMock()
+        job.entity_type = 'invoice'
+        job.qb_entity_id = '452'
+        job.odoo_record_id = None
+        job.write = MagicMock()
+
+        self.env['qb.sync.invoices'].pull(client, self.config, job)
+
+        move.invalidate_recordset()
+        self.assertEqual(move.qb_invoice_id, '452')
+        self.assertEqual(
+            self.env['account.move'].search_count([
+                ('move_type', '=', 'out_invoice'),
+                ('ref', '=', 'INV-001'),
+            ]),
+            1,
+        )
+
     def test_credit_memo_mapping(self):
         """Test credit memo uses correct meta."""
         service = self.env['qb.sync.invoices']

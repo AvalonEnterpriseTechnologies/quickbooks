@@ -41,7 +41,7 @@ class QBSyncEmployees(models.AbstractModel):
             vals['work_location_name'] = addr['Line1']
 
         hire_date = qb_data.get('HiredDate')
-        if hire_date:
+        if hire_date and 'first_contract_date' in self.env['hr.employee']._fields:
             vals['first_contract_date'] = hire_date[:10]
 
         return vals
@@ -70,6 +70,13 @@ class QBSyncEmployees(models.AbstractModel):
 
         payload = self._odoo_to_qb_employee(employee)
         qb_id = employee.qb_employee_id
+
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity = matcher.find_qbo_match(client, 'employee', employee)
+            if entity:
+                qb_id = str(entity.get('Id', ''))
+                matcher.link_odoo_record(employee, 'employee', entity)
 
         if qb_id:
             existing = client.read('Employee', qb_id)
@@ -101,10 +108,10 @@ class QBSyncEmployees(models.AbstractModel):
             return {}
 
         vals = self._qb_employee_to_odoo(qb_data)
-        existing = self.env['hr.employee'].search(
-            [('qb_employee_id', '=', str(qb_data['Id']))], limit=1,
-        )
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('employee', qb_data, config.company_id)
         if existing:
+            matcher.link_odoo_record(existing, 'employee', qb_data)
             existing.write(vals)
         else:
             self.env['hr.employee'].create(vals)
@@ -116,15 +123,17 @@ class QBSyncEmployees(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Employee', where_clause=where)
         Employee = self.env['hr.employee']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_employee_to_odoo(qb_data)
-            existing = Employee.search([('qb_employee_id', '=', qb_id)], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('employee', qb_data, config.company_id)
             if existing:
+                matcher.link_odoo_record(existing, 'employee', qb_data)
                 existing.write(vals)
             else:
                 Employee.create(vals)

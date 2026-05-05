@@ -85,4 +85,5 @@ class IntegrationRegistryQB(models.Model):
                 config.sudo().write(vals)
             else:
                 vals.setdefault('client_id', vals.get('client_id', ''))
+                vals.setdefault('company_id', self.env.company.id)
                 self.env['quickbooks.config'].sudo().create(vals)

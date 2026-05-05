@@ -76,12 +76,11 @@ class QBSyncAccounts(models.AbstractModel):
         vals = self._qb_account_to_odoo(qb_data)
         qb_id = vals['qb_account_id']
 
-        existing = self.env['account.account'].search([
-            ('qb_account_id', '=', qb_id),
-            ('company_id', '=', config.company_id.id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('account', qb_data, config.company_id)
 
         if existing:
+            matcher.link_odoo_record(existing, 'account', qb_data)
             update_vals = {
                 'name': vals.get('name', existing.name),
                 'qb_sync_token': vals['qb_sync_token'],
@@ -107,11 +106,19 @@ class QBSyncAccounts(models.AbstractModel):
             return {}
 
         payload = self._odoo_to_qb_account(account)
+        qb_id = account.qb_account_id
 
-        if account.qb_account_id:
-            existing = client.read('Account', account.qb_account_id)
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity_data = matcher.find_qbo_match(client, 'account', account)
+            if entity_data:
+                qb_id = str(entity_data.get('Id', ''))
+                matcher.link_odoo_record(account, 'account', entity_data)
+
+        if qb_id:
+            existing = client.read('Account', qb_id)
             entity_data = existing.get('Account', {})
-            payload['Id'] = account.qb_account_id
+            payload['Id'] = qb_id
             payload['SyncToken'] = entity_data.get('SyncToken', '0')
             payload['sparse'] = True
             resp = client.update('Account', payload)
@@ -131,7 +138,7 @@ class QBSyncAccounts(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('Account', where_clause=where)
         Account = self.env['account.account']
@@ -140,12 +147,11 @@ class QBSyncAccounts(models.AbstractModel):
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_account_to_odoo(qb_data)
 
-            existing = Account.search([
-                ('qb_account_id', '=', qb_id),
-                ('company_id', '=', config.company_id.id),
-            ], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('account', qb_data, config.company_id)
 
             if existing:
+                matcher.link_odoo_record(existing, 'account', qb_data)
                 update_vals = {
                     'name': vals.get('name', existing.name),
                     'qb_sync_token': vals['qb_sync_token'],
@@ -161,4 +167,17 @@ class QBSyncAccounts(models.AbstractModel):
                 Account.with_context(skip_qb_sync=True).create(vals)
 
     def push_all(self, client, config, entity_type):
-        pass
+        accounts = self.env['account.account'].search([
+            ('company_id', '=', config.company_id.id),
+            ('qb_account_id', '=', False),
+        ])
+        queue = self.env['quickbooks.sync.queue']
+        for account in accounts:
+            queue.enqueue(
+                entity_type='account',
+                direction='push',
+                operation='create',
+                odoo_record_id=account.id,
+                odoo_model='account.account',
+                company=config.company_id,
+            )

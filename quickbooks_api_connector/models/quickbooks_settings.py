@@ -1,6 +1,7 @@
 import logging
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -63,8 +64,10 @@ class ResConfigSettings(models.TransientModel):
          ('odoo_wins', 'Odoo Always Wins'),
          ('qbo_wins', 'QuickBooks Always Wins'),
          ('manual', 'Manual Review')],
-        string='Conflict Resolution', default='last_modified',
+        string='Conflict Resolution', default='odoo_wins',
     )
+    qb_verify_after_push = fields.Boolean(string='Verify QBO After Push', default=True)
+    qb_match_by_name = fields.Boolean(string='Allow Name-Based Matching', default=False)
     qb_auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
     )
@@ -150,7 +153,7 @@ class ResConfigSettings(models.TransientModel):
             [('name', '=', module_name)], limit=1,
         )
         if not module:
-            raise models.UserError(
+            raise UserError(
                 'Module "%s" not found. Check your Odoo addons path.' % module_name
             )
         if module.state != 'installed':
@@ -206,6 +209,8 @@ class ResConfigSettings(models.TransientModel):
                 'qb_environment': config.environment,
                 'qb_webhook_verifier_token': config.webhook_verifier_token,
                 'qb_conflict_resolution': config.conflict_resolution,
+                'qb_verify_after_push': getattr(config, 'verify_after_push', True),
+                'qb_match_by_name': getattr(config, 'match_by_name', False),
                 'qb_auto_sync_interval': config.auto_sync_interval,
                 'qb_auto_sync_interval_type': getattr(
                     config, 'auto_sync_interval_type', 'minutes',
@@ -281,7 +286,9 @@ class ResConfigSettings(models.TransientModel):
             'client_id': self.qb_client_id or '',
             'environment': self.qb_environment or 'sandbox',
             'webhook_verifier_token': self.qb_webhook_verifier_token or '',
-            'conflict_resolution': self.qb_conflict_resolution or 'last_modified',
+            'conflict_resolution': self.qb_conflict_resolution or 'odoo_wins',
+            'verify_after_push': self.qb_verify_after_push,
+            'match_by_name': self.qb_match_by_name,
             'auto_sync_interval': interval,
             'auto_sync_interval_type': interval_type,
             'sync_customers': self.qb_sync_customers,
@@ -326,6 +333,10 @@ class ResConfigSettings(models.TransientModel):
 
     def action_qb_connect(self):
         config = self._get_or_create_qb_config()
+        if not config.client_id or not config.client_secret_encrypted:
+            return self.env.ref(
+                'quickbooks_api_connector.action_quickbooks_setup_wizard',
+            ).read()[0]
         return config.action_connect_qb()
 
     def action_qb_disconnect(self):
@@ -335,6 +346,10 @@ class ResConfigSettings(models.TransientModel):
     def action_qb_test_connection(self):
         config = self._get_or_create_qb_config()
         config.action_test_connection()
+
+    def action_qb_sync_now(self):
+        config = self._get_or_create_qb_config()
+        return config.action_sync_now()
 
     def action_open_sync_logs(self):
         return {

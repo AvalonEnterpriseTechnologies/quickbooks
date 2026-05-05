@@ -48,8 +48,12 @@ class QBSyncJournalEntries(models.AbstractModel):
                         'type': 'Vendor',
                     }
                 if entity:
+                    entity_ref = {
+                        'value': entity['value'],
+                        'name': entity['name'],
+                    }
                     je_line['JournalEntryLineDetail']['Entity'] = {
-                        'EntityRef': entity,
+                        'EntityRef': entity_ref,
                         'Type': entity.get('type', 'Customer'),
                     }
 
@@ -151,6 +155,13 @@ class QBSyncJournalEntries(models.AbstractModel):
         payload = self._odoo_je_to_qb(move)
         qb_id = move.qb_je_id
 
+        matcher = self.env['qb.record.matcher']
+        if not qb_id:
+            entity_data = matcher.find_qbo_match(client, 'journal_entry', move)
+            if entity_data:
+                qb_id = str(entity_data.get('Id', ''))
+                matcher.link_odoo_record(move, 'journal_entry', entity_data)
+
         if qb_id:
             existing = client.read('JournalEntry', qb_id)
             entity_data = existing.get('JournalEntry', {})
@@ -191,12 +202,11 @@ class QBSyncJournalEntries(models.AbstractModel):
         vals = self._qb_je_to_odoo(qb_data, config)
         qb_id = str(qb_data.get('Id', ''))
 
-        existing = self.env['account.move'].search([
-            ('qb_je_id', '=', qb_id),
-            ('company_id', '=', config.company_id.id),
-        ], limit=1)
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('journal_entry', qb_data, config.company_id)
 
         if existing:
+            matcher.link_odoo_record(existing, 'journal_entry', qb_data)
             resolver = self.env['qb.conflict.resolver']
             decision = resolver.resolve(config, existing, qb_data, 'journal_entry')
             if decision == 'qbo':
@@ -222,7 +232,7 @@ class QBSyncJournalEntries(models.AbstractModel):
         where = ''
         if config.last_sync_date:
             where = "MetaData.LastUpdatedTime > '%s'" % (
-                config.last_sync_date.strftime('%Y-%m-%dT%H:%M:%S')
+                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         records = client.query_all('JournalEntry', where_clause=where)
         Move = self.env['account.move']
@@ -231,12 +241,11 @@ class QBSyncJournalEntries(models.AbstractModel):
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_je_to_odoo(qb_data, config)
 
-            existing = Move.search([
-                ('qb_je_id', '=', qb_id),
-                ('company_id', '=', config.company_id.id),
-            ], limit=1)
+            matcher = self.env['qb.record.matcher']
+            existing = matcher.find_odoo_match('journal_entry', qb_data, config.company_id)
 
             if existing:
+                matcher.link_odoo_record(existing, 'journal_entry', qb_data)
                 resolver = self.env['qb.conflict.resolver']
                 if resolver.resolve(config, existing, qb_data, 'journal_entry') == 'qbo':
                     vals.pop('line_ids', None)

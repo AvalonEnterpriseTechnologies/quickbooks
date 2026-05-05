@@ -6,6 +6,8 @@ access_qb_sync_queue_user,quickbooks.sync.queue.user,model_quickbooks_sync_queue
 access_qb_sync_queue_manager,quickbooks.sync.queue.manager,model_quickbooks_sync_queue,group_qb_manager,1,1,1,1
 access_qb_field_mapping_manager,quickbooks.field.mapping.manager,model_quickbooks_field_mapping,group_qb_manager,1,1,1,1
 access_qb_field_mapping_user,quickbooks.field.mapping.user,model_quickbooks_field_mapping,group_qb_user,1,0,0,0
+access_qb_payroll_compensation_manager,quickbooks.payroll.compensation.manager,model_quickbooks_payroll_compensation,group_qb_manager,1,1,1,1
+access_qb_payroll_compensation_user,quickbooks.payroll.compensation.user,model_quickbooks_payroll_compensation,group_qb_user,1,0,0,0
 access_qb_setup_wizard,quickbooks.setup.wizard,model_quickbooks_setup_wizard,group_qb_manager,1,1,1,1
 access_qb_sync_wizard,quickbooks.sync.wizard,model_quickbooks_sync_wizard,group_qb_manager,1,1,1,1
 access_qb_migration_wizard,quickbooks.migration.wizard,model_quickbooks_migration_wizard,group_qb_manager,1,1,1,1

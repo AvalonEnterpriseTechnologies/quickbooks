@@ -56,6 +56,7 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('bill')
         if self.migrate_payments:
             ordered_entities.append('payment')
+            ordered_entities.append('bill_payment')
         if self.migrate_journal_entries:
             ordered_entities.append('journal_entry')
 

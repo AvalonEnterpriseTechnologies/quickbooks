@@ -63,6 +63,56 @@
                         <field name="last_sync_date" readonly="1"/>
                     </group>
 
+                    <notebook groups="quickbooks_api_connector.group_qb_manager">
+                        <page string="Sync Defaults">
+                            <group>
+                                <field name="conflict_resolution"/>
+                                <field name="auto_sync_interval"/>
+                                <field name="auto_sync_interval_type"/>
+                            </group>
+                            <group string="Core Entities">
+                                <group>
+                                    <field name="sync_customers"/>
+                                    <field name="sync_vendors"/>
+                                    <field name="sync_products"/>
+                                    <field name="sync_invoices"/>
+                                    <field name="sync_bills"/>
+                                    <field name="sync_payments"/>
+                                </group>
+                                <group>
+                                    <field name="sync_journal_entries"/>
+                                    <field name="sync_credit_memos"/>
+                                    <field name="sync_estimates"/>
+                                    <field name="sync_tax_codes"/>
+                                    <field name="sync_vendor_credits"/>
+                                    <field name="sync_refund_receipts"/>
+                                </group>
+                            </group>
+                            <group string="Extended Entities">
+                                <group>
+                                    <field name="sync_purchase_orders"/>
+                                    <field name="sync_sales_receipts"/>
+                                    <field name="sync_expenses"/>
+                                    <field name="sync_deposits"/>
+                                    <field name="sync_transfers"/>
+                                    <field name="sync_classes"/>
+                                </group>
+                                <group>
+                                    <field name="sync_terms"/>
+                                    <field name="sync_employees"/>
+                                    <field name="sync_departments"/>
+                                    <field name="sync_time_activities"/>
+                                    <field name="sync_inventory_qty"/>
+                                    <field name="sync_attachments"/>
+                                </group>
+                            </group>
+                            <group string="Advanced APIs">
+                                <field name="payroll_enabled"/>
+                                <field name="qbt_enabled"/>
+                            </group>
+                        </page>
+                    </notebook>
+
                     <group invisible="1">
                         <field name="company_id"/>
                         <field name="webhook_verifier_token"/>

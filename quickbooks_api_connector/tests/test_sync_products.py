@@ -87,6 +87,30 @@ class TestSyncProducts(QuickbooksTestCommon):
         self.assertTrue(product)
         self.assertEqual(product.name, 'Test Item')
 
+    def test_pull_links_existing_product_by_sku_without_duplicate(self):
+        product = self.env['product.product'].with_context(skip_qb_sync=True).create({
+            'name': 'Unlinked Product',
+            'default_code': 'TEST-001',
+            'type': 'consu',
+        })
+        client = self._mock_client()
+        client.read.return_value = self._make_qb_item(qb_id='352')
+
+        job = MagicMock()
+        job.entity_type = 'product'
+        job.qb_entity_id = '352'
+        job.odoo_record_id = None
+        job.write = MagicMock()
+
+        self.env['qb.sync.products'].pull(client, self.config, job)
+
+        product.invalidate_recordset()
+        self.assertEqual(product.qb_item_id, '352')
+        self.assertEqual(
+            self.env['product.product'].search_count([('default_code', '=', 'TEST-001')]),
+            1,
+        )
+
     def test_pull_all_incremental(self):
         """Test incremental pull uses last_sync_date filter."""
         from datetime import datetime
