@@ -80,14 +80,31 @@ class QuickbooksConfig(models.Model):
     sync_employees = fields.Boolean(default=True, string='Sync Employees')
     sync_departments = fields.Boolean(default=True, string='Sync Departments')
     sync_time_activities = fields.Boolean(default=True, string='Sync Time Activities')
+    sync_projects = fields.Boolean(default=True, string='Sync Projects')
     sync_classes = fields.Boolean(default=True, string='Sync Classes')
     sync_terms = fields.Boolean(default=True, string='Sync Payment Terms')
     sync_attachments = fields.Boolean(default=False, string='Sync Attachments')
     sync_inventory_qty = fields.Boolean(default=True, string='Sync Inventory Quantities')
+    sync_inventory_adjustments = fields.Boolean(
+        default=True, string='Sync Inventory Adjustments',
+    )
+    sync_inventory_valuation_accounts = fields.Boolean(
+        default=True, string='Sync Inventory Valuation Accounts',
+    )
+    qb_default_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Default Inventory Warehouse',
+        domain="[('company_id', '=', company_id)]",
+    )
     sync_vendor_credits = fields.Boolean(default=True, string='Sync Vendor Credits')
     sync_refund_receipts = fields.Boolean(default=True, string='Sync Refund Receipts')
 
     payroll_enabled = fields.Boolean(default=False, string='Enable Payroll API')
+    payroll_create_draft_payslips = fields.Boolean(
+        default=False,
+        string='Create Draft Payslips From Payroll Checks',
+        help='When hr_payroll is installed, create draft Odoo payslips from pulled QBO payroll checks.',
+    )
     qbt_enabled = fields.Boolean(default=False, string='Enable QuickBooks Time API')
     qbt_access_token_encrypted = fields.Text(copy=False)
     qbt_refresh_token_encrypted = fields.Text(copy=False)

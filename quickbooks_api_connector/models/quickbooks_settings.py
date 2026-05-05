@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 OPTIONAL_MODULES = {
     'sale': 'Sales',
     'purchase': 'Purchase',
+    'project': 'Projects',
     'hr': 'Employees (HR)',
     'hr_expense': 'Expenses',
     'hr_timesheet': 'Timesheets',
@@ -24,8 +25,12 @@ TOGGLE_REQUIRED_MODULES = {
     'qb_sync_employees': ['hr'],
     'qb_sync_departments': ['hr'],
     'qb_sync_time_activities': ['hr_timesheet'],
+    'qb_sync_projects': ['project'],
     'qb_sync_inventory_qty': ['stock'],
+    'qb_sync_inventory_adjustments': ['stock'],
+    'qb_sync_inventory_valuation_accounts': ['stock'],
     'qb_payroll_enabled': ['hr'],
+    'qb_payroll_create_draft_payslips': ['hr_payroll'],
     'qb_time_enabled': ['hr_timesheet'],
 }
 
@@ -100,15 +105,28 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_employees = fields.Boolean(string='Sync Employees', default=True)
     qb_sync_departments = fields.Boolean(string='Sync Departments', default=True)
     qb_sync_time_activities = fields.Boolean(string='Sync Time Activities', default=True)
+    qb_sync_projects = fields.Boolean(string='Sync Projects', default=True)
     qb_sync_classes = fields.Boolean(string='Sync Classes', default=True)
     qb_sync_terms = fields.Boolean(string='Sync Payment Terms', default=True)
     qb_sync_attachments = fields.Boolean(string='Sync Attachments', default=False)
     qb_sync_inventory_qty = fields.Boolean(string='Sync Inventory Quantities', default=True)
+    qb_sync_inventory_adjustments = fields.Boolean(
+        string='Sync Inventory Adjustments', default=True,
+    )
+    qb_sync_inventory_valuation_accounts = fields.Boolean(
+        string='Sync Inventory Valuation Accounts', default=True,
+    )
+    qb_default_warehouse_id = fields.Many2one(
+        'stock.warehouse', string='Default Inventory Warehouse',
+    )
     qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
     qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=True)
 
     # --- Payroll API (Phase 3) ---
     qb_payroll_enabled = fields.Boolean(string='Enable Payroll Sync', default=False)
+    qb_payroll_create_draft_payslips = fields.Boolean(
+        string='Create Draft Payslips From Payroll Checks', default=False,
+    )
 
     # --- QuickBooks Time / TSheets API (Phase 4) ---
     qb_time_enabled = fields.Boolean(string='Enable QuickBooks Time Sync', default=False)
@@ -120,6 +138,7 @@ class ResConfigSettings(models.TransientModel):
     qb_mod_hr_expense = fields.Boolean(compute='_compute_qb_module_status')
     qb_mod_hr_timesheet = fields.Boolean(compute='_compute_qb_module_status')
     qb_mod_stock = fields.Boolean(compute='_compute_qb_module_status')
+    qb_mod_project = fields.Boolean(compute='_compute_qb_module_status')
 
     def _compute_qb_config_id(self):
         Config = self.env['quickbooks.config']
@@ -141,6 +160,7 @@ class ResConfigSettings(models.TransientModel):
         for rec in self:
             rec.qb_mod_sale = status.get('sale', False)
             rec.qb_mod_purchase = status.get('purchase', False)
+            rec.qb_mod_project = status.get('project', False)
             rec.qb_mod_hr = status.get('hr', False)
             rec.qb_mod_hr_expense = status.get('hr_expense', False)
             rec.qb_mod_hr_timesheet = status.get('hr_timesheet', False)
@@ -168,6 +188,9 @@ class ResConfigSettings(models.TransientModel):
 
     def action_install_purchase(self):
         return self._install_module('purchase')
+
+    def action_install_project(self):
+        return self._install_module('project')
 
     def action_install_hr(self):
         return self._install_module('hr')
@@ -233,13 +256,26 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_employees': getattr(config, 'sync_employees', True),
                 'qb_sync_departments': getattr(config, 'sync_departments', True),
                 'qb_sync_time_activities': getattr(config, 'sync_time_activities', True),
+                'qb_sync_projects': getattr(config, 'sync_projects', True),
                 'qb_sync_classes': getattr(config, 'sync_classes', True),
                 'qb_sync_terms': getattr(config, 'sync_terms', True),
                 'qb_sync_attachments': getattr(config, 'sync_attachments', False),
                 'qb_sync_inventory_qty': getattr(config, 'sync_inventory_qty', True),
+                'qb_sync_inventory_adjustments': getattr(
+                    config, 'sync_inventory_adjustments', True,
+                ),
+                'qb_sync_inventory_valuation_accounts': getattr(
+                    config, 'sync_inventory_valuation_accounts', True,
+                ),
+                'qb_default_warehouse_id': getattr(
+                    config, 'qb_default_warehouse_id', False,
+                ).id if getattr(config, 'qb_default_warehouse_id', False) else False,
                 'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
                 'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', True),
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
+                'qb_payroll_create_draft_payslips': getattr(
+                    config, 'payroll_create_draft_payslips', False,
+                ),
                 'qb_time_enabled': getattr(config, 'qbt_enabled', False),
             })
         return res
@@ -300,6 +336,7 @@ class ResConfigSettings(models.TransientModel):
             'sync_journal_entries': self.qb_sync_journal_entries,
             'sync_credit_memos': self.qb_sync_credit_memos,
             'sync_estimates': self.qb_sync_estimates,
+            'qb_default_warehouse_id': self.qb_default_warehouse_id.id or False,
         }
         if self.qb_client_secret:
             vals['client_secret'] = self.qb_client_secret
@@ -307,13 +344,16 @@ class ResConfigSettings(models.TransientModel):
         toggle_fields = [
             'sync_tax_codes', 'sync_purchase_orders', 'sync_sales_receipts',
             'sync_expenses', 'sync_deposits', 'sync_transfers', 'sync_employees',
-            'sync_departments', 'sync_time_activities', 'sync_classes', 'sync_terms',
-            'sync_attachments', 'sync_inventory_qty', 'sync_vendor_credits',
-            'sync_refund_receipts', 'payroll_enabled', 'qbt_enabled',
+            'sync_departments', 'sync_time_activities', 'sync_projects',
+            'sync_classes', 'sync_terms', 'sync_attachments', 'sync_inventory_qty',
+            'sync_inventory_adjustments', 'sync_inventory_valuation_accounts',
+            'sync_vendor_credits', 'sync_refund_receipts', 'payroll_enabled',
+            'payroll_create_draft_payslips', 'qbt_enabled',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',
             'payroll_enabled': 'qb_payroll_enabled',
+            'payroll_create_draft_payslips': 'qb_payroll_create_draft_payslips',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)

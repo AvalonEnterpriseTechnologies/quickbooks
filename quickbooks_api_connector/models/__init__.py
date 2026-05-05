@@ -6,6 +6,10 @@ from . import quickbooks_sync_log
 from . import quickbooks_sync_queue
 from . import quickbooks_field_mapping
 from . import quickbooks_payroll_compensation
+from . import quickbooks_payroll_employee
+from . import quickbooks_payroll_pay_item
+from . import quickbooks_payroll_pay_schedule
+from . import quickbooks_payroll_check
 from . import res_partner
 from . import product_product
 from . import account_account
@@ -30,8 +34,14 @@ if 'odoo.addons.hr_expense' in sys.modules:
 if 'odoo.addons.purchase' in sys.modules:
     from . import purchase_order
 
+if 'odoo.addons.project' in sys.modules:
+    from . import project_project
+
 if 'odoo.addons.sale' in sys.modules:
     from . import sale_order
+
+if 'odoo.addons.stock' in sys.modules:
+    from . import stock_move
 
 if 'odoo.addons.slate_connector_v19' in sys.modules:
     from . import slate_bridge

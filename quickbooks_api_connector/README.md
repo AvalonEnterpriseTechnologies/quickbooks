@@ -2,6 +2,17 @@
 
 Standalone QuickBooks Online connector for Odoo 19. Can be installed independently or alongside `slate_connector_v19`.
 
+## Requirements
+
+- **Odoo Accounting module (`account`) must be installed** before installing this
+  module. The QuickBooks connector posts journal entries, invoices, bills, and
+  payments through the standard Odoo accounting models, so the Accounting app
+  is a hard prerequisite. Odoo will refuse to install this module on a database
+  where `account` is not present (or will pull it in as a dependency on
+  Community/Enterprise editions that ship it).
+- Odoo 19 base modules: `base`, `base_setup`, `mail`, `contacts`.
+- Python package: `requests`.
+
 ## Features
 
 - **OAuth 2.0** connection to QuickBooks Online (sandbox + production)
@@ -22,9 +33,12 @@ Standalone QuickBooks Online connector for Odoo 19. Can be installed independent
 
 ### Dependencies
 
-- Odoo 19 modules: `base`, `mail`, `account`, `product`, `contacts`
+- Odoo 19 modules: `base`, `base_setup`, `mail`, **`account` (Accounting — required)**, `contacts`
 - Python: `requests` (`pip install requests`)
 - Optional: `cryptography` for Fernet token encryption (`pip install cryptography`)
+
+> The Accounting module (`account`) is mandatory — the connector cannot be
+> installed without it. See **Requirements** above.
 
 ## Configuration
 
