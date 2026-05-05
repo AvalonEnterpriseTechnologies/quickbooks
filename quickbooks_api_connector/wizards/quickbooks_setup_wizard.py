@@ -52,6 +52,22 @@ class QuickbooksSetupWizard(models.TransientModel):
                 '%s/qb/webhook' % base_url if base_url else False
             )
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        company_id = res.get('company_id') or self.env.company.id
+        config = self.env['quickbooks.config'].search([
+            ('company_id', '=', company_id),
+        ], limit=1)
+        if config:
+            res.update({
+                'company_id': config.company_id.id,
+                'environment': config.environment,
+                'client_id': config.client_id,
+                'client_secret': config.client_secret,
+            })
+        return res
+
     def action_save_and_connect(self):
         """Create or update the QB config, then initiate OAuth flow."""
         self.ensure_one()

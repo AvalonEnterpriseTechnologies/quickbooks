@@ -388,12 +388,9 @@ class ResConfigSettings(models.TransientModel):
     # --- Quick actions ---
 
     def action_qb_connect(self):
-        config = self._get_or_create_qb_config()
-        if not config.client_id or not config.client_secret_encrypted:
-            return self.env.ref(
-                'quickbooks_api_connector.action_quickbooks_setup_wizard',
-            ).read()[0]
-        return config.action_connect_qb()
+        return self.env.ref(
+            'quickbooks_api_connector.action_quickbooks_setup_wizard',
+        ).read()[0]
 
     def action_qb_disconnect(self):
         config = self._get_or_create_qb_config()
