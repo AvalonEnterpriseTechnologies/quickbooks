@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_quickbooks" model="ir.module.category">
+        <field name="name">QuickBooks Integration</field>
+        <field name="sequence">90</field>
+    </record>
+
+    <record id="privilege_qb_user" model="res.groups.privilege">
+        <field name="name">QuickBooks User</field>
+        <field name="category_id" ref="module_category_quickbooks"/>
+    </record>
+
+    <record id="privilege_qb_manager" model="res.groups.privilege">
+        <field name="name">QuickBooks Manager</field>
+        <field name="category_id" ref="module_category_quickbooks"/>
+    </record>
+
+    <record id="group_qb_user" model="res.groups">
+        <field name="name">QuickBooks User</field>
+        <field name="privilege_id" ref="privilege_qb_user"/>
+        <field name="comment">Can view sync status and trigger manual sync for own records.</field>
+    </record>
+
+    <record id="group_qb_manager" model="res.groups">
+        <field name="name">QuickBooks Manager</field>
+        <field name="privilege_id" ref="privilege_qb_manager"/>
+        <field name="implied_ids" eval="[(4, ref('group_qb_user'))]"/>
+        <field name="comment">Full access: configure connections, view logs, manage all syncs.</field>
+    </record>
+
+    <record id="ir_rule_qb_config_manager" model="ir.rule">
+        <field name="name">QB Config: Manager Only</field>
+        <field name="model_id" ref="model_quickbooks_config"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_qb_manager'))]"/>
+    </record>
+
+    <record id="ir_rule_qb_sync_log_company" model="ir.rule">
+        <field name="name">QB Sync Log: Company</field>
+        <field name="model_id" ref="model_quickbooks_sync_log"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_qb_user'))]"/>
+    </record>
+
+    <record id="ir_rule_qb_sync_queue_company" model="ir.rule">
+        <field name="name">QB Sync Queue: Company</field>
+        <field name="model_id" ref="model_quickbooks_sync_queue"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_qb_user'))]"/>
+    </record>
+</odoo>

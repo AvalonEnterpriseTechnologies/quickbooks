@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_expense_form_qb" model="ir.ui.view">
+        <field name="name">hr.expense.form.qb</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="after">
+                <div groups="quickbooks_api_connector.group_qb_user"
+                     invisible="not qb_purchase_id">
+                    <separator string="QuickBooks"/>
+                    <group>
+                        <field name="qb_purchase_id" readonly="1"/>
+                        <field name="qb_sync_token" readonly="1"/>
+                        <field name="qb_last_synced" readonly="1"/>
+                    </group>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

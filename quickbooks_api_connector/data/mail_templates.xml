@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<data noupdate="1">
+    <record id="mail_template_sync_failure" model="mail.template">
+        <field name="name">QuickBooks: Sync Job Failed</field>
+        <field name="model_id" ref="model_quickbooks_sync_queue"/>
+        <field name="subject">QuickBooks Sync Failed: {{ object.entity_type }} {{ object.operation }}</field>
+        <field name="email_from">{{ (object.company_id.email or user.email) }}</field>
+        <field name="email_to">{{ (object.company_id.email or '') }}</field>
+        <field name="body_html"><![CDATA[
+<div style="margin: 0px; padding: 0px;">
+    <p>A QuickBooks sync job has permanently failed after maximum retries.</p>
+    <table style="border-collapse: collapse; width: 100%;">
+        <tr><td style="padding: 4px; font-weight: bold;">Entity Type:</td>
+            <td style="padding: 4px;">{{ object.entity_type }}</td></tr>
+        <tr><td style="padding: 4px; font-weight: bold;">Direction:</td>
+            <td style="padding: 4px;">{{ object.direction }}</td></tr>
+        <tr><td style="padding: 4px; font-weight: bold;">Operation:</td>
+            <td style="padding: 4px;">{{ object.operation }}</td></tr>
+        <tr><td style="padding: 4px; font-weight: bold;">Odoo Record:</td>
+            <td style="padding: 4px;">{{ object.odoo_model }} #{{ object.odoo_record_id }}</td></tr>
+        <tr><td style="padding: 4px; font-weight: bold;">QB Entity ID:</td>
+            <td style="padding: 4px;">{{ object.qb_entity_id or 'N/A' }}</td></tr>
+        <tr><td style="padding: 4px; font-weight: bold;">Retries:</td>
+            <td style="padding: 4px;">{{ object.retry_count }}</td></tr>
+    </table>
+    <p style="margin-top: 12px;"><strong>Error:</strong></p>
+    <pre style="background: #f5f5f5; padding: 8px;">{{ object.error_message }}</pre>
+    <p>Please review and retry from the QuickBooks Sync Queue in Odoo.</p>
+</div>
+]]></field>
+    </record>
+
+    <record id="mail_template_connection_error" model="mail.template">
+        <field name="name">QuickBooks: Connection Error</field>
+        <field name="model_id" ref="model_quickbooks_config"/>
+        <field name="subject">QuickBooks Connection Error for {{ object.company_id.name }}</field>
+        <field name="email_from">{{ (object.company_id.email or user.email) }}</field>
+        <field name="email_to">{{ (object.company_id.email or '') }}</field>
+        <field name="body_html"><![CDATA[
+<div style="margin: 0px; padding: 0px;">
+    <p>The QuickBooks connection for <strong>{{ object.company_id.name }}</strong>
+       has encountered an error and syncing has been paused.</p>
+    <p><strong>Error:</strong></p>
+    <pre style="background: #f5f5f5; padding: 8px;">{{ object.error_message }}</pre>
+    <p>Please reconnect QuickBooks from the Configuration page in Odoo.</p>
+</div>
+]]></field>
+    </record>
+</data>
+</odoo>

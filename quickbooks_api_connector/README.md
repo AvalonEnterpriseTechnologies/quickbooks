@@ -1,0 +1,87 @@
+# QuickBooks API Module for Odoo 19
+
+Standalone QuickBooks Online connector for Odoo 19. Can be installed independently or alongside `slate_connector_v19`.
+
+## Requirements
+
+- **Odoo Accounting module (`account`) must be installed** before installing this
+  module. The QuickBooks connector posts journal entries, invoices, bills, and
+  payments through the standard Odoo accounting models, so the Accounting app
+  is a hard prerequisite. Odoo will refuse to install this module on a database
+  where `account` is not present (or will pull it in as a dependency on
+  Community/Enterprise editions that ship it).
+- Odoo 19 base modules: `base`, `base_setup`, `mail`, `contacts`.
+- Python package: `requests`.
+
+## Features
+
+- **OAuth 2.0** connection to QuickBooks Online (sandbox + production)
+- **One-time setup wizard** for Intuit app credentials, followed by a sync-only settings panel
+- **Bidirectional sync**: customers, vendors, products, projects, invoices, bills, payments, journal entries, credit memos, estimates, vendor credits, purchase orders, expenses, sales receipts, refund receipts, deposits, transfers, classes, departments, employees, time activities, inventory adjustments, attachments, payment terms, and tax codes where QBO permits writes
+- **Payroll read sync**: compensations, payroll employees, pay items, pay schedules, and payroll checks through Intuit's read-only Payroll GraphQL API
+- **Expanded team/inventory sync**: employee work locations, employment status, pay schedules, stock quantities, and Odoo-led inventory adjustments
+- **Async queue** with cron-based processing, retry with exponential backoff
+- **Conflict resolution**: last-modified, Odoo-wins, QBO-wins, or manual review
+- **Configurable field mappings** per entity type
+- **Webhook support**: CloudEvents and legacy Intuit format
+- **Rate-limited API client**: sliding-window throttling at 450 req/min
+- **CDC incremental sync** for supported QBO entities after the first successful sync
+
+## Installation
+
+1. Place this module in your Odoo addons path
+2. Update the module list: `Settings > Technical > Update Apps List`
+3. Install **QuickBooks API Module**
+
+### Dependencies
+
+- Odoo 19 modules: `base`, `base_setup`, `mail`, **`account` (Accounting — required)**, `contacts`
+- Python: `requests` (`pip install requests`)
+- Optional: `cryptography` for Fernet token encryption (`pip install cryptography`)
+
+> The Accounting module (`account`) is mandatory — the connector cannot be
+> installed without it. See **Requirements** above.
+
+## Configuration
+
+After installation, open **QuickBooks > Sync** or **Settings > QuickBooks**.
+If credentials are not configured, Odoo opens the one-time setup wizard. Enter:
+
+- Intuit Client ID
+- Intuit Client Secret
+- Sandbox or Production environment
+- Optional webhook verifier token
+
+After OAuth succeeds, the regular settings page is intentionally minimal: it
+shows connection status, the last sync timestamp, **Connect**, **Sync Now**, and
+**Disconnect**. Advanced credentials, sync toggles, and troubleshooting records
+remain available to managers under **Settings > Technical > QuickBooks**.
+
+## Intuit App Setup
+
+Configure these redirect/webhook URLs in your Intuit Developer app:
+
+- OAuth redirect URI: `https://<your-odoo-domain>/qb/oauth/callback`
+- Webhook endpoint: `https://<your-odoo-domain>/qb/webhook`
+
+The accounting scope is always requested. Payroll compensation and QuickBooks
+Time scopes are requested only when those advanced features are enabled.
+
+## Migration
+
+Use the Initial Migration wizard after OAuth is connected. See
+[`docs/migration.md`](../docs/migration.md) for recommended ordering and checks.
+
+## Troubleshooting
+
+- **Connection errors**: reconnect from Settings > QuickBooks.
+- **Token refresh failures**: verify the Intuit app credentials in the Technical configuration.
+- **Sync conflicts**: review `quickbooks.sync.queue` records with state `conflict`.
+- **Rate limits**: the API client throttles per QBO realm and retries 429/5xx responses.
+
+## Optional SLATE Integration
+
+If `slate_connector_v19` is also installed, this module automatically:
+- Registers as a provider in the SLATE integration registry
+- Fires integration events on the SLATE event bus
+- Extends the task sync manager for SLATE-initiated syncs

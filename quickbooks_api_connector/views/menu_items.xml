@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_quickbooks_open_or_setup" model="ir.actions.server">
+        <field name="name">QuickBooks Sync</field>
+        <field name="model_id" ref="model_quickbooks_config"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_or_setup()</field>
+    </record>
+
+    <!-- QuickBooks items under Settings > Technical -->
+    <menuitem id="menu_qb_technical_root"
+              name="QuickBooks"
+              parent="base.menu_custom"
+              sequence="90"
+              groups="quickbooks_api_connector.group_qb_manager"/>
+
+    <menuitem id="menu_quickbooks_sync_panel"
+              name="Sync"
+              parent="menu_qb_technical_root"
+              sequence="5"
+              action="action_quickbooks_open_or_setup"/>
+
+    <menuitem id="menu_quickbooks_sync_log"
+              name="Sync Logs"
+              parent="menu_qb_technical_root"
+              sequence="10"
+              action="action_quickbooks_sync_log"/>
+
+    <menuitem id="menu_quickbooks_sync_queue"
+              name="Sync Queue"
+              parent="menu_qb_technical_root"
+              sequence="20"
+              action="action_quickbooks_sync_queue"/>
+
+    <menuitem id="menu_quickbooks_reconciliation_report"
+              name="Reconciliation Report"
+              parent="menu_qb_technical_root"
+              sequence="25"
+              action="action_quickbooks_reconciliation_report"/>
+
+    <menuitem id="menu_quickbooks_config"
+              name="Configurations"
+              parent="menu_qb_technical_root"
+              sequence="30"
+              groups="quickbooks_api_connector.group_qb_manager"
+              action="action_quickbooks_config"/>
+</odoo>
