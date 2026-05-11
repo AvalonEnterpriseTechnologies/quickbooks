@@ -53,6 +53,7 @@ class QuickbooksSyncLog(models.Model):
          ('inventory_adjustment', 'Inventory Adjustment'),
          ('timesheet', 'Timesheet (QBT)'),
          ('report', 'Financial Report'),
+         ('recurring_transaction', 'Recurring Transaction'),
          ('full_sync', 'Full Sync')],
         required=True,
     )

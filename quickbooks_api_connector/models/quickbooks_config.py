@@ -137,6 +137,10 @@ class QuickbooksConfig(models.Model):
     sync_vendor_credits = fields.Boolean(default=True, string='Sync Vendor Credits')
     sync_refund_receipts = fields.Boolean(default=True, string='Sync Refund Receipts')
     sync_reports = fields.Boolean(default=False, string='Sync Financial Reports')
+    sync_recurring_transactions = fields.Boolean(
+        default=False,
+        string='Sync Recurring Transactions',
+    )
     reports_method = fields.Selection(
         [('Accrual', 'Accrual'), ('Cash', 'Cash')],
         default='Accrual',

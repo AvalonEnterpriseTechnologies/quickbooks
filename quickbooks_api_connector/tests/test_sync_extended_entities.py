@@ -213,3 +213,29 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         self.assertEqual(vals['qb_opening_balance_date'], '2026-01-01')
         self.assertEqual(vals['qb_current_balance'], 700.50)
         self.assertEqual(vals['qb_current_balance_with_subaccounts'], 725.75)
+
+    def test_recurring_transaction_pull_upserts_template(self):
+        client = self._mock_client()
+        client.read.return_value = {
+            'RecurringTransaction': {
+                'Id': 'R1',
+                'SyncToken': '0',
+                'Name': 'Monthly Rent',
+                'TxnType': 'Bill',
+                'Active': True,
+                'ScheduleInfo': {
+                    'Type': 'Monthly',
+                    'NextDate': '2026-02-01',
+                    'IntervalInfo': {'Type': 'Month'},
+                },
+            },
+        }
+        job = self.env['quickbooks.sync.queue'].new({'qb_entity_id': 'R1'})
+
+        self.env['qb.sync.recurring.transactions'].pull(client, self.config, job)
+
+        template = self.env['quickbooks.recurring.template'].search([
+            ('qb_recurring_id', '=', 'R1'),
+        ], limit=1)
+        self.assertEqual(template.name, 'Monthly Rent')
+        self.assertEqual(template.txn_type, 'Bill')

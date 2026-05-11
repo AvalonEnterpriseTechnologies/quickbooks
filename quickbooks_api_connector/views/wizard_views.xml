@@ -123,6 +123,7 @@
                         <field name="migrate_vendors"/>
                         <field name="migrate_projects"/>
                         <field name="migrate_products"/>
+                        <field name="migrate_recurring_transactions"/>
                     </group>
                     <group>
                         <field name="migrate_invoices"/>

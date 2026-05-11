@@ -46,6 +46,7 @@ ENTITY_SERVICE_MAP = {
     'inventory_adjustment': 'qb.sync.inventory.adjustments',
     'timesheet': 'qb.sync.timesheets',
     'report': 'qb.sync.reports',
+    'recurring_transaction': 'qb.sync.recurring.transactions',
 }
 
 PULL_ONLY_ENTITIES = frozenset([
@@ -79,6 +80,7 @@ CDC_QBO_TO_ENTITY = {
     'Vendor': 'vendor',
     'VendorCredit': 'vendor_credit',
     'Project': 'project',
+    'RecurringTransaction': 'recurring_transaction',
 }
 
 
@@ -192,6 +194,7 @@ class QBSyncEngine(models.AbstractModel):
             'inventory_adjustment',
             'attachment',
             'report',
+            'recurring_transaction',
         ]
         toggle_map = {
             'company_info': True,
@@ -231,6 +234,9 @@ class QBSyncEngine(models.AbstractModel):
             'term': getattr(config, 'sync_terms', False),
             'attachment': getattr(config, 'sync_attachments', False),
             'report': getattr(config, 'sync_reports', False),
+            'recurring_transaction': getattr(
+                config, 'sync_recurring_transactions', False,
+            ),
         }
         cdc_records = self._collect_cdc_records(client, config, entity_order)
 

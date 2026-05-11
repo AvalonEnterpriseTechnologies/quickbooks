@@ -104,6 +104,7 @@
                                 <field name="qb_reports_history_months"/>
                                 <field name="qb_reports_keep_n"/>
                                 <field name="qb_reports_use_v2_now"/>
+                                <field name="qb_sync_recurring_transactions"/>
                             </div>
                         </div>
                     </div>

@@ -41,6 +41,10 @@ class QuickbooksMigrationWizard(models.TransientModel):
              'and current balances can be validated before posting any Odoo '
              'opening-balance journal entries.',
     )
+    migrate_recurring_transactions = fields.Boolean(
+        default=False,
+        string='Recurring Transactions',
+    )
 
     def action_start_migration(self):
         """Queue migration jobs in dependency order."""
@@ -66,6 +70,8 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('project')
         if self.migrate_products:
             ordered_entities.append('product')
+        if self.migrate_recurring_transactions:
+            ordered_entities.append('recurring_transaction')
         if self.migrate_invoices:
             ordered_entities.append('invoice')
         if self.migrate_bills:

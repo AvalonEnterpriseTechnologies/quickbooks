@@ -145,6 +145,10 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
     qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=True)
     qb_sync_reports = fields.Boolean(string='Sync Financial Reports', default=False)
+    qb_sync_recurring_transactions = fields.Boolean(
+        string='Sync Recurring Transactions',
+        default=False,
+    )
     qb_reports_method = fields.Selection(
         [('Accrual', 'Accrual'), ('Cash', 'Cash')],
         string='Reports Accounting Method',
@@ -323,6 +327,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
                 'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', True),
                 'qb_sync_reports': getattr(config, 'sync_reports', False),
+                'qb_sync_recurring_transactions': getattr(
+                    config, 'sync_recurring_transactions', False,
+                ),
                 'qb_reports_method': getattr(config, 'reports_method', 'Accrual'),
                 'qb_reports_history_months': getattr(
                     config, 'reports_history_months', 12,
@@ -420,7 +427,8 @@ class ResConfigSettings(models.TransientModel):
             'sync_inventory_adjustments', 'sync_inventory_valuation_accounts',
             'sync_vendor_credits', 'sync_refund_receipts', 'payroll_enabled',
             'sync_reports', 'reports_method', 'reports_history_months',
-            'reports_keep_n', 'reports_use_v2_now', 'payroll_enabled',
+            'reports_keep_n', 'reports_use_v2_now',
+            'sync_recurring_transactions', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
         ]
         field_map = {
