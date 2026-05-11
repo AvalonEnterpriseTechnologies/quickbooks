@@ -298,3 +298,12 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
 
         self.assertEqual(workers_comp.source, 'manual')
         self.assertEqual(workers_comp.base_rate, 0.25)
+
+    def test_hr_advisor_note_is_manual_only(self):
+        note = self.env['quickbooks.hr.advisor.note'].create({
+            'company_id': self.company.id,
+            'name': 'Handbook update',
+            'category': 'handbook',
+        })
+
+        self.assertEqual(note.api_status, 'manual')
