@@ -39,6 +39,12 @@ class QBSyncAccounts(models.AbstractModel):
             'qb_account_id': str(qb_data.get('Id', '')),
             'qb_sync_token': str(qb_data.get('SyncToken', '')),
             'qb_last_synced': fields.Datetime.now(),
+            'qb_opening_balance': qb_data.get('OpeningBalance') or 0.0,
+            'qb_opening_balance_date': qb_data.get('OpeningBalanceDate') or False,
+            'qb_current_balance': qb_data.get('CurrentBalance') or 0.0,
+            'qb_current_balance_with_subaccounts': (
+                qb_data.get('CurrentBalanceWithSubAccounts') or 0.0
+            ),
         }
 
         if qb_data.get('Description'):
@@ -85,6 +91,12 @@ class QBSyncAccounts(models.AbstractModel):
                 'name': vals.get('name', existing.name),
                 'qb_sync_token': vals['qb_sync_token'],
                 'qb_last_synced': vals['qb_last_synced'],
+                'qb_opening_balance': vals['qb_opening_balance'],
+                'qb_opening_balance_date': vals['qb_opening_balance_date'],
+                'qb_current_balance': vals['qb_current_balance'],
+                'qb_current_balance_with_subaccounts': (
+                    vals['qb_current_balance_with_subaccounts']
+                ),
             }
             if vals.get('code') and vals['code'] != existing.code:
                 update_vals['code'] = vals['code']
@@ -156,6 +168,12 @@ class QBSyncAccounts(models.AbstractModel):
                     'name': vals.get('name', existing.name),
                     'qb_sync_token': vals['qb_sync_token'],
                     'qb_last_synced': vals['qb_last_synced'],
+                    'qb_opening_balance': vals['qb_opening_balance'],
+                    'qb_opening_balance_date': vals['qb_opening_balance_date'],
+                    'qb_current_balance': vals['qb_current_balance'],
+                    'qb_current_balance_with_subaccounts': (
+                        vals['qb_current_balance_with_subaccounts']
+                    ),
                 }
                 if vals.get('code') and vals['code'] != existing.code:
                     update_vals['code'] = vals['code']

@@ -197,3 +197,19 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         self.assertTrue(endpoint.startswith('reports/BalanceSheet?'))
         self.assertIn('start_date=2026-01-01', endpoint)
         self.assertIn('testing_migration=true', endpoint)
+
+    def test_account_mapping_includes_qbo_balances(self):
+        vals = self.env['qb.sync.accounts']._qb_account_to_odoo({
+            'Id': '10',
+            'Name': 'Checking',
+            'AccountType': 'Bank',
+            'OpeningBalance': 500.25,
+            'OpeningBalanceDate': '2026-01-01',
+            'CurrentBalance': 700.50,
+            'CurrentBalanceWithSubAccounts': 725.75,
+        })
+
+        self.assertEqual(vals['qb_opening_balance'], 500.25)
+        self.assertEqual(vals['qb_opening_balance_date'], '2026-01-01')
+        self.assertEqual(vals['qb_current_balance'], 700.50)
+        self.assertEqual(vals['qb_current_balance_with_subaccounts'], 725.75)

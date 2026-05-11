@@ -117,6 +117,7 @@
                 <group string="Entities to Migrate">
                     <group>
                         <field name="migrate_accounts"/>
+                        <field name="migrate_opening_balances"/>
                         <field name="migrate_tax_codes"/>
                         <field name="migrate_customers"/>
                         <field name="migrate_vendors"/>

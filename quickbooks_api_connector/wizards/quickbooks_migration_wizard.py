@@ -34,6 +34,13 @@ class QuickbooksMigrationWizard(models.TransientModel):
         default=False, string='Inventory Adjustments',
     )
     migrate_payroll = fields.Boolean(default=False, string='Payroll Read Data')
+    migrate_opening_balances = fields.Boolean(
+        default=True,
+        string='Opening Balances / Trial Balance Snapshot',
+        help='Queue financial reports after the Chart of Accounts so QBO opening '
+             'and current balances can be validated before posting any Odoo '
+             'opening-balance journal entries.',
+    )
 
     def action_start_migration(self):
         """Queue migration jobs in dependency order."""
@@ -47,6 +54,8 @@ class QuickbooksMigrationWizard(models.TransientModel):
 
         if self.migrate_accounts:
             ordered_entities.append('account')
+        if self.migrate_opening_balances:
+            ordered_entities.append('report')
         if self.migrate_tax_codes:
             ordered_entities.append('tax_code')
         if self.migrate_customers:
