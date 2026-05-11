@@ -324,3 +324,13 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         self.assertEqual(result['count'], 1)
         snapshot = self.env['quickbooks.payroll.settings'].search([], limit=1)
         self.assertTrue(snapshot.pay_items_json)
+
+    def test_bank_rule_is_manual_only(self):
+        rule = self.env['quickbooks.bank.rule'].create({
+            'company_id': self.company.id,
+            'name': 'Fuel purchases',
+            'conditions_json': {'description_contains': 'FUEL'},
+        })
+
+        self.assertEqual(rule.api_status, 'manual')
+        self.assertEqual(rule.conditions_json['description_contains'], 'FUEL')
