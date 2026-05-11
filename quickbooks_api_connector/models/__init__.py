@@ -15,6 +15,8 @@ from . import quickbooks_hr_advisor_note
 from . import quickbooks_payroll_settings
 from . import quickbooks_bank_rule
 from . import quickbooks_migration_run
+from . import quickbooks_coverage_matrix
+from . import quickbooks_dashboard
 from . import quickbooks_payroll_compensation
 from . import quickbooks_payroll_employee
 from . import quickbooks_payroll_pay_item

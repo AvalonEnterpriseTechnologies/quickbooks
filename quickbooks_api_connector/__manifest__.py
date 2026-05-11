@@ -56,6 +56,7 @@
         'views/quickbooks_config_views.xml',
         'views/quickbooks_sync_log_views.xml',
         'views/quickbooks_sync_queue_views.xml',
+        'views/coverage_dashboard_views.xml',
         'views/wizard_views.xml',
         'views/menu_items.xml',
         'views/res_config_settings_views.xml',

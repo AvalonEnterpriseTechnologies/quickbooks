@@ -404,3 +404,11 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         run = self.env['quickbooks.migration.run'].search([], limit=1)
         self.assertEqual(run.state, 'completed')
         self.assertEqual(run.step_ids[0].status, 'skipped')
+
+    def test_coverage_matrix_refreshes_from_registry(self):
+        Matrix = self.env['quickbooks.coverage.matrix']
+
+        Matrix.refresh_from_registry()
+
+        self.assertTrue(Matrix.search([('entity_type', '=', 'customer')], limit=1))
+        self.assertTrue(Matrix.search([('area', '=', 'Bank Rules')], limit=1))

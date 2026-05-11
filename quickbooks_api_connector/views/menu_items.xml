@@ -26,6 +26,12 @@
               sequence="10"
               action="action_quickbooks_sync_log"/>
 
+    <menuitem id="menu_quickbooks_dashboard"
+              name="Dashboard"
+              parent="menu_qb_technical_root"
+              sequence="12"
+              action="action_quickbooks_dashboard"/>
+
     <menuitem id="menu_quickbooks_sync_queue"
               name="Sync Queue"
               parent="menu_qb_technical_root"
@@ -37,6 +43,12 @@
               parent="menu_qb_technical_root"
               sequence="25"
               action="action_quickbooks_reconciliation_report"/>
+
+    <menuitem id="menu_quickbooks_coverage_matrix"
+              name="Coverage Matrix"
+              parent="menu_qb_technical_root"
+              sequence="26"
+              action="action_quickbooks_coverage_matrix"/>
 
     <menuitem id="menu_quickbooks_config"
               name="Configurations"
