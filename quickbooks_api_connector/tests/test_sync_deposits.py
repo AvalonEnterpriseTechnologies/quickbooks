@@ -22,3 +22,42 @@ class TestSyncDeposits(QuickbooksTestCommon):
         service = self.env['qb.sync.deposits']
         result = service.pull(client, self.config, job)
         self.assertEqual(result.get('qb_id'), '1300')
+
+    def test_push_skips_invalid_payload(self):
+        bank_account = self.env['account.account'].create({
+            'name': 'Unmapped Bank',
+            'code': '102020',
+            'account_type': 'asset_cash',
+        })
+        income_account = self.env['account.account'].create({
+            'name': 'Unmapped Deposit Source',
+            'code': '402020',
+            'account_type': 'income',
+        })
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'date': '2026-01-15',
+            'line_ids': [
+                (0, 0, {
+                    'name': 'Bank',
+                    'account_id': bank_account.id,
+                    'debit': 100.0,
+                    'credit': 0.0,
+                }),
+                (0, 0, {
+                    'name': 'Source',
+                    'account_id': income_account.id,
+                    'debit': 0.0,
+                    'credit': 100.0,
+                }),
+            ],
+        })
+
+        client = self._mock_client()
+        job = MagicMock()
+        job.odoo_record_id = move.id
+
+        result = self.env['qb.sync.deposits'].push(client, self.config, job)
+
+        self.assertTrue(result['skipped'])
+        client.create.assert_not_called()

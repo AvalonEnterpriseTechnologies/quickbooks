@@ -23,9 +23,10 @@ class QBSyncDeposits(models.AbstractModel):
             return {}
 
         payload = self._odoo_to_qb_deposit(move)
-        if not payload:
+        if not self._is_valid_deposit_payload(payload):
             _logger.info(
-                'Skipping move %s as QBO Deposit; missing deposit account or source lines.',
+                'Skipping move %s as QBO Deposit; missing DepositToAccountRef '
+                'or DepositLineDetail source lines.',
                 move.display_name,
             )
             return {'skipped': True}
@@ -94,6 +95,24 @@ class QBSyncDeposits(models.AbstractModel):
             payload['PrivateNote'] = move.ref[:4000]
         return payload
 
+    def _is_valid_deposit_payload(self, payload):
+        if not payload:
+            return False
+        destination = payload.get('DepositToAccountRef') or {}
+        if not destination.get('value'):
+            return False
+        lines = payload.get('Line') or []
+        if not lines:
+            return False
+        for line in lines:
+            detail = line.get('DepositLineDetail') or {}
+            account_ref = detail.get('AccountRef') or {}
+            if line.get('DetailType') != 'DepositLineDetail':
+                return False
+            if not account_ref.get('value'):
+                return False
+        return True
+
     def _deposit_destination_line(self, move):
         for line in move.line_ids.filtered(lambda l: l.debit > 0):
             account = line.account_id
@@ -104,7 +123,7 @@ class QBSyncDeposits(models.AbstractModel):
         return False
 
     def _is_deposit_candidate(self, move):
-        return bool(self._odoo_to_qb_deposit(move))
+        return self._is_valid_deposit_payload(self._odoo_to_qb_deposit(move))
 
     def pull(self, client, config, job):
         qb_id = job.qb_entity_id
@@ -150,6 +169,7 @@ class QBSyncDeposits(models.AbstractModel):
         queue = self.env['quickbooks.sync.queue']
         for move in moves:
             if not self._is_deposit_candidate(move):
+                self._cancel_pending_deposit_jobs(move)
                 continue
             queue.enqueue(
                 entity_type='deposit',
@@ -159,3 +179,20 @@ class QBSyncDeposits(models.AbstractModel):
                 odoo_model='account.move',
                 company=config.company_id,
             )
+
+    def _cancel_pending_deposit_jobs(self, move):
+        jobs = self.env['quickbooks.sync.queue'].search([
+            ('entity_type', '=', 'deposit'),
+            ('direction', '=', 'push'),
+            ('odoo_model', '=', 'account.move'),
+            ('odoo_record_id', '=', move.id),
+            ('state', 'in', ('pending', 'processing', 'conflict')),
+        ])
+        if jobs:
+            jobs.write({
+                'state': 'done',
+                'error_message': (
+                    'Skipped: this journal entry does not have the QBO account '
+                    'mapping required to build a valid Deposit payload.'
+                ),
+            })
