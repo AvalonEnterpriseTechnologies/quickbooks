@@ -133,6 +133,7 @@
                         <field name="migrate_journal_entries"/>
                         <field name="migrate_inventory_adjustments"/>
                         <field name="migrate_payroll"/>
+                        <field name="migrate_employee_benefits"/>
                     </group>
                 </group>
                 <footer>

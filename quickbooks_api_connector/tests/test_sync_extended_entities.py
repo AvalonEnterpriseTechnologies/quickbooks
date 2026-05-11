@@ -260,3 +260,30 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
     def test_payroll_client_keeps_existing_model_name(self):
         self.assertTrue(self.env['qb.payroll.client'])
         self.assertTrue(self.env['qb.graphql.client'])
+
+    def test_employee_benefits_are_persisted_from_payroll_checks(self):
+        data = {
+            'payrollChecks': [{
+                'id': 'PC1',
+                'employeeId': 'E1',
+                'displayName': 'Jane Doe',
+                'payPeriodStart': '2026-01-01',
+                'payPeriodEnd': '2026-01-15',
+                'deductions': [{
+                    'name': '401k Employee',
+                    'type': 'Retirement',
+                    'amount': 75.0,
+                }],
+            }],
+        }
+
+        count = self.env['qb.sync.employee.benefits']._upsert_benefits(
+            self.config, data,
+        )
+
+        self.assertEqual(count, 1)
+        benefit = self.env['quickbooks.employee.benefit'].search([
+            ('source_check_id', '=', 'PC1'),
+        ], limit=1)
+        self.assertEqual(benefit.benefit_type, 'retirement')
+        self.assertEqual(benefit.amount, 75.0)

@@ -145,6 +145,10 @@ class QuickbooksConfig(models.Model):
         default=False,
         string='Sync Custom Fields',
     )
+    sync_employee_benefits = fields.Boolean(
+        default=False,
+        string='Sync Employee Benefits',
+    )
     reports_method = fields.Selection(
         [('Accrual', 'Accrual'), ('Cash', 'Cash')],
         default='Accrual',

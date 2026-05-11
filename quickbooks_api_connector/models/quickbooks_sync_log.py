@@ -55,6 +55,7 @@ class QuickbooksSyncLog(models.Model):
          ('report', 'Financial Report'),
          ('recurring_transaction', 'Recurring Transaction'),
          ('custom_field_definition', 'Custom Field Definition'),
+         ('employee_benefit', 'Employee Benefit'),
          ('full_sync', 'Full Sync')],
         required=True,
     )

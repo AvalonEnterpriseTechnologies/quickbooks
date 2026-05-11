@@ -42,5 +42,6 @@ from . import sync_inventory_adjustments
 from . import sync_reports
 from . import sync_recurring_transactions
 from . import sync_custom_fields
+from . import sync_employee_benefits
 from . import qbt_api_client
 from . import sync_timesheets

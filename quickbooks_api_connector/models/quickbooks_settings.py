@@ -153,6 +153,10 @@ class ResConfigSettings(models.TransientModel):
         string='Sync Custom Fields',
         default=False,
     )
+    qb_sync_employee_benefits = fields.Boolean(
+        string='Sync Employee Benefits',
+        default=False,
+    )
     qb_reports_method = fields.Selection(
         [('Accrual', 'Accrual'), ('Cash', 'Cash')],
         string='Reports Accounting Method',
@@ -337,6 +341,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_custom_fields_enabled': getattr(
                     config, 'custom_fields_enabled', False,
                 ),
+                'qb_sync_employee_benefits': getattr(
+                    config, 'sync_employee_benefits', False,
+                ),
                 'qb_reports_method': getattr(config, 'reports_method', 'Accrual'),
                 'qb_reports_history_months': getattr(
                     config, 'reports_history_months', 12,
@@ -435,7 +442,8 @@ class ResConfigSettings(models.TransientModel):
             'sync_vendor_credits', 'sync_refund_receipts', 'payroll_enabled',
             'sync_reports', 'reports_method', 'reports_history_months',
             'reports_keep_n', 'reports_use_v2_now',
-            'sync_recurring_transactions', 'custom_fields_enabled', 'payroll_enabled',
+            'sync_recurring_transactions', 'custom_fields_enabled',
+            'sync_employee_benefits', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
         ]
         field_map = {

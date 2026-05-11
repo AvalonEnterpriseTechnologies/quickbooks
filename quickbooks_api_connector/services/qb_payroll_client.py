@@ -67,6 +67,16 @@ query PayrollChecks($startDate: String, $endDate: String) {
         grossPay
         netPay
         status
+        deductions {
+            name
+            type
+            amount
+        }
+        benefits {
+            name
+            type
+            amount
+        }
     }
 }
 """

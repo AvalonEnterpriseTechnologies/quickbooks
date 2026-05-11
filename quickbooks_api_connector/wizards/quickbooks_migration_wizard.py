@@ -46,6 +46,7 @@ class QuickbooksMigrationWizard(models.TransientModel):
         string='Recurring Transactions',
     )
     migrate_custom_fields = fields.Boolean(default=False, string='Custom Fields')
+    migrate_employee_benefits = fields.Boolean(default=False, string='Employee Benefits')
 
     def action_start_migration(self):
         """Queue migration jobs in dependency order."""
@@ -91,6 +92,8 @@ class QuickbooksMigrationWizard(models.TransientModel):
                 'payroll_employee', 'payroll_compensation', 'payroll_pay_item',
                 'payroll_schedule', 'payroll_check', 'work_location',
             ])
+        if self.migrate_employee_benefits:
+            ordered_entities.append('employee_benefit')
 
         directions = []
         if self.direction in ('import', 'both'):

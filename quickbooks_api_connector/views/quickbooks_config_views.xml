@@ -150,6 +150,7 @@
                             </group>
                             <group string="Advanced APIs">
                                 <field name="payroll_enabled"/>
+                                <field name="sync_employee_benefits"/>
                                 <field name="payroll_create_draft_payslips"/>
                                 <field name="qbt_enabled"/>
                             </group>
