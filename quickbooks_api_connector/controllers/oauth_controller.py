@@ -8,7 +8,7 @@ _logger = logging.getLogger(__name__)
 
 class QuickbooksOAuthController(http.Controller):
 
-    @http.route('/qb/oauth/callback', type='http', auth='user', csrf=False)
+    @http.route('/qb/oauth/callback', type='http', auth='public', csrf=False)
     def oauth_callback(self, **kwargs):
         code = kwargs.get('code')
         state = kwargs.get('state')

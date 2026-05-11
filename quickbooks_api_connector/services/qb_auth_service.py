@@ -58,7 +58,13 @@ class QBAuthService(models.AbstractModel):
             'redirect_uri': self._get_redirect_uri(),
         }
         auth = (config.client_id, config.client_secret)
-        resp = requests.post(QBO_TOKEN_URL, data=data, auth=auth, timeout=30)
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        resp = requests.post(
+            QBO_TOKEN_URL, data=data, auth=auth, headers=headers, timeout=30,
+        )
         if resp.status_code != 200:
             _logger.error('Token exchange failed: %s %s', resp.status_code, resp.text)
             raise UserError(
@@ -84,7 +90,13 @@ class QBAuthService(models.AbstractModel):
             'refresh_token': refresh,
         }
         auth = (config.client_id, config.client_secret)
-        resp = requests.post(QBO_TOKEN_URL, data=data, auth=auth, timeout=30)
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        resp = requests.post(
+            QBO_TOKEN_URL, data=data, auth=auth, headers=headers, timeout=30,
+        )
         if resp.status_code != 200:
             _logger.error('Token refresh failed: %s %s', resp.status_code, resp.text)
             config.write({

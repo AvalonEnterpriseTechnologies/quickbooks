@@ -71,8 +71,9 @@
                         <field name="oauth_redirect_uri" readonly="1"
                                widget="CopyClipboardChar"/>
                         <div colspan="2" class="text-muted small">
-                            This URI must be registered exactly in the Intuit Developer
-                            Portal Redirect URIs list before connecting.
+                            This URI must be registered exactly under Intuit
+                            Developer &gt; Keys and credentials &gt; Redirect URIs
+                            before connecting. Do not paste it into the Webhooks tab.
                         </div>
                     </group>
 

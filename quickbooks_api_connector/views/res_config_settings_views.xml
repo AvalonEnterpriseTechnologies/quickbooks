@@ -64,8 +64,10 @@
                                 <label for="qb_oauth_redirect_uri"
                                        string="OAuth Redirect URI"/>
                                 <div class="text-muted small mb8">
-                                    Add this exact URI to your Intuit app's Redirect URIs
-                                    before clicking Connect to QuickBooks.
+                                    Add this exact URI under Intuit Developer &gt; Keys
+                                    and credentials &gt; Redirect URIs before clicking
+                                    Connect to QuickBooks. Do not paste this into
+                                    the Webhooks tab.
                                 </div>
                                 <field name="qb_oauth_redirect_uri" readonly="1"
                                        widget="CopyClipboardChar"/>

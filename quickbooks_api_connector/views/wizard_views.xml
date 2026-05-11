@@ -16,8 +16,9 @@
                     <field name="oauth_redirect_uri" readonly="1"
                            widget="CopyClipboardChar" nolabel="1"/>
                     <div colspan="2" class="text-muted small">
-                        Add this exact URI to your Intuit app's Redirect URIs
-                        before clicking Save &amp; Connect.
+                        Add this exact URI under Intuit Developer &gt; Keys and
+                        credentials &gt; Redirect URIs before clicking Save &amp;
+                        Connect. This is not the Webhooks endpoint.
                     </div>
                 </group>
                 <group string="Odoo Webhook URL (optional, for live updates)">
