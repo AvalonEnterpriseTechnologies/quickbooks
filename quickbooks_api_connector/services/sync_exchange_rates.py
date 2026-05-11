@@ -52,6 +52,9 @@ class QBSyncExchangeRates(models.AbstractModel):
                     ('name', '=', as_of),
                 ], limit=1)
 
+                # QBO's ExchangeRate endpoint returns home-currency units per
+                # one source-currency unit; Odoo stores the inverse rate value.
+                # See Intuit QBO Accounting API ExchangeRate docs.
                 rate_val = 1.0 / float(qb_rate) if float(qb_rate) else 1.0
 
                 if existing:

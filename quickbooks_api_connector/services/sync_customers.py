@@ -12,8 +12,18 @@ class QBSyncCustomers(models.AbstractModel):
 
     # ---- Field Mapping ----
 
+    @staticmethod
+    def _partner_phone(partner):
+        """Return the partner's primary phone number.
+
+        Odoo 19 removed ``res.partner.mobile``. Fall back to that field on
+        older versions when present so QBO still receives a number.
+        """
+        return partner.phone or getattr(partner, 'mobile', False) or False
+
     def _odoo_to_qb_customer(self, partner):
         """Map an Odoo res.partner to a QBO Customer dict."""
+        phone = self._partner_phone(partner)
         data = {
             'DisplayName': partner.name or '',
             'GivenName': (partner.name or '').split(' ')[0][:25],
@@ -23,9 +33,8 @@ class QBSyncCustomers(models.AbstractModel):
             ),
             'PrimaryEmailAddr': {'Address': partner.email} if partner.email else None,
             'PrimaryPhone': (
-                {'FreeFormNumber': partner.phone} if partner.phone else None
+                {'FreeFormNumber': phone} if phone else None
             ),
-            'Mobile': {'FreeFormNumber': partner.mobile} if partner.mobile else None,
             'BillAddr': self._odoo_address_to_qb(partner),
             'ShipAddr': self._odoo_address_to_qb(partner),
         }
@@ -39,6 +48,7 @@ class QBSyncCustomers(models.AbstractModel):
 
     def _odoo_to_qb_vendor(self, partner):
         """Map an Odoo res.partner to a QBO Vendor dict."""
+        phone = self._partner_phone(partner)
         data = {
             'DisplayName': partner.name or '',
             'GivenName': (partner.name or '').split(' ')[0][:25],
@@ -48,9 +58,8 @@ class QBSyncCustomers(models.AbstractModel):
             ),
             'PrimaryEmailAddr': {'Address': partner.email} if partner.email else None,
             'PrimaryPhone': (
-                {'FreeFormNumber': partner.phone} if partner.phone else None
+                {'FreeFormNumber': phone} if phone else None
             ),
-            'Mobile': {'FreeFormNumber': partner.mobile} if partner.mobile else None,
             'BillAddr': self._odoo_address_to_qb(partner),
         }
         if partner.vat:
@@ -63,11 +72,16 @@ class QBSyncCustomers(models.AbstractModel):
 
     def _qb_customer_to_odoo(self, qb_data):
         """Map a QBO Customer dict to Odoo res.partner vals."""
+        Partner = self.env['res.partner']
+        phone = (
+            (qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber')
+            or (qb_data.get('Mobile') or {}).get('FreeFormNumber')
+            or False
+        )
         vals = {
             'name': qb_data.get('DisplayName', ''),
             'email': (qb_data.get('PrimaryEmailAddr') or {}).get('Address', False),
-            'phone': (qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber', False),
-            'mobile': (qb_data.get('Mobile') or {}).get('FreeFormNumber', False),
+            'phone': phone,
             'website': (qb_data.get('WebAddr') or {}).get('URI', False),
             'company_type': (
                 'company' if qb_data.get('CompanyName') else 'person'
@@ -75,6 +89,8 @@ class QBSyncCustomers(models.AbstractModel):
             'company_name': qb_data.get('CompanyName', False),
             'customer_rank': 1,
         }
+        if 'mobile' in Partner._fields:
+            vals['mobile'] = (qb_data.get('Mobile') or {}).get('FreeFormNumber', False)
         vat = qb_data.get('ResaleNum')
         if vat:
             vals['vat'] = vat
@@ -90,11 +106,16 @@ class QBSyncCustomers(models.AbstractModel):
 
     def _qb_vendor_to_odoo(self, qb_data):
         """Map a QBO Vendor dict to Odoo res.partner vals."""
+        Partner = self.env['res.partner']
+        phone = (
+            (qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber')
+            or (qb_data.get('Mobile') or {}).get('FreeFormNumber')
+            or False
+        )
         vals = {
             'name': qb_data.get('DisplayName', ''),
             'email': (qb_data.get('PrimaryEmailAddr') or {}).get('Address', False),
-            'phone': (qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber', False),
-            'mobile': (qb_data.get('Mobile') or {}).get('FreeFormNumber', False),
+            'phone': phone,
             'website': (qb_data.get('WebAddr') or {}).get('URI', False),
             'company_type': (
                 'company' if qb_data.get('CompanyName') else 'person'
@@ -102,6 +123,8 @@ class QBSyncCustomers(models.AbstractModel):
             'company_name': qb_data.get('CompanyName', False),
             'supplier_rank': 1,
         }
+        if 'mobile' in Partner._fields:
+            vals['mobile'] = (qb_data.get('Mobile') or {}).get('FreeFormNumber', False)
         vat = qb_data.get('TaxIdentifier')
         if vat:
             vals['vat'] = vat

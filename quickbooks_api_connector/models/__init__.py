@@ -1,4 +1,4 @@
-import sys
+import logging
 
 from . import quickbooks_config
 from . import quickbooks_settings
@@ -36,28 +36,42 @@ from . import account_analytic_line
 from . import account_payment_term
 from . import ir_attachment
 
-# Extend models from optional modules only when Odoo has loaded them
-# (checking sys.modules instead of import, because on Odoo.sh all addon
-# packages exist on disk regardless of installation state)
+_logger = logging.getLogger(__name__)
 
-if 'odoo.addons.hr' in sys.modules:
-    from . import hr_employee
-    from . import hr_department
 
-if 'odoo.addons.hr_expense' in sys.modules:
-    from . import hr_expense
+def _safe_import(module_name):
+    """Import an optional model extension.
 
-if 'odoo.addons.purchase' in sys.modules:
-    from . import purchase_order
+    The module file is always imported. Odoo only registers ``_inherit``
+    declarations whose parent model is actually present in the registry, so
+    importing a file that extends e.g. ``sale.order`` is harmless when the
+    ``sale`` addon is not installed. We catch any import error here so that
+    a single misconfigured optional dependency never prevents this addon
+    from loading.
+    """
+    try:
+        __import__(__name__ + '.' + module_name)
+    except Exception:  # pragma: no cover - defensive
+        _logger.exception(
+            'Failed to import optional model extension %s; the related '
+            'QuickBooks features will be disabled.', module_name,
+        )
 
-if 'odoo.addons.project' in sys.modules:
-    from . import project_project
 
-if 'odoo.addons.sale' in sys.modules:
-    from . import sale_order
-
-if 'odoo.addons.stock' in sys.modules:
-    from . import stock_move
-
-if 'odoo.addons.slate_connector_v19' in sys.modules:
-    from . import slate_bridge
+# Optional model extensions: import unconditionally so the fields are
+# registered whenever the corresponding optional Odoo modules are
+# installed alongside this addon. Previous releases gated these imports
+# on ``sys.modules``, but that test races against Odoo's module loader
+# (our addon does not depend on these modules) and silently dropped the
+# extensions, causing "Invalid field" errors at runtime.
+for _optional_module in (
+    'hr_employee',
+    'hr_department',
+    'hr_expense',
+    'purchase_order',
+    'project_project',
+    'sale_order',
+    'stock_move',
+    'slate_bridge',
+):
+    _safe_import(_optional_module)

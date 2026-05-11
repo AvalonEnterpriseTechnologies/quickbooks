@@ -115,16 +115,26 @@ class QBSyncProjects(models.AbstractModel):
     def pull_all(self, client, config, entity_type):
         if not self._check_model():
             return
-        where = "IsProject = true"
+        where = ''
         if config.last_sync_date:
-            where += " AND MetaData.LastUpdatedTime > '%s'" % (
+            where = "MetaData.LastUpdatedTime > '%s'" % (
                 self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
-        for qb_data in client.query_all('Customer', where_clause=where):
-            job = self.env['quickbooks.sync.queue'].new({
-                'qb_entity_id': str(qb_data.get('Id')),
-            })
-            self.pull(client, config, job)
+        try:
+            iterator = client.query_all('Customer', where_clause=where)
+            for qb_data in iterator:
+                if not qb_data.get('IsProject'):
+                    continue
+                job = self.env['quickbooks.sync.queue'].new({
+                    'qb_entity_id': str(qb_data.get('Id')),
+                })
+                self.pull(client, config, job)
+        except Exception:
+            _logger.exception(
+                'QBO project sync skipped: Customer.IsProject is unavailable '
+                'for company %s. Projects require the QBO Plus/Advanced tier.',
+                config.company_id.name,
+            )
 
     def push_all(self, client, config, entity_type):
         if not self._check_model():

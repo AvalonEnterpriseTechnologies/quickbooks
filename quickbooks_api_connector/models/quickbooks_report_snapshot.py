@@ -16,6 +16,12 @@ class QuickbooksReportSnapshot(models.Model):
             ('ProfitAndLoss', 'Profit and Loss'),
             ('TrialBalance', 'Trial Balance'),
             ('GeneralLedger', 'General Ledger'),
+            ('AgedReceivables', 'Aged Receivables'),
+            ('AgedReceivableDetail', 'Aged Receivable Detail'),
+            ('AgedPayables', 'Aged Payables'),
+            ('AgedPayableDetail', 'Aged Payable Detail'),
+            ('InventoryValuationSummary', 'Inventory Valuation Summary'),
+            ('SalesTaxLiabilityReport', 'Sales Tax Liability Report'),
             ('WorkersCompensation', 'Workers Compensation'),
         ],
         required=True,
@@ -196,4 +202,118 @@ class QuickbooksJournalBalance(models.Model):
     )
     snapshot_id = fields.Many2one(
         'quickbooks.report.snapshot', ondelete='cascade', index=True,
+    )
+
+
+class QuickbooksPartnerBalance(models.Model):
+    _name = 'quickbooks.partner.balance'
+    _description = 'QuickBooks Partner Balance Snapshot'
+    _order = 'period_end desc, partner_name'
+
+    company_id = fields.Many2one(
+        'res.company', required=True, default=lambda self: self.env.company,
+        ondelete='cascade', index=True,
+    )
+    partner_id = fields.Many2one('res.partner', index=True)
+    partner_name = fields.Char(required=True)
+    qb_customer_id = fields.Char(index=True)
+    qb_vendor_id = fields.Char(index=True)
+    kind = fields.Selection(
+        [('customer', 'Customer'), ('vendor', 'Vendor')],
+        required=True,
+        index=True,
+    )
+    period_end = fields.Date(required=True, index=True)
+    total = fields.Monetary(currency_field='currency_id')
+    bucket_current = fields.Monetary(currency_field='currency_id')
+    bucket_1_30 = fields.Monetary(currency_field='currency_id')
+    bucket_31_60 = fields.Monetary(currency_field='currency_id')
+    bucket_61_90 = fields.Monetary(currency_field='currency_id')
+    bucket_over_90 = fields.Monetary(currency_field='currency_id')
+    currency_id = fields.Many2one(
+        'res.currency', required=True,
+        default=lambda self: self.env.company.currency_id,
+    )
+    snapshot_id = fields.Many2one(
+        'quickbooks.report.snapshot', ondelete='cascade', index=True,
+    )
+
+
+class QuickbooksInventoryBalance(models.Model):
+    _name = 'quickbooks.inventory.balance'
+    _description = 'QuickBooks Inventory Valuation Snapshot'
+    _order = 'period_end desc, product_name'
+
+    company_id = fields.Many2one(
+        'res.company', required=True, default=lambda self: self.env.company,
+        ondelete='cascade', index=True,
+    )
+    product_id = fields.Many2one('product.product', index=True)
+    product_name = fields.Char(required=True)
+    qb_item_id = fields.Char(index=True)
+    period_end = fields.Date(required=True, index=True)
+    qty_on_hand = fields.Float()
+    avg_cost = fields.Monetary(currency_field='currency_id')
+    value = fields.Monetary(currency_field='currency_id')
+    currency_id = fields.Many2one(
+        'res.currency', required=True,
+        default=lambda self: self.env.company.currency_id,
+    )
+    snapshot_id = fields.Many2one(
+        'quickbooks.report.snapshot', ondelete='cascade', index=True,
+    )
+
+
+class QuickbooksTaxLiability(models.Model):
+    _name = 'quickbooks.tax.liability'
+    _description = 'QuickBooks Tax Liability Snapshot'
+    _order = 'period_end desc, tax_agency'
+
+    company_id = fields.Many2one(
+        'res.company', required=True, default=lambda self: self.env.company,
+        ondelete='cascade', index=True,
+    )
+    tax_id = fields.Many2one('account.tax', index=True)
+    tax_agency = fields.Char(required=True)
+    period_start = fields.Date(index=True)
+    period_end = fields.Date(required=True, index=True)
+    taxable_amount = fields.Monetary(currency_field='currency_id')
+    tax_amount = fields.Monetary(currency_field='currency_id')
+    currency_id = fields.Many2one(
+        'res.currency', required=True,
+        default=lambda self: self.env.company.currency_id,
+    )
+    snapshot_id = fields.Many2one(
+        'quickbooks.report.snapshot', ondelete='cascade', index=True,
+    )
+
+
+class QuickbooksBalanceVariance(models.Model):
+    _name = 'quickbooks.balance.variance'
+    _description = 'QuickBooks / Odoo Balance Variance'
+    _order = 'period_end desc, abs_variance desc'
+
+    company_id = fields.Many2one(
+        'res.company', required=True, default=lambda self: self.env.company,
+        ondelete='cascade', index=True,
+    )
+    snapshot_id = fields.Many2one(
+        'quickbooks.report.snapshot', ondelete='cascade', index=True,
+    )
+    source_model = fields.Char(required=True, index=True)
+    source_id = fields.Integer(index=True)
+    account_id = fields.Many2one('account.account', index=True)
+    partner_id = fields.Many2one('res.partner', index=True)
+    product_id = fields.Many2one('product.product', index=True)
+    label = fields.Char(required=True)
+    period_end = fields.Date(required=True, index=True)
+    qb_amount = fields.Monetary(currency_field='currency_id')
+    odoo_amount = fields.Monetary(currency_field='currency_id')
+    variance = fields.Monetary(currency_field='currency_id')
+    abs_variance = fields.Monetary(currency_field='currency_id')
+    variance_pct = fields.Float()
+    threshold_breached = fields.Boolean(index=True)
+    currency_id = fields.Many2one(
+        'res.currency', required=True,
+        default=lambda self: self.env.company.currency_id,
     )

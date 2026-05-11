@@ -55,6 +55,16 @@ class AccountMove(models.Model):
         copy=False,
         index=True,
     )
+    qb_exchange_rate = fields.Float(
+        string='QB Exchange Rate',
+        copy=False,
+        digits=(16, 8),
+    )
+    qb_home_total_amt = fields.Monetary(
+        string='QB Home Total Amount',
+        currency_field='company_currency_id',
+        copy=False,
+    )
 
     def _post(self, soft=True):
         posted = super()._post(soft=soft)

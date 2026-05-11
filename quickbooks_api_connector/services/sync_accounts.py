@@ -23,6 +23,11 @@ class QBSyncAccounts(models.AbstractModel):
             'qb_account_type': classification['qbo_type'],
             'qb_account_subtype': classification['qbo_subtype'],
             'qb_account_code': qb_data.get('AcctNum') or '',
+            'qb_parent_account_id': (
+                (qb_data.get('ParentRef') or {}).get('value') or ''
+            ),
+            'qb_is_subaccount': bool(qb_data.get('SubAccount')),
+            'qb_fqn': qb_data.get('FullyQualifiedName') or '',
             'qb_opening_balance_date': qb_data.get('OpeningBalanceDate') or False,
             'qb_current_balance': qb_data.get('CurrentBalance') or 0.0,
             'qb_current_balance_with_subaccounts': (
@@ -212,6 +217,9 @@ class QBSyncAccounts(models.AbstractModel):
             'qb_account_type': vals.get('qb_account_type'),
             'qb_account_subtype': vals.get('qb_account_subtype'),
             'qb_account_code': vals.get('qb_account_code'),
+            'qb_parent_account_id': vals.get('qb_parent_account_id'),
+            'qb_is_subaccount': vals.get('qb_is_subaccount'),
+            'qb_fqn': vals.get('qb_fqn'),
             'qb_opening_balance_date': vals['qb_opening_balance_date'],
             'qb_current_balance': vals['qb_current_balance'],
             'qb_current_balance_with_subaccounts': (

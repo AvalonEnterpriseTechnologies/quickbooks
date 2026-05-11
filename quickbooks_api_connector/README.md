@@ -26,6 +26,10 @@ Standalone QuickBooks Online connector for Odoo 19. Can be installed independent
 - **Webhook support**: CloudEvents and legacy Intuit format
 - **Rate-limited API client**: sliding-window throttling at 450 req/min
 - **CDC incremental sync** for supported QBO entities after the first successful sync
+- **Balance reconciliation**: QBO Balance Sheet, Trial Balance, AR/AP aging,
+  inventory valuation, and tax liability snapshots with variance tracking against
+  Odoo balances. See [`quickbooks_api_connector/docs/qb_balance_audit.md`](docs/qb_balance_audit.md)
+  for the balance coverage audit and remediation notes.
 
 ## Installation
 

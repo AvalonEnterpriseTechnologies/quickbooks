@@ -13,6 +13,13 @@ class QBSyncEstimates(models.AbstractModel):
         if 'sale.order' not in self.env:
             _logger.warning('sale module not installed - skipping Estimate sync')
             return False
+        if 'qb_estimate_id' not in self.env['sale.order']._fields:
+            _logger.warning(
+                'sale.order is missing QuickBooks fields '
+                '(quickbooks_api_connector sale_order extension did not load). '
+                'Skipping Estimate sync.'
+            )
+            return False
         return True
 
     def _odoo_estimate_to_qb(self, order):

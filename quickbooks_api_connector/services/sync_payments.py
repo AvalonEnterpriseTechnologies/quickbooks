@@ -9,16 +9,39 @@ class QBSyncPayments(models.AbstractModel):
     _name = 'qb.sync.payments'
     _description = 'QuickBooks Payment / BillPayment Sync'
 
+    # ---- Field helpers ----
+
+    @staticmethod
+    def _payment_note_field(payment):
+        """Return the name of the free-text note field on account.payment.
+
+        Odoo 18 replaced ``account.payment.ref`` with ``memo``. Try the new
+        name first, falling back to ``ref`` for older versions.
+        """
+        if 'memo' in payment._fields:
+            return 'memo'
+        if 'ref' in payment._fields:
+            return 'ref'
+        return None
+
+    @classmethod
+    def _payment_note(cls, payment):
+        field_name = cls._payment_note_field(payment)
+        if not field_name:
+            return ''
+        return getattr(payment, field_name, '') or ''
+
     # ---- Odoo → QBO ----
 
     def _odoo_payment_to_qb(self, payment):
         """Map Odoo account.payment to QBO Payment dict."""
+        note = self._payment_note(payment)
         data = {
             'TotalAmt': abs(payment.amount),
             'TxnDate': (
                 payment.date.isoformat() if payment.date else None
             ),
-            'PrivateNote': (payment.ref or '')[:4000] or None,
+            'PrivateNote': note[:4000] if note else None,
         }
 
         if payment.partner_id and payment.partner_id.qb_customer_id:
@@ -50,13 +73,14 @@ class QBSyncPayments(models.AbstractModel):
 
     def _odoo_billpayment_to_qb(self, payment):
         """Map Odoo vendor payment to QBO BillPayment dict."""
+        note = self._payment_note(payment)
         data = {
             'TotalAmt': abs(payment.amount),
             'PayType': 'Check',
             'TxnDate': (
                 payment.date.isoformat() if payment.date else None
             ),
-            'PrivateNote': (payment.ref or '')[:4000] or None,
+            'PrivateNote': note[:4000] if note else None,
         }
 
         if payment.partner_id and payment.partner_id.qb_vendor_id:
@@ -139,16 +163,11 @@ class QBSyncPayments(models.AbstractModel):
             if partner:
                 vals['partner_id'] = partner.id
 
-        currency_ref = qb_data.get('CurrencyRef', {})
-        if currency_ref.get('value'):
-            currency = self.env['res.currency'].search([
-                ('name', '=', currency_ref['value']),
-            ], limit=1)
-            if currency:
-                vals['currency_id'] = currency.id
+        vals.update(self.env['qb.currency.helper'].payment_currency_vals(qb_data, config))
 
-        if qb_data.get('PrivateNote'):
-            vals['ref'] = qb_data['PrivateNote']
+        note_field = self._payment_note_field(self.env['account.payment'])
+        if note_field and qb_data.get('PrivateNote'):
+            vals[note_field] = qb_data['PrivateNote']
 
         return vals
 
@@ -176,16 +195,11 @@ class QBSyncPayments(models.AbstractModel):
             if partner:
                 vals['partner_id'] = partner.id
 
-        currency_ref = qb_data.get('CurrencyRef', {})
-        if currency_ref.get('value'):
-            currency = self.env['res.currency'].search([
-                ('name', '=', currency_ref['value']),
-            ], limit=1)
-            if currency:
-                vals['currency_id'] = currency.id
+        vals.update(self.env['qb.currency.helper'].payment_currency_vals(qb_data, config))
 
-        if qb_data.get('PrivateNote'):
-            vals['ref'] = qb_data['PrivateNote']
+        note_field = self._payment_note_field(self.env['account.payment'])
+        if note_field and qb_data.get('PrivateNote'):
+            vals[note_field] = qb_data['PrivateNote']
 
         return vals
 

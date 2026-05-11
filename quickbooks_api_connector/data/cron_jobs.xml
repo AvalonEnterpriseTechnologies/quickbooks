@@ -45,6 +45,17 @@
         <field name="active">True</field>
     </record>
 
+    <!-- Daily balance variance reconciliation against latest QBO snapshots -->
+    <record id="ir_cron_qb_balance_recon" model="ir.cron">
+        <field name="name">QuickBooks: Balance Variance Reconciliation</field>
+        <field name="model_id" ref="model_qb_balance_reconciliation"/>
+        <field name="state">code</field>
+        <field name="code">model.run_for_all_companies()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+
     <!-- Daily read-only payroll checks pull; Intuit Payroll GraphQL is rate-sensitive -->
     <record id="ir_cron_qb_payroll_checks" model="ir.cron">
         <field name="name">QuickBooks: Pull Payroll Checks</field>

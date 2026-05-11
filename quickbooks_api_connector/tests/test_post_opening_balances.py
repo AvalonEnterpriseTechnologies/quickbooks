@@ -65,6 +65,7 @@ class TestPostOpeningBalances(QuickbooksTestCommon):
             'snapshot_id': snapshot.id,
             'target_journal_id': journal.id,
             'opening_equity_account_id': equity.id,
+            'retained_earnings_account_id': equity.id,
             'dry_run': False,
         })
 
@@ -137,3 +138,45 @@ class TestPostOpeningBalances(QuickbooksTestCommon):
 
         self.assertEqual(move.state, 'posted')
         self.assertEqual(move.qb_opening_snapshot_id, snapshot)
+
+    def test_opening_balances_refuse_unmatched_rows(self):
+        snapshot = self.env['quickbooks.report.snapshot'].create({
+            'company_id': self.company.id,
+            'report_type': 'TrialBalance',
+            'period_start': '2026-03-01',
+            'period_end': '2026-03-31',
+            'accounting_method': 'Accrual',
+            'schema_version': 'v1',
+            'raw_json': {},
+            'row_count': 1,
+        })
+        self.env['quickbooks.account.balance'].create({
+            'company_id': self.company.id,
+            'qb_account_id': '404',
+            'account_name': 'Unmatched Opening Row',
+            'report_type': 'TrialBalance',
+            'period_end': '2026-03-31',
+            'balance': 100.0,
+            'debit_balance': 100.0,
+            'currency_id': self.company.currency_id.id,
+            'snapshot_id': snapshot.id,
+        })
+        journal = self.env['qb.sync.journals'].ensure_general_journal(
+            self.config, key='qbo:general:opening',
+            name='QuickBooks Opening Balances',
+        )
+        equity = self.env['qb.post.opening.balances.wizard']._opening_equity_account(
+            self.company,
+        )
+        wizard = self.env['qb.post.opening.balances.wizard'].create({
+            'company_id': self.company.id,
+            'as_of_date': '2026-03-31',
+            'snapshot_id': snapshot.id,
+            'target_journal_id': journal.id,
+            'opening_equity_account_id': equity.id,
+            'retained_earnings_account_id': equity.id,
+            'dry_run': False,
+        })
+
+        with self.assertRaises(Exception):
+            wizard.action_post_opening_balances()

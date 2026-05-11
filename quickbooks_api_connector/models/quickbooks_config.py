@@ -158,6 +158,25 @@ class QuickbooksConfig(models.Model):
         default='Accrual',
         string='Reports Accounting Method',
     )
+    reports_accounting_methods = fields.Selection(
+        [
+            ('default', 'Use Reports Accounting Method'),
+            ('accrual', 'Accrual Only'),
+            ('cash', 'Cash Only'),
+            ('both', 'Accrual and Cash'),
+        ],
+        default='default',
+        string='Report Methods To Pull',
+    )
+    reports_window_strategy = fields.Selection(
+        [
+            ('monthly', 'Monthly'),
+            ('quarterly', 'Quarterly'),
+            ('six_month', 'Six Month'),
+        ],
+        default='monthly',
+        string='Report Window Strategy',
+    )
     reports_history_months = fields.Integer(
         default=12,
         string='Reports History Months',
@@ -169,6 +188,15 @@ class QuickbooksConfig(models.Model):
     reports_use_v2_now = fields.Boolean(
         default=False,
         string='Use Modernized Reports Parser',
+    )
+    balance_variance_threshold = fields.Monetary(
+        string='Balance Variance Threshold',
+        default=0.01,
+        currency_field='company_currency_id',
+    )
+    company_currency_id = fields.Many2one(
+        related='company_id.currency_id',
+        readonly=True,
     )
 
     payroll_enabled = fields.Boolean(default=False, string='Enable Payroll API')

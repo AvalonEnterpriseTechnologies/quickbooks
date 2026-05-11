@@ -11,11 +11,19 @@
                     <field name="qb_account_code" readonly="1"/>
                     <field name="qb_account_type" readonly="1"/>
                     <field name="qb_account_subtype" readonly="1"/>
+                    <field name="qb_parent_account_id" readonly="1"/>
+                    <field name="qb_is_subaccount" readonly="1"/>
+                    <field name="qb_fqn" readonly="1"/>
                     <field name="qb_opening_balance" readonly="1"/>
                     <field name="qb_tb_balance" readonly="1"/>
                     <field name="qb_current_balance" readonly="1"/>
                     <button name="action_view_qbo_balances"
                             string="View QBO Balances"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="not qb_account_id"/>
+                    <button name="action_view_qbo_subaccounts"
+                            string="View QBO Sub-accounts"
                             type="object"
                             class="btn-secondary"
                             invisible="not qb_account_id"/>

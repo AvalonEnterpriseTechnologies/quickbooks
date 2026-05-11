@@ -94,13 +94,7 @@ class QBSyncVendorCredits(models.AbstractModel):
         if qb_data.get('PrivateNote'):
             vals['narration'] = qb_data['PrivateNote']
 
-        currency_ref = qb_data.get('CurrencyRef', {})
-        if currency_ref.get('value'):
-            currency = self.env['res.currency'].search([
-                ('name', '=', currency_ref['value']),
-            ], limit=1)
-            if currency:
-                vals['currency_id'] = currency.id
+        vals.update(self.env['qb.currency.helper'].currency_vals(qb_data, config))
 
         invoice_lines = []
         for qb_line in qb_data.get('Line', []):

@@ -30,13 +30,15 @@ class QBSyncDeposits(models.AbstractModel):
     _name = 'qb.sync.deposits'
     _description = 'QuickBooks Deposit Sync'
 
-    def _qb_deposit_to_odoo(self, qb_data):
-        return {
+    def _qb_deposit_to_odoo(self, qb_data, config):
+        vals = {
             'qb_deposit_id': str(qb_data.get('Id', '')),
             'qb_sync_token': str(qb_data.get('SyncToken', '')),
             'qb_last_synced': fields.Datetime.now(),
             'qb_sync_error': False,
         }
+        vals.update(self.env['qb.currency.helper'].currency_vals(qb_data, config))
+        return vals
 
     def push(self, client, config, job):
         move = self.env['account.move'].browse(job.odoo_record_id)
@@ -212,7 +214,7 @@ class QBSyncDeposits(models.AbstractModel):
         qb_data = resp.get('Deposit', {})
         if not qb_data:
             return {}
-        vals = self._qb_deposit_to_odoo(qb_data)
+        vals = self._qb_deposit_to_odoo(qb_data, config)
         matcher = self.env['qb.record.matcher']
         existing = matcher.find_odoo_match('deposit', qb_data, config.company_id)
         if existing:
@@ -230,7 +232,7 @@ class QBSyncDeposits(models.AbstractModel):
         Move = self.env['account.move']
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
-            vals = self._qb_deposit_to_odoo(qb_data)
+            vals = self._qb_deposit_to_odoo(qb_data, config)
             matcher = self.env['qb.record.matcher']
             existing = matcher.find_odoo_match('deposit', qb_data, config.company_id)
             if existing:

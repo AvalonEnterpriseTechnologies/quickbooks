@@ -198,6 +198,97 @@
         </field>
     </record>
 
+    <record id="view_qb_partner_balance_list" model="ir.ui.view">
+        <field name="name">quickbooks.partner.balance.list</field>
+        <field name="model">quickbooks.partner.balance</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Partner Balances" default_order="period_end desc, partner_name">
+                <field name="period_end"/>
+                <field name="kind"/>
+                <field name="partner_name"/>
+                <field name="partner_id"/>
+                <field name="total" sum="Total"/>
+                <field name="bucket_current" sum="Current"/>
+                <field name="bucket_1_30" sum="1-30"/>
+                <field name="bucket_31_60" sum="31-60"/>
+                <field name="bucket_61_90" sum="61-90"/>
+                <field name="bucket_over_90" sum="90+"/>
+                <field name="currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_inventory_balance_list" model="ir.ui.view">
+        <field name="name">quickbooks.inventory.balance.list</field>
+        <field name="model">quickbooks.inventory.balance</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Inventory Valuation" default_order="period_end desc, product_name">
+                <field name="period_end"/>
+                <field name="product_name"/>
+                <field name="product_id"/>
+                <field name="qb_item_id"/>
+                <field name="qty_on_hand" sum="Quantity"/>
+                <field name="avg_cost"/>
+                <field name="value" sum="Value"/>
+                <field name="currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_tax_liability_list" model="ir.ui.view">
+        <field name="name">quickbooks.tax.liability.list</field>
+        <field name="model">quickbooks.tax.liability</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Tax Liabilities" default_order="period_end desc, tax_agency">
+                <field name="period_start"/>
+                <field name="period_end"/>
+                <field name="tax_agency"/>
+                <field name="tax_id"/>
+                <field name="taxable_amount" sum="Taxable"/>
+                <field name="tax_amount" sum="Tax"/>
+                <field name="currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_balance_variance_list" model="ir.ui.view">
+        <field name="name">quickbooks.balance.variance.list</field>
+        <field name="model">quickbooks.balance.variance</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Balance Variances" default_order="period_end desc, abs_variance desc">
+                <field name="period_end"/>
+                <field name="label"/>
+                <field name="account_id"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="qb_amount" sum="QBO"/>
+                <field name="odoo_amount" sum="Odoo"/>
+                <field name="variance" sum="Variance"/>
+                <field name="variance_pct"/>
+                <field name="threshold_breached"/>
+                <field name="currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_balance_variance_pivot" model="ir.ui.view">
+        <field name="name">quickbooks.balance.variance.pivot</field>
+        <field name="model">quickbooks.balance.variance</field>
+        <field name="arch" type="xml">
+            <pivot string="QuickBooks Balance Variances">
+                <field name="period_end" type="row"/>
+                <field name="label" type="row"/>
+                <field name="qb_amount" type="measure"/>
+                <field name="odoo_amount" type="measure"/>
+                <field name="variance" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
     <record id="action_qb_report_snapshots" model="ir.actions.act_window">
         <field name="name">QuickBooks Report Snapshots</field>
         <field name="res_model">quickbooks.report.snapshot</field>
@@ -214,6 +305,31 @@
         <field name="name">QuickBooks Journal Balances</field>
         <field name="res_model">quickbooks.journal.balance</field>
         <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_qb_partner_balances" model="ir.actions.act_window">
+        <field name="name">QuickBooks AR/AP Aging</field>
+        <field name="res_model">quickbooks.partner.balance</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_qb_inventory_balances" model="ir.actions.act_window">
+        <field name="name">QuickBooks Inventory Valuation</field>
+        <field name="res_model">quickbooks.inventory.balance</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_qb_tax_liabilities" model="ir.actions.act_window">
+        <field name="name">QuickBooks Tax Liabilities</field>
+        <field name="res_model">quickbooks.tax.liability</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_qb_balance_variances" model="ir.actions.act_window">
+        <field name="name">QuickBooks Balance Variances</field>
+        <field name="res_model">quickbooks.balance.variance</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="domain">[('threshold_breached', '=', True)]</field>
     </record>
 
     <record id="action_qb_balance_sheet_rows" model="ir.actions.act_window">
@@ -284,4 +400,24 @@
               parent="menu_qb_accounting_reports_root"
               sequence="30"
               action="action_qb_journal_balances"/>
+    <menuitem id="menu_qb_partner_balances"
+              name="AR/AP Aging"
+              parent="menu_qb_accounting_reports_root"
+              sequence="40"
+              action="action_qb_partner_balances"/>
+    <menuitem id="menu_qb_inventory_balances"
+              name="Inventory Valuation"
+              parent="menu_qb_accounting_reports_root"
+              sequence="50"
+              action="action_qb_inventory_balances"/>
+    <menuitem id="menu_qb_tax_liabilities"
+              name="Tax Liabilities"
+              parent="menu_qb_accounting_reports_root"
+              sequence="60"
+              action="action_qb_tax_liabilities"/>
+    <menuitem id="menu_qb_balance_variances"
+              name="Balance Variances"
+              parent="menu_qb_accounting_reports_root"
+              sequence="70"
+              action="action_qb_balance_variances"/>
 </odoo>

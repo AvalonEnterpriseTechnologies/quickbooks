@@ -36,6 +36,9 @@ class AccountAccount(models.Model):
     qb_account_type = fields.Char(string='QB Account Type', copy=False)
     qb_account_subtype = fields.Char(string='QB Account Subtype', copy=False)
     qb_account_code = fields.Char(string='QB Account Number', copy=False)
+    qb_parent_account_id = fields.Char(string='QB Parent Account ID', copy=False)
+    qb_is_subaccount = fields.Boolean(string='QB Sub-account', copy=False)
+    qb_fqn = fields.Char(string='QB Fully Qualified Name', copy=False)
 
     @api.depends('qb_account_id')
     def _compute_qb_tb_balance(self):
@@ -64,4 +67,14 @@ class AccountAccount(models.Model):
                 'default_account_id': self.id,
                 'default_qb_account_id': self.qb_account_id,
             },
+        }
+
+    def action_view_qbo_subaccounts(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'QuickBooks Sub-accounts',
+            'res_model': 'account.account',
+            'view_mode': 'list,form',
+            'domain': [('qb_parent_account_id', '=', self.qb_account_id)],
         }

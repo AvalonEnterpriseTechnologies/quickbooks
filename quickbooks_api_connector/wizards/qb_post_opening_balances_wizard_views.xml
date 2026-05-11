@@ -11,6 +11,9 @@
                     <field name="snapshot_id"/>
                     <field name="target_journal_id"/>
                     <field name="opening_equity_account_id"/>
+                    <field name="retained_earnings_account_id"/>
+                    <field name="allow_unmatched_to_opening_equity"/>
+                    <field name="lock_books_at_as_of_date"/>
                     <field name="dry_run"/>
                 </group>
                 <group string="Preview" invisible="not preview_message">

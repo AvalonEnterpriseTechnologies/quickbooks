@@ -82,7 +82,7 @@ ACCOUNT_SUBTYPE_MAP = {
     ('Equity', 'OwnersEquity'): 'equity',
     ('Equity', 'PaidInCapitalOrSurplus'): 'equity',
     ('Equity', 'PartnersEquity'): 'equity',
-    ('Equity', 'RetainedEarnings'): 'equity',
+    ('Equity', 'RetainedEarnings'): 'equity_unaffected',
     ('Equity', 'TreasuryStock'): 'equity',
     ('Income', 'DiscountsRefundsGiven'): 'income',
     ('Income', 'NonProfitIncome'): 'income',

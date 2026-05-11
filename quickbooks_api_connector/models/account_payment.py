@@ -20,6 +20,16 @@ class AccountPayment(models.Model):
     qb_do_not_sync = fields.Boolean(
         string='Exclude from QB Sync', default=False,
     )
+    qb_exchange_rate = fields.Float(
+        string='QB Exchange Rate',
+        copy=False,
+        digits=(16, 8),
+    )
+    qb_home_total_amt = fields.Monetary(
+        string='QB Home Total Amount',
+        currency_field='company_currency_id',
+        copy=False,
+    )
 
     def action_post(self):
         res = super().action_post()
@@ -34,8 +44,11 @@ class AccountPayment(models.Model):
             return res
         qb_fields = {
             'amount', 'date', 'partner_id', 'journal_id', 'payment_method_line_id',
-            'memo', 'ref', 'currency_id',
+            'currency_id',
         }
+        for note_field in ('memo', 'ref'):
+            if note_field in self._fields:
+                qb_fields.add(note_field)
         if qb_fields & set(vals):
             for payment in self.filtered(
                 lambda p: not p.qb_do_not_sync and p.state == 'posted'

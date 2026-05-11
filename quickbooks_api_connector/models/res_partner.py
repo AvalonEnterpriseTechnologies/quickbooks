@@ -33,10 +33,12 @@ class ResPartner(models.Model):
         res = super().write(vals)
         if not self.env.context.get('skip_qb_sync') and not vals.get('qb_do_not_sync'):
             qb_fields = {
-                'name', 'email', 'phone', 'mobile', 'street', 'street2',
+                'name', 'email', 'phone', 'street', 'street2',
                 'city', 'zip', 'state_id', 'country_id', 'vat',
                 'customer_rank', 'supplier_rank', 'company_type',
             }
+            if 'mobile' in self._fields:
+                qb_fields.add('mobile')
             if qb_fields & set(vals.keys()):
                 for rec in self.filtered(lambda r: not r.qb_do_not_sync):
                     rec._trigger_qb_sync('update')

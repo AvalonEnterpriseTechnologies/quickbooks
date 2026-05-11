@@ -96,16 +96,11 @@ class QBSyncJournalEntries(models.AbstractModel):
         if qb_data.get('PrivateNote'):
             vals['narration'] = qb_data['PrivateNote']
 
-        currency_ref = qb_data.get('CurrencyRef', {})
-        if currency_ref.get('value'):
-            currency = self.env['res.currency'].search([
-                ('name', '=', currency_ref['value']),
-            ], limit=1)
-            if currency:
-                vals['currency_id'] = currency.id
+        vals.update(self.env['qb.currency.helper'].currency_vals(qb_data, config))
 
         # Journal entry lines
         move_lines = []
+        missing_accounts = []
         for qb_line in qb_data.get('Line', []):
             if qb_line.get('DetailType') != 'JournalEntryLineDetail':
                 continue
@@ -128,11 +123,11 @@ class QBSyncJournalEntries(models.AbstractModel):
                 if account:
                     line_vals['account_id'] = account.id
                 else:
-                    vals['qb_sync_error'] = (
-                        'QBO account %s not yet imported - line skipped.'
-                        % account_qb_id
-                    )
+                    missing_accounts.append(account_qb_id)
                     continue
+            else:
+                missing_accounts.append('(no AccountRef)')
+                continue
 
             entity = detail.get('Entity', {})
             entity_ref = entity.get('EntityRef', {})
@@ -150,6 +145,21 @@ class QBSyncJournalEntries(models.AbstractModel):
                     line_vals['partner_id'] = partner.id
 
             move_lines.append((0, 0, line_vals))
+
+        if missing_accounts:
+            # Cannot import a partial JE: skipping lines would leave the
+            # entry unbalanced. Surface a clear error and avoid creating
+            # the move so the user can re-run after the missing CoA rows
+            # are pulled.
+            return {
+                'qb_sync_error': (
+                    'QBO journal entry %s skipped: missing CoA mapping(s) %s. '
+                    'Pull the chart of accounts first, then retry.' % (
+                        qb_data.get('Id'), ', '.join(missing_accounts),
+                    )
+                ),
+                '_qb_skip_create': True,
+            }
 
         if move_lines:
             vals['line_ids'] = move_lines
@@ -213,6 +223,17 @@ class QBSyncJournalEntries(models.AbstractModel):
         vals = self._qb_je_to_odoo(qb_data, config)
         qb_id = str(qb_data.get('Id', ''))
 
+        if vals.pop('_qb_skip_create', False):
+            _logger.warning(
+                'Skipping QBO journal entry %s: %s',
+                qb_id, vals.get('qb_sync_error'),
+            )
+            job.write({
+                'state': 'failed',
+                'last_error': vals.get('qb_sync_error', '')[:1000],
+            })
+            return {'qb_id': qb_id}
+
         matcher = self.env['qb.record.matcher']
         existing = matcher.find_odoo_match('journal_entry', qb_data, config.company_id)
 
@@ -251,6 +272,13 @@ class QBSyncJournalEntries(models.AbstractModel):
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
             vals = self._qb_je_to_odoo(qb_data, config)
+
+            if vals.pop('_qb_skip_create', False):
+                _logger.warning(
+                    'Skipping QBO journal entry %s during bulk pull: %s',
+                    qb_id, vals.get('qb_sync_error'),
+                )
+                continue
 
             matcher = self.env['qb.record.matcher']
             existing = matcher.find_odoo_match('journal_entry', qb_data, config.company_id)

@@ -75,9 +75,10 @@ class QBSyncCompanyInfo(models.AbstractModel):
             company_vals['website'] = website_uri
 
         fiscal_year_start = info.get('FiscalYearStartMonth')
-        if fiscal_year_start:
+        fiscal_month_num = self._coerce_fiscal_month(fiscal_year_start)
+        if fiscal_month_num:
             company_vals['fiscalyear_last_month'] = str(
-                (int(fiscal_year_start) - 2) % 12 + 1
+                (fiscal_month_num - 2) % 12 + 1
             )
 
         home_currency = (info.get('HomeCurrency') or {}).get('value')
@@ -100,6 +101,33 @@ class QBSyncCompanyInfo(models.AbstractModel):
             )
 
         return {'qb_id': str(info.get('Id', config.realm_id))}
+
+    @staticmethod
+    def _coerce_fiscal_month(value):
+        """Convert a QBO FiscalYearStartMonth value to an int 1..12.
+
+        QBO returns the month as an English name (``"January"``) rather than
+        a number, so accept either form and return ``None`` when the value
+        cannot be parsed.
+        """
+        if not value:
+            return None
+        if isinstance(value, int):
+            return value if 1 <= value <= 12 else None
+        text = str(value).strip()
+        if text.isdigit():
+            month = int(text)
+            return month if 1 <= month <= 12 else None
+        month_names = (
+            'january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december',
+        )
+        lower = text.lower()
+        for index, name in enumerate(month_names, start=1):
+            if lower == name or lower == name[:3]:
+                return index
+        _logger.warning('Unrecognized QBO FiscalYearStartMonth value: %r', value)
+        return None
 
     def _subscription_capability_values(self, info):
         """Best-effort subscription and feature capability detection.
