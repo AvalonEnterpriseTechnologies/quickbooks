@@ -44,10 +44,16 @@
               sequence="25"
               action="action_quickbooks_reconciliation_report"/>
 
+    <menuitem id="menu_qb_account_reconciliation"
+              name="CoA Reconciliation"
+              parent="menu_qb_technical_root"
+              sequence="26"
+              action="action_qb_account_reconciliation"/>
+
     <menuitem id="menu_quickbooks_coverage_matrix"
               name="Coverage Matrix"
               parent="menu_qb_technical_root"
-              sequence="26"
+              sequence="27"
               action="action_quickbooks_coverage_matrix"/>
 
     <menuitem id="menu_quickbooks_config"

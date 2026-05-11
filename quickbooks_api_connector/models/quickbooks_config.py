@@ -198,6 +198,16 @@ class QuickbooksConfig(models.Model):
         default=False,
         help='Use exact normalized names as a final deduplication fallback.',
     )
+    account_name_strategy = fields.Selection(
+        [
+            ('keep_odoo', 'Keep Odoo Account Names'),
+            ('prefer_qbo', 'Prefer QuickBooks For Empty/Generic Names'),
+            ('mirror_qbo', 'Mirror QuickBooks Account Names'),
+        ],
+        default='keep_odoo',
+        string='Account Name Strategy',
+        help='Controls how QBO account names update an existing Odoo chart of accounts.',
+    )
     auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
     )

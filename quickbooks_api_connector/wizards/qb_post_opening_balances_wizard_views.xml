@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_post_opening_balances_wizard_form" model="ir.ui.view">
+        <field name="name">qb.post.opening.balances.wizard.form</field>
+        <field name="model">qb.post.opening.balances.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Post QuickBooks Opening Balances">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="as_of_date"/>
+                    <field name="snapshot_id"/>
+                    <field name="target_journal_id"/>
+                    <field name="opening_equity_account_id"/>
+                    <field name="dry_run"/>
+                </group>
+                <group string="Preview" invisible="not preview_message">
+                    <field name="preview_message" nolabel="1"/>
+                </group>
+                <footer>
+                    <button name="action_post_opening_balances"
+                            string="Preview / Post"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_post_opening_balances_wizard" model="ir.actions.act_window">
+        <field name="name">Post QuickBooks Opening Balances</field>
+        <field name="res_model">qb.post.opening.balances.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

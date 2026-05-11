@@ -28,3 +28,20 @@ class AccountAccount(models.Model):
         currency_field='company_currency_id',
         copy=False,
     )
+    qb_account_type = fields.Char(string='QB Account Type', copy=False)
+    qb_account_subtype = fields.Char(string='QB Account Subtype', copy=False)
+    qb_account_code = fields.Char(string='QB Account Number', copy=False)
+
+    def action_view_qbo_balances(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'QuickBooks Account Balances',
+            'res_model': 'quickbooks.account.balance',
+            'view_mode': 'list,form',
+            'domain': [('qb_account_id', '=', self.qb_account_id)],
+            'context': {
+                'default_account_id': self.id,
+                'default_qb_account_id': self.qb_account_id,
+            },
+        }

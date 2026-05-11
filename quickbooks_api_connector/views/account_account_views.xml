@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_account_form_qb" model="ir.ui.view">
+        <field name="name">account.account.form.qb</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="QuickBooks" groups="quickbooks_api_connector.group_qb_user">
+                    <field name="qb_account_id" readonly="1"/>
+                    <field name="qb_account_code" readonly="1"/>
+                    <field name="qb_account_type" readonly="1"/>
+                    <field name="qb_account_subtype" readonly="1"/>
+                    <field name="qb_opening_balance" readonly="1"/>
+                    <field name="qb_current_balance" readonly="1"/>
+                    <button name="action_view_qbo_balances"
+                            string="View QBO Balances"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="not qb_account_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

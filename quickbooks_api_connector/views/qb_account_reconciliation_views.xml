@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_account_reconciliation_list" model="ir.ui.view">
+        <field name="name">quickbooks.account.reconciliation.list</field>
+        <field name="model">quickbooks.account.reconciliation</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks CoA Reconciliation" default_order="last_seen desc">
+                <field name="last_seen"/>
+                <field name="qb_code"/>
+                <field name="qb_name"/>
+                <field name="qb_account_type"/>
+                <field name="qb_account_subtype"/>
+                <field name="account_id"/>
+                <field name="account_code"/>
+                <field name="account_type"/>
+                <field name="decision" widget="badge"
+                       decoration-success="decision in ('linked_by_id', 'linked_by_code', 'linked_by_name', 'linked_by_compatible_code', 'linked_by_compatible_name')"
+                       decoration-info="decision == 'created'"
+                       decoration-warning="decision == 'conflict'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_account_reconciliation_form" model="ir.ui.view">
+        <field name="name">quickbooks.account.reconciliation.form</field>
+        <field name="model">quickbooks.account.reconciliation</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks CoA Reconciliation" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group string="QuickBooks">
+                            <field name="qb_account_id"/>
+                            <field name="qb_code"/>
+                            <field name="qb_name"/>
+                            <field name="qb_account_type"/>
+                            <field name="qb_account_subtype"/>
+                        </group>
+                        <group string="Odoo">
+                            <field name="account_id"/>
+                            <field name="account_code"/>
+                            <field name="account_type"/>
+                            <field name="decision"/>
+                            <field name="last_seen"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Note">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_account_reconciliation_search" model="ir.ui.view">
+        <field name="name">quickbooks.account.reconciliation.search</field>
+        <field name="model">quickbooks.account.reconciliation</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="qb_name"/>
+                <field name="qb_code"/>
+                <field name="account_id"/>
+                <filter string="Created" name="created"
+                        domain="[('decision', '=', 'created')]"/>
+                <filter string="Conflicts" name="conflicts"
+                        domain="[('decision', '=', 'conflict')]"/>
+                <group>
+                    <filter string="Decision" name="group_decision"
+                            context="{'group_by': 'decision'}"/>
+                    <filter string="QB Type" name="group_qb_type"
+                            context="{'group_by': 'qb_account_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_account_reconciliation" model="ir.actions.act_window">
+        <field name="name">CoA Reconciliation</field>
+        <field name="res_model">quickbooks.account.reconciliation</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

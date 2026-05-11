@@ -13,6 +13,7 @@ class TestSyncJournalEntries(QuickbooksTestCommon):
 
         self.assertEqual(vals['move_type'], 'entry')
         self.assertEqual(vals['qb_je_id'], '700')
+        self.assertTrue(vals.get('journal_id'))
         self.assertTrue(vals.get('line_ids'))
         self.assertEqual(len(vals['line_ids']), 2)
 

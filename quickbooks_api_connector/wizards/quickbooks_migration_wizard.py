@@ -155,6 +155,16 @@ class QuickbooksMigrationWizard(models.TransientModel):
                 'summary': '%d migration steps planned. No jobs were queued.' % count,
             })
 
+        if self.migrate_opening_balances and self.direction in ('import', 'both'):
+            action = self.env.ref(
+                'quickbooks_api_connector.action_qb_post_opening_balances_wizard',
+            ).read()[0]
+            action['context'] = {
+                'default_company_id': self.company_id.id,
+                'default_dry_run': True,
+            }
+            return action
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',

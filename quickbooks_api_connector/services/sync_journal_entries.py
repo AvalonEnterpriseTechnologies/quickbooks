@@ -83,6 +83,11 @@ class QBSyncJournalEntries(models.AbstractModel):
             'qb_sync_error': False,
             'company_id': config.company_id.id,
         }
+        journal = self.env['qb.sync.journals'].ensure_general_journal(
+            config, key='qbo:general:default',
+            name='QuickBooks Journal Entries',
+        )
+        vals['journal_id'] = journal.id
 
         if qb_data.get('TxnDate'):
             vals['date'] = qb_data['TxnDate']

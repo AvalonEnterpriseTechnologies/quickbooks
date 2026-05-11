@@ -13,6 +13,7 @@ ENTITY_SERVICE_MAP = {
     'vendor': 'qb.sync.customers',
     'product': 'qb.sync.products',
     'account': 'qb.sync.accounts',
+    'journal': 'qb.sync.journals',
     'invoice': 'qb.sync.invoices',
     'bill': 'qb.sync.bills',
     'payment': 'qb.sync.payments',

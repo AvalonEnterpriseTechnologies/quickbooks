@@ -1,0 +1,104 @@
+import re
+
+from odoo import api, models
+
+
+class QBSyncJournals(models.AbstractModel):
+    _name = 'qb.sync.journals'
+    _description = 'QuickBooks Journal Sync'
+
+    @api.model
+    def ensure_journals_for_accounts(self, config):
+        self.ensure_general_journal(config, key='qbo:general:default',
+                                    name='QuickBooks Journal Entries')
+        self.ensure_general_journal(config, key='qbo:general:opening',
+                                    name='QuickBooks Opening Balances')
+        accounts = self._linked_financial_accounts(config)
+        for account in accounts:
+            journal_type = self._journal_type_for_account(account)
+            if journal_type not in ('bank', 'cash'):
+                continue
+            self._ensure_account_journal(config, account, journal_type)
+
+    @api.model
+    def ensure_general_journal(self, config, key='qbo:general:default',
+                               name='QuickBooks Journal Entries'):
+        Journal = self.env['account.journal'].sudo()
+        journal = Journal.search([
+            ('company_id', '=', config.company_id.id),
+            ('qb_journal_key', '=', key),
+        ], limit=1)
+        if journal:
+            return journal
+        return Journal.create({
+            'name': name,
+            'type': 'general',
+            'code': self._available_journal_code('QBOG', config.company_id),
+            'company_id': config.company_id.id,
+            'qb_journal_key': key,
+        })
+
+    def _linked_financial_accounts(self, config):
+        Account = self.env['account.account'].sudo()
+        domain = [('qb_account_id', '!=', False)]
+        if 'company_ids' in Account._fields:
+            domain.append(('company_ids', 'in', config.company_id.id))
+        elif 'company_id' in Account._fields:
+            domain.append(('company_id', '=', config.company_id.id))
+        return Account.search(domain)
+
+    def _ensure_account_journal(self, config, account, journal_type):
+        Journal = self.env['account.journal'].sudo()
+        key = 'qbo:%s:%s' % (journal_type, account.qb_account_id)
+        journal = Journal.search([
+            ('company_id', '=', config.company_id.id),
+            ('qb_journal_key', '=', key),
+        ], limit=1)
+        vals = {
+            'name': account.name,
+            'type': journal_type,
+            'code': self._journal_code(account, config.company_id),
+            'company_id': config.company_id.id,
+            'default_account_id': account.id,
+            'qb_journal_key': key,
+            'qb_account_id': account.qb_account_id,
+        }
+        if journal:
+            write_vals = {
+                'name': vals['name'],
+                'default_account_id': vals['default_account_id'],
+                'qb_account_id': vals['qb_account_id'],
+            }
+            journal.write(write_vals)
+            return journal
+        return Journal.create(vals)
+
+    def _journal_type_for_account(self, account):
+        qb_type = account.qb_account_type or ''
+        qb_subtype = account.qb_account_subtype or ''
+        if qb_type == 'Bank':
+            return 'cash' if qb_subtype == 'CashOnHand' else 'bank'
+        if qb_type == 'Credit Card':
+            return 'bank'
+        if account.account_type == 'asset_cash':
+            return 'bank'
+        return 'general'
+
+    def _journal_code(self, account, company):
+        raw = account.qb_account_code or account.code or account.name or account.qb_account_id
+        code = re.sub(r'[^A-Za-z0-9]', '', raw.upper())[:5] or 'QBO'
+        return self._available_journal_code(code, company)
+
+    def _available_journal_code(self, code, company):
+        Journal = self.env['account.journal'].sudo()
+        base = (code or 'QBO')[:5]
+        candidate = base
+        index = 2
+        while Journal.search([
+            ('company_id', '=', company.id),
+            ('code', '=', candidate),
+        ], limit=1):
+            suffix = str(index)
+            candidate = '%s%s' % (base[:5 - len(suffix)], suffix)
+            index += 1
+        return candidate

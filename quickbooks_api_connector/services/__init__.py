@@ -5,10 +5,12 @@ from . import qb_graphql_client
 from . import qb_sync_engine
 from . import qb_conflict_resolver
 from . import qb_record_matcher
+from . import qb_account_classifier
 from . import qb_reconciliation
 from . import sync_customers
 from . import sync_products
 from . import sync_accounts
+from . import sync_journals
 from . import sync_invoices
 from . import sync_estimates
 from . import sync_bills

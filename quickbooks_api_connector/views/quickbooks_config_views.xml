@@ -95,6 +95,7 @@
                         <page string="Sync Defaults">
                             <group>
                                 <field name="conflict_resolution"/>
+                                <field name="account_name_strategy"/>
                                 <field name="auto_sync_interval"/>
                                 <field name="auto_sync_interval_type"/>
                             </group>

@@ -7,6 +7,7 @@ from . import quickbooks_sync_queue
 from . import quickbooks_field_mapping
 from . import quickbooks_data_probe
 from . import quickbooks_report_snapshot
+from . import quickbooks_account_reconciliation
 from . import quickbooks_recurring_template
 from . import quickbooks_custom_field_definition
 from . import quickbooks_employee_benefit
@@ -26,6 +27,7 @@ from . import quickbooks_work_location
 from . import res_partner
 from . import product_product
 from . import account_account
+from . import account_journal
 from . import account_move
 from . import account_payment
 from . import account_tax

@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_report_snapshot_list" model="ir.ui.view">
+        <field name="name">quickbooks.report.snapshot.list</field>
+        <field name="model">quickbooks.report.snapshot</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Report Snapshots" default_order="period_end desc">
+                <field name="report_type"/>
+                <field name="period_start"/>
+                <field name="period_end"/>
+                <field name="accounting_method"/>
+                <field name="schema_version"/>
+                <field name="row_count"/>
+                <field name="fetched_at"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_report_snapshot_form" model="ir.ui.view">
+        <field name="name">quickbooks.report.snapshot.form</field>
+        <field name="model">quickbooks.report.snapshot</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks Report Snapshot" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="report_type"/>
+                            <field name="period_start"/>
+                            <field name="period_end"/>
+                            <field name="accounting_method"/>
+                        </group>
+                        <group>
+                            <field name="schema_version"/>
+                            <field name="row_count"/>
+                            <field name="fetched_at"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Raw JSON">
+                            <field name="raw_json" nolabel="1" widget="json"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_account_balance_list" model="ir.ui.view">
+        <field name="name">quickbooks.account.balance.list</field>
+        <field name="model">quickbooks.account.balance</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Account Balances" default_order="period_end desc, account_name">
+                <field name="period_end"/>
+                <field name="report_type"/>
+                <field name="account_name"/>
+                <field name="account_id"/>
+                <field name="qb_account_id"/>
+                <field name="debit_balance" sum="Debit"/>
+                <field name="credit_balance" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_account_balance_form" model="ir.ui.view">
+        <field name="name">quickbooks.account.balance.form</field>
+        <field name="model">quickbooks.account.balance</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks Account Balance" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="account_name"/>
+                            <field name="account_id"/>
+                            <field name="qb_account_id"/>
+                            <field name="report_type"/>
+                            <field name="period_end"/>
+                        </group>
+                        <group>
+                            <field name="debit_balance"/>
+                            <field name="credit_balance"/>
+                            <field name="balance"/>
+                            <field name="currency_id"/>
+                            <field name="snapshot_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_journal_balance_list" model="ir.ui.view">
+        <field name="name">quickbooks.journal.balance.list</field>
+        <field name="model">quickbooks.journal.balance</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Journal Balances" default_order="period_end desc, journal_code">
+                <field name="period_end"/>
+                <field name="journal_code"/>
+                <field name="journal_name"/>
+                <field name="debit_balance" sum="Debit"/>
+                <field name="credit_balance" sum="Credit"/>
+                <field name="balance" sum="Balance"/>
+                <field name="currency_id"/>
+                <field name="snapshot_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_journal_balance_form" model="ir.ui.view">
+        <field name="name">quickbooks.journal.balance.form</field>
+        <field name="model">quickbooks.journal.balance</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks Journal Balance" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="journal_code"/>
+                            <field name="journal_name"/>
+                            <field name="period_end"/>
+                            <field name="accounting_method"/>
+                        </group>
+                        <group>
+                            <field name="debit_balance"/>
+                            <field name="credit_balance"/>
+                            <field name="balance"/>
+                            <field name="currency_id"/>
+                            <field name="snapshot_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_report_snapshots" model="ir.actions.act_window">
+        <field name="name">QuickBooks Report Snapshots</field>
+        <field name="res_model">quickbooks.report.snapshot</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_qb_account_balances" model="ir.actions.act_window">
+        <field name="name">QuickBooks Account Balances</field>
+        <field name="res_model">quickbooks.account.balance</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_qb_journal_balances" model="ir.actions.act_window">
+        <field name="name">QuickBooks Journal Balances</field>
+        <field name="res_model">quickbooks.journal.balance</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_qb_accounting_reports_root"
+              name="QuickBooks Reports"
+              parent="account.menu_finance"
+              sequence="95"
+              groups="quickbooks_api_connector.group_qb_user"/>
+    <menuitem id="menu_qb_report_snapshots"
+              name="Snapshots"
+              parent="menu_qb_accounting_reports_root"
+              sequence="10"
+              action="action_qb_report_snapshots"/>
+    <menuitem id="menu_qb_account_balances"
+              name="Account Balances"
+              parent="menu_qb_accounting_reports_root"
+              sequence="20"
+              action="action_qb_account_balances"/>
+    <menuitem id="menu_qb_journal_balances"
+              name="Journal Balances"
+              parent="menu_qb_accounting_reports_root"
+              sequence="30"
+              action="action_qb_journal_balances"/>
+</odoo>

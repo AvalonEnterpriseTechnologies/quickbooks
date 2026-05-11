@@ -299,6 +299,58 @@ class QBRecordMatcher(models.AbstractModel):
         return self._find_by_name(Model, meta, qb_data, base_domain)
 
     @api.model
+    def find_odoo_match_for_account(self, qb_data, company=None, return_reason=False):
+        meta = self.get_meta('account')
+        Account = self.env[meta['model']]
+        base_domain = self._account_company_domain(Account, company)
+        qb_id = str(qb_data.get('Id') or '')
+        if qb_id:
+            match = Account.search(base_domain + [(meta['qb_id_field'], '=', qb_id)], limit=1)
+            if match:
+                return (match, 'linked_by_id') if return_reason else match
+
+        classifier = self.env['qb.account.classifier']
+        classification = classifier.classify(qb_data)
+        account_type = classification['odoo_type']
+        code = (qb_data.get('AcctNum') or '').strip()
+        compatible_types = classifier.compatible_account_types(account_type)
+        strict_type_domain = [('account_type', '=', account_type)]
+
+        if code and 'code' in Account._fields:
+            match = Account.search(
+                base_domain + strict_type_domain + [('code', '=', code)],
+                limit=1,
+            )
+            if match:
+                return (match, 'linked_by_code') if return_reason else match
+
+        name = self._normalize_account_name(qb_data.get('Name'))
+        if name:
+            match = self._find_account_by_normalized_name(
+                Account, base_domain + strict_type_domain, name,
+            )
+            if match:
+                return (match, 'linked_by_name') if return_reason else match
+
+        if code and 'code' in Account._fields:
+            match = Account.search(
+                base_domain + [('account_type', 'in', compatible_types), ('code', '=', code)],
+                limit=1,
+            )
+            if match:
+                return (match, 'linked_by_compatible_code') if return_reason else match
+
+        if name:
+            match = self._find_account_by_normalized_name(
+                Account, base_domain + [('account_type', 'in', compatible_types)], name,
+            )
+            if match:
+                return (match, 'linked_by_compatible_name') if return_reason else match
+
+        empty = Account.browse()
+        return (empty, 'created') if return_reason else empty
+
+    @api.model
     def find_qbo_match(self, client, entity_type, odoo_record):
         meta = self.get_meta(entity_type)
         if not meta:
@@ -352,6 +404,15 @@ class QBRecordMatcher(models.AbstractModel):
             return [('company_id', 'in', [company.id, False])]
         return []
 
+    def _account_company_domain(self, Model, company):
+        if not company:
+            return []
+        if 'company_ids' in Model._fields:
+            return [('company_ids', 'in', company.id)]
+        if 'company_id' in Model._fields:
+            return [('company_id', 'in', [company.id, False])]
+        return []
+
     def _find_by_natural_key(self, Model, meta, entity_type, qb_data, base_domain):
         if entity_type in ('customer', 'vendor'):
             email = ((qb_data.get('PrimaryEmailAddr') or {}).get('Address') or '').strip()
@@ -399,6 +460,12 @@ class QBRecordMatcher(models.AbstractModel):
         candidates = Model.search(base_domain + [(meta['name_field'], 'ilike', self._qb_display_value(meta, qb_data))], limit=10)
         return candidates.filtered(lambda rec: self._normalize(getattr(rec, meta['name_field'], '')) == name)[:1]
 
+    def _find_account_by_normalized_name(self, Account, domain, normalized_name):
+        candidates = Account.search(domain, limit=500)
+        return candidates.filtered(
+            lambda rec: self._normalize_account_name(rec.name) == normalized_name
+        )[:1]
+
     def _qbo_where_for_record(self, entity_type, record, meta):
         if entity_type in ('customer', 'vendor') and getattr(record, 'name', False):
             return "DisplayName = '%s'" % self._escape_qbo(record.name)
@@ -428,6 +495,14 @@ class QBRecordMatcher(models.AbstractModel):
     @staticmethod
     def _normalize(value):
         return re.sub(r'\s+', ' ', str(value or '').strip()).casefold()
+
+    @staticmethod
+    def _normalize_account_name(value):
+        normalized = re.sub(r'\s+', ' ', str(value or '').strip()).casefold()
+        for suffix in (' account', ' accounts'):
+            if normalized.endswith(suffix):
+                normalized = normalized[:-len(suffix)].strip()
+        return normalized
 
     @staticmethod
     def _amount(value):

@@ -14,6 +14,8 @@ access_qb_account_balance_manager,quickbooks.account.balance.manager,model_quick
 access_qb_account_balance_user,quickbooks.account.balance.user,model_quickbooks_account_balance,group_qb_user,1,0,0,0
 access_qb_journal_balance_manager,quickbooks.journal.balance.manager,model_quickbooks_journal_balance,group_qb_manager,1,1,1,1
 access_qb_journal_balance_user,quickbooks.journal.balance.user,model_quickbooks_journal_balance,group_qb_user,1,0,0,0
+access_qb_account_reconciliation_manager,quickbooks.account.reconciliation.manager,model_quickbooks_account_reconciliation,group_qb_manager,1,1,1,1
+access_qb_account_reconciliation_user,quickbooks.account.reconciliation.user,model_quickbooks_account_reconciliation,group_qb_user,1,0,0,0
 access_qb_recurring_template_manager,quickbooks.recurring.template.manager,model_quickbooks_recurring_template,group_qb_manager,1,1,1,1
 access_qb_recurring_template_user,quickbooks.recurring.template.user,model_quickbooks_recurring_template,group_qb_user,1,0,0,0
 access_qb_custom_field_definition_manager,quickbooks.custom.field.definition.manager,model_quickbooks_custom_field_definition,group_qb_manager,1,1,1,1
@@ -51,3 +53,4 @@ access_qb_work_location_user,quickbooks.work.location.user,model_quickbooks_work
 access_qb_setup_wizard,quickbooks.setup.wizard,model_quickbooks_setup_wizard,group_qb_manager,1,1,1,1
 access_qb_sync_wizard,quickbooks.sync.wizard,model_quickbooks_sync_wizard,group_qb_manager,1,1,1,1
 access_qb_migration_wizard,quickbooks.migration.wizard,model_quickbooks_migration_wizard,group_qb_manager,1,1,1,1
+access_qb_post_opening_balances_wizard,qb.post.opening.balances.wizard,model_qb_post_opening_balances_wizard,group_qb_manager,1,1,1,1

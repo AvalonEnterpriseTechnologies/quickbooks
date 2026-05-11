@@ -49,6 +49,12 @@ class AccountMove(models.Model):
     qb_do_not_sync = fields.Boolean(
         string='Exclude from QB Sync', default=False,
     )
+    qb_opening_snapshot_id = fields.Many2one(
+        'quickbooks.report.snapshot',
+        string='QB Opening Balance Snapshot',
+        copy=False,
+        index=True,
+    )
 
     def _post(self, soft=True):
         posted = super()._post(soft=soft)
