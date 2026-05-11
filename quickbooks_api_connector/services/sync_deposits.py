@@ -2,7 +2,28 @@ import logging
 
 from odoo import api, fields, models
 
+from .qb_api_client import QBApiError
+
 _logger = logging.getLogger(__name__)
+
+DEPOSIT_DESTINATION_ACCOUNT_TYPES = (
+    'asset_cash',
+    'liability_credit_card',
+)
+
+# Journal entries already represented elsewhere in QBO must not be re-pushed
+# as deposits. These are the per-move QBO link fields populated when the entry
+# was synced as another entity type.
+EXCLUDED_QB_LINK_FIELDS = (
+    'qb_invoice_id',
+    'qb_bill_id',
+    'qb_creditmemo_id',
+    'qb_je_id',
+    'qb_salesreceipt_id',
+    'qb_transfer_id',
+    'qb_refundreceipt_id',
+    'qb_vendorcredit_id',
+)
 
 
 class QBSyncDeposits(models.AbstractModel):
@@ -22,12 +43,20 @@ class QBSyncDeposits(models.AbstractModel):
         if not move.exists():
             return {}
 
+        if not self._is_deposit_eligible_move(move):
+            _logger.info(
+                'Skipping move %s (id=%s) as QBO Deposit; already represented '
+                'in QBO as another entity or not a deposit-shaped journal entry.',
+                move.display_name, move.id,
+            )
+            return {'skipped': True}
+
         payload = self._odoo_to_qb_deposit(move)
         if not self._is_valid_deposit_payload(payload):
             _logger.info(
-                'Skipping move %s as QBO Deposit; missing DepositToAccountRef '
+                'Skipping move %s (id=%s) as QBO Deposit; missing DepositToAccountRef '
                 'or DepositLineDetail source lines.',
-                move.display_name,
+                move.display_name, move.id,
             )
             return {'skipped': True}
 
@@ -38,15 +67,23 @@ class QBSyncDeposits(models.AbstractModel):
             if entity:
                 qb_id = str(entity.get('Id', ''))
                 matcher.link_odoo_record(move, 'deposit', entity)
-        if qb_id:
-            existing = client.read('Deposit', qb_id)
-            entity = existing.get('Deposit', {})
-            payload['Id'] = qb_id
-            payload['SyncToken'] = entity.get('SyncToken', '0')
-            payload['sparse'] = True
-            resp = client.update('Deposit', payload)
-        else:
-            resp = client.create('Deposit', payload)
+        try:
+            if qb_id:
+                existing = client.read('Deposit', qb_id)
+                entity = existing.get('Deposit', {})
+                payload['Id'] = qb_id
+                payload['SyncToken'] = entity.get('SyncToken', '0')
+                payload['sparse'] = True
+                resp = client.update('Deposit', payload)
+            else:
+                resp = client.create('Deposit', payload)
+        except QBApiError as exc:
+            _logger.error(
+                'QBO Deposit push rejected for move %s (id=%s, qb_id=%s); '
+                'payload=%s; error=%s',
+                move.display_name, move.id, qb_id or '-', payload, exc,
+            )
+            raise
 
         created = resp.get('Deposit', {})
         move.with_context(skip_qb_sync=True).write({
@@ -66,16 +103,26 @@ class QBSyncDeposits(models.AbstractModel):
         deposit_line = self._deposit_destination_line(move)
         if not deposit_line:
             return {}
+        deposit_qb_id = self._normalized_qb_account_id(deposit_line.account_id)
+        if not deposit_qb_id:
+            return {}
 
+        destination_account_id = deposit_line.account_id.id
         lines = []
         for line in move.line_ids.filtered(lambda l: l.credit > 0):
-            qb_account_id = getattr(line.account_id, 'qb_account_id', False)
+            # A credit on the same account as the destination is a transfer
+            # leg, not a deposit source.
+            if line.account_id.id == destination_account_id:
+                continue
+            if not line.credit or line.credit <= 0:
+                continue
+            qb_account_id = self._normalized_qb_account_id(line.account_id)
             if not qb_account_id:
                 continue
             lines.append({
                 'DetailType': 'DepositLineDetail',
                 'Amount': line.credit,
-                'Description': line.name or move.ref or move.name or '',
+                'Description': (line.name or move.ref or move.name or '')[:4000],
                 'DepositLineDetail': {
                     'AccountRef': {'value': qb_account_id},
                 },
@@ -84,9 +131,7 @@ class QBSyncDeposits(models.AbstractModel):
             return {}
 
         payload = {
-            'DepositToAccountRef': {
-                'value': deposit_line.account_id.qb_account_id,
-            },
+            'DepositToAccountRef': {'value': deposit_qb_id},
             'Line': lines,
         }
         if move.date:
@@ -116,13 +161,47 @@ class QBSyncDeposits(models.AbstractModel):
     def _deposit_destination_line(self, move):
         for line in move.line_ids.filtered(lambda l: l.debit > 0):
             account = line.account_id
-            if not getattr(account, 'qb_account_id', False):
+            if not self._normalized_qb_account_id(account):
                 continue
-            if getattr(account, 'account_type', '') in ('asset_cash', 'liability_credit_card'):
+            if getattr(account, 'account_type', '') in DEPOSIT_DESTINATION_ACCOUNT_TYPES:
                 return line
         return False
 
+    @staticmethod
+    def _normalized_qb_account_id(account):
+        raw = getattr(account, 'qb_account_id', '') or ''
+        return str(raw).strip()
+
+    def _is_deposit_eligible_move(self, move):
+        """Return True only for journal entries that can become a QBO Deposit.
+
+        Excludes entries QBO already represents through another entity
+        (Invoice, Bill, JournalEntry, SalesReceipt, etc.), payment-generated
+        counter moves, bank statement reconciliations, and tax cash-basis
+        mirror entries. Without these guards the queue could try to push the
+        same business event twice as different QBO objects.
+        """
+        if move.move_type != 'entry':
+            return False
+        if move.state != 'posted':
+            return False
+        for fname in EXCLUDED_QB_LINK_FIELDS:
+            if fname in move._fields and move[fname]:
+                return False
+        if 'origin_payment_id' in move._fields and move.origin_payment_id:
+            return False
+        if 'statement_line_id' in move._fields and move.statement_line_id:
+            return False
+        if (
+            'tax_cash_basis_origin_move_id' in move._fields
+            and move.tax_cash_basis_origin_move_id
+        ):
+            return False
+        return True
+
     def _is_deposit_candidate(self, move):
+        if not self._is_deposit_eligible_move(move):
+            return False
         return self._is_valid_deposit_payload(self._odoo_to_qb_deposit(move))
 
     def pull(self, client, config, job):
