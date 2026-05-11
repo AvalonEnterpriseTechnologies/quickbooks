@@ -94,7 +94,9 @@ class QBSyncProducts(models.AbstractModel):
             vals['is_storable'] = qb_type == 'Inventory'
         else:
             vals['type'] = odoo_type
-        return vals
+        return self.env['qb.record.matcher'].apply_user_overrides(
+            vals, qb_data, 'product', direction='pull',
+        )
 
     def _find_qb_account(self, product, account_type):
         """Find the QBO account ID for a product's income/expense/asset account."""

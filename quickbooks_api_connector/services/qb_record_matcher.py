@@ -201,6 +201,20 @@ ENTITY_META = {
         'name_field': 'name',
         'qb_display_field': 'FileName',
     },
+    'recurring_transaction': {
+        'model': 'quickbooks.recurring.template',
+        'qb_name': 'RecurringTransaction',
+        'qb_id_field': 'qb_recurring_id',
+        'name_field': 'name',
+        'qb_display_field': 'Name',
+    },
+    'custom_field_definition': {
+        'model': 'quickbooks.custom.field.definition',
+        'qb_name': 'CustomFieldDefinition',
+        'qb_id_field': 'qb_definition_id',
+        'name_field': 'name',
+        'qb_display_field': 'name',
+    },
 }
 
 
@@ -211,6 +225,52 @@ class QBRecordMatcher(models.AbstractModel):
     @api.model
     def get_meta(self, entity_type):
         return ENTITY_META.get(entity_type, {})
+
+    @api.model
+    def apply_user_overrides(self, vals, qb_data, entity_type, direction='pull'):
+        """Apply configured field mappings after built-in mappers.
+
+        This intentionally acts as a narrow override layer: hand-coded mappers
+        populate safe defaults first, then active user mappings can override
+        destination fields when both sides are present.
+        """
+        result = dict(vals or {})
+        mappings = self.env['quickbooks.field.mapping'].sudo().search([
+            ('entity_type', '=', entity_type),
+            ('direction', 'in', (direction, 'both')),
+            ('active', '=', True),
+        ], order='sequence, id')
+        for mapping in mappings:
+            value = self._value_from_path(qb_data, mapping.qb_field)
+            if value is None or not mapping.odoo_field:
+                continue
+            result[mapping.odoo_field] = self._transform_mapping_value(
+                value, mapping.transform,
+            )
+        return result
+
+    @staticmethod
+    def _value_from_path(payload, path):
+        current = payload
+        for part in (path or '').split('.'):
+            if not part:
+                continue
+            if not isinstance(current, dict):
+                return None
+            current = current.get(part)
+            if current is None:
+                return None
+        return current
+
+    @staticmethod
+    def _transform_mapping_value(value, transform):
+        if transform == 'upper' and isinstance(value, str):
+            return value.upper()
+        if transform == 'lower' and isinstance(value, str):
+            return value.lower()
+        if transform == 'bool_to_str':
+            return 'true' if bool(value) else 'false'
+        return value
 
     @api.model
     def find_odoo_match(self, entity_type, qb_data, company=None):

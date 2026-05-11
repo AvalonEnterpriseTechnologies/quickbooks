@@ -367,3 +367,19 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
 
         self.assertEqual(target['res_model'], 'product.product')
         self.assertEqual(target['res_id'], product.id)
+
+    def test_field_mapping_overrides_pull_vals(self):
+        self.env['quickbooks.field.mapping'].create({
+            'entity_type': 'product',
+            'sequence': 1,
+            'odoo_field': 'default_code',
+            'qb_field': 'Sku',
+            'direction': 'pull',
+            'transform': 'upper',
+        })
+
+        vals = self.env['qb.record.matcher'].apply_user_overrides(
+            {'default_code': 'old'}, {'Sku': 'abc-123'}, 'product', 'pull',
+        )
+
+        self.assertEqual(vals['default_code'], 'ABC-123')

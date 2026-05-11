@@ -50,7 +50,9 @@ class QBSyncAccounts(models.AbstractModel):
         if qb_data.get('Description'):
             vals['note'] = qb_data['Description']
 
-        return vals
+        return self.env['qb.record.matcher'].apply_user_overrides(
+            vals, qb_data, 'account', direction='pull',
+        )
 
     def _odoo_to_qb_account(self, account):
         """Map Odoo account.account to QBO Account dict (primarily for ref)."""
