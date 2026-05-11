@@ -334,3 +334,21 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
 
         self.assertEqual(rule.api_status, 'manual')
         self.assertEqual(rule.conditions_json['description_contains'], 'FUEL')
+
+    def test_qbo_group_item_maps_bundle_components_and_category(self):
+        vals = self.env['qb.sync.products']._qb_item_to_odoo({
+            'Id': 'G1',
+            'Name': 'Starter Kit',
+            'Type': 'Group',
+            'ParentRef': {'value': 'CAT1', 'name': 'Kits'},
+            'ItemGroupDetail': {
+                'ItemGroupLine': [{
+                    'ItemRef': {'value': 'I1', 'name': 'Widget'},
+                    'Qty': 2,
+                }],
+            },
+        })
+
+        self.assertEqual(vals['qb_item_type'], 'Group')
+        self.assertEqual(vals['qb_item_category_id'], 'CAT1')
+        self.assertEqual(vals['qb_bundle_components'][0]['Qty'], 2)
