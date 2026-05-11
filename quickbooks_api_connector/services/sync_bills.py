@@ -141,13 +141,19 @@ class QBSyncBills(models.AbstractModel):
                 detail = qb_line.get('AccountBasedExpenseLineDetail', {})
                 line_vals['price_unit'] = qb_line.get('Amount', 0.0)
                 account_ref = detail.get('AccountRef', {})
-                if account_ref.get('value'):
-                    account = self.env['account.account'].search([
-                        ('qb_account_id', '=', account_ref['value']),
-                        ('company_id', '=', config.company_id.id),
-                    ], limit=1)
+                account_qb_id = account_ref.get('value')
+                if account_qb_id:
+                    account = self.env['qb.record.matcher'].find_account_by_qb_id(
+                        account_qb_id, config.company_id,
+                    )
                     if account:
                         line_vals['account_id'] = account.id
+                    else:
+                        vals['qb_sync_error'] = (
+                            'QBO account %s not yet imported - line skipped.'
+                            % account_qb_id
+                        )
+                        continue
                 self._apply_tax_ref(detail, line_vals, config)
             else:
                 continue

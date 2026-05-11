@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector',
-    'version': '19.0.4.1.0',
+    'version': '19.0.4.1.1',
     'category': 'Accounting',
     'summary': 'Full QuickBooks Online connector for Odoo 19 — Accounting, Payroll, Time',
     'description': """
@@ -69,6 +69,7 @@
         'views/account_account_views.xml',
         'views/account_move_views.xml',
         'views/payroll_views.xml',
+        'report/qb_report_qweb.xml',
         'views/oauth_result_template.xml',
     ],
     'post_init_hook': '_post_init_hook',

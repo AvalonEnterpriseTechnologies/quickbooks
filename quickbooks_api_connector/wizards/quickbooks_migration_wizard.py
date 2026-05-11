@@ -156,6 +156,31 @@ class QuickbooksMigrationWizard(models.TransientModel):
             })
 
         if self.migrate_opening_balances and self.direction in ('import', 'both'):
+            if self.mode == 'live':
+                try:
+                    self._prepare_opening_balance_source_data(config)
+                    opening_wizard = self.env['qb.post.opening.balances.wizard'].with_context(
+                        default_company_id=self.company_id.id,
+                        default_dry_run=False,
+                    ).create({
+                        'company_id': self.company_id.id,
+                        'dry_run': False,
+                    })
+                    opening_action = opening_wizard.action_post_opening_balances()
+                    if opening_action:
+                        return opening_action
+                except UserError as exc:
+                    _logger.warning(
+                        'QuickBooks opening balance auto-post skipped: %s',
+                        exc,
+                    )
+                    return self._notification(
+                        'QuickBooks Migration',
+                        '%d jobs queued, but opening balances were not posted: %s'
+                        % (count, exc),
+                        'warning',
+                        sticky=True,
+                    )
             action = self.env.ref(
                 'quickbooks_api_connector.action_qb_post_opening_balances_wizard',
             ).read()[0]
@@ -165,19 +190,33 @@ class QuickbooksMigrationWizard(models.TransientModel):
             }
             return action
 
+        return self._notification(
+            'QuickBooks Migration',
+            (
+                '%d migration %s. Entities will sync in dependency order.'
+            ) % (
+                count,
+                'steps planned; no jobs queued' if self.mode == 'dry_run' else 'jobs queued',
+            ),
+            'success',
+            sticky=True,
+        )
+
+    def _prepare_opening_balance_source_data(self, config):
+        client = self.env['qb.api.client'].get_client(config)
+        if self.migrate_accounts:
+            self.env['qb.sync.accounts'].pull_all(client, config, 'account')
+        self.env['qb.sync.reports'].pull_all(client, config, 'report')
+
+    def _notification(self, title, message, notification_type, sticky=False):
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': 'QuickBooks Migration',
-                'message': (
-                    '%d migration %s. Entities will sync in dependency order.'
-                ) % (
-                    count,
-                    'steps planned; no jobs queued' if self.mode == 'dry_run' else 'jobs queued',
-                ),
-                'type': 'success',
-                'sticky': True,
+                'title': title,
+                'message': message,
+                'type': notification_type,
+                'sticky': sticky,
             },
         }
 

@@ -24,6 +24,11 @@
                             type="object" class="btn-secondary"
                             icon="fa-refresh"
                             invisible="state != 'connected'"/>
+                    <button name="action_run_pending_jobs_now"
+                            string="Run Pending Jobs Now"
+                            type="object" class="btn-secondary"
+                            icon="fa-play"
+                            invisible="state != 'connected'"/>
                     <button name="action_disconnect"
                             string="Disconnect"
                             type="object" class="btn-danger"

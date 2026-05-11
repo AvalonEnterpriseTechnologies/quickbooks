@@ -351,6 +351,18 @@ class QBRecordMatcher(models.AbstractModel):
         return (empty, 'created') if return_reason else empty
 
     @api.model
+    def find_account_by_qb_id(self, qb_id, company=None):
+        """Resolve QBO account references using Odoo 19's company_ids field."""
+        if not qb_id:
+            return self.env['account.account'].browse()
+        Account = self.env['account.account']
+        domain = self._account_company_domain(Account, company)
+        return Account.search(
+            domain + [('qb_account_id', '=', str(qb_id))],
+            limit=1,
+        )
+
+    @api.model
     def find_qbo_match(self, client, entity_type, odoo_record):
         meta = self.get_meta(entity_type)
         if not meta:

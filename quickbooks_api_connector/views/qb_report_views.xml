@@ -22,6 +22,16 @@
         <field name="model">quickbooks.report.snapshot</field>
         <field name="arch" type="xml">
             <form string="QuickBooks Report Snapshot" create="0" edit="0">
+                <header>
+                    <button name="action_print_qbo_report"
+                            string="Print QBO Report"
+                            type="object"
+                            class="btn-primary"/>
+                    <button name="action_open_native_odoo_report"
+                            string="Open in Native Odoo Reports"
+                            type="object"
+                            class="btn-secondary"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
@@ -41,7 +51,58 @@
                         <page string="Raw JSON">
                             <field name="raw_json" nolabel="1" widget="json"/>
                         </page>
+                        <page string="Rows">
+                            <field name="row_ids" nolabel="1" readonly="1"/>
+                        </page>
                     </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_report_row_list" model="ir.ui.view">
+        <field name="name">quickbooks.report.row.list</field>
+        <field name="model">quickbooks.report.row</field>
+        <field name="arch" type="xml">
+            <list string="QuickBooks Report Rows" default_order="snapshot_id, sequence">
+                <field name="period_end"/>
+                <field name="report_type"/>
+                <field name="level"/>
+                <field name="label"/>
+                <field name="amount" sum="Amount"/>
+                <field name="is_section"/>
+                <field name="is_total"/>
+                <field name="account_id"/>
+                <field name="qb_account_id"/>
+                <field name="currency_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_report_row_form" model="ir.ui.view">
+        <field name="name">quickbooks.report.row.form</field>
+        <field name="model">quickbooks.report.row</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks Report Row" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="label"/>
+                            <field name="path"/>
+                            <field name="level"/>
+                            <field name="parent_id"/>
+                            <field name="snapshot_id"/>
+                        </group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="currency_id"/>
+                            <field name="is_section"/>
+                            <field name="is_total"/>
+                            <field name="account_id"/>
+                            <field name="qb_account_id"/>
+                        </group>
+                    </group>
                 </sheet>
             </form>
         </field>
@@ -155,6 +216,34 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <record id="action_qb_balance_sheet_rows" model="ir.actions.act_window">
+        <field name="name">QuickBooks Balance Sheet</field>
+        <field name="res_model">quickbooks.report.row</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('report_type', '=', 'BalanceSheet')]</field>
+    </record>
+
+    <record id="action_qb_profit_loss_rows" model="ir.actions.act_window">
+        <field name="name">QuickBooks Profit and Loss</field>
+        <field name="res_model">quickbooks.report.row</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('report_type', '=', 'ProfitAndLoss')]</field>
+    </record>
+
+    <record id="action_qb_trial_balance_rows" model="ir.actions.act_window">
+        <field name="name">QuickBooks Trial Balance</field>
+        <field name="res_model">quickbooks.report.row</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('report_type', '=', 'TrialBalance')]</field>
+    </record>
+
+    <record id="action_qb_general_ledger_rows" model="ir.actions.act_window">
+        <field name="name">QuickBooks General Ledger</field>
+        <field name="res_model">quickbooks.report.row</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('report_type', '=', 'GeneralLedger')]</field>
+    </record>
+
     <menuitem id="menu_qb_accounting_reports_root"
               name="QuickBooks Reports"
               parent="account.menu_finance"
@@ -165,6 +254,26 @@
               parent="menu_qb_accounting_reports_root"
               sequence="10"
               action="action_qb_report_snapshots"/>
+    <menuitem id="menu_qb_balance_sheet_rows"
+              name="Balance Sheet"
+              parent="menu_qb_accounting_reports_root"
+              sequence="11"
+              action="action_qb_balance_sheet_rows"/>
+    <menuitem id="menu_qb_profit_loss_rows"
+              name="Profit and Loss"
+              parent="menu_qb_accounting_reports_root"
+              sequence="12"
+              action="action_qb_profit_loss_rows"/>
+    <menuitem id="menu_qb_trial_balance_rows"
+              name="Trial Balance"
+              parent="menu_qb_accounting_reports_root"
+              sequence="13"
+              action="action_qb_trial_balance_rows"/>
+    <menuitem id="menu_qb_general_ledger_rows"
+              name="General Ledger"
+              parent="menu_qb_accounting_reports_root"
+              sequence="14"
+              action="action_qb_general_ledger_rows"/>
     <menuitem id="menu_qb_account_balances"
               name="Account Balances"
               parent="menu_qb_accounting_reports_root"

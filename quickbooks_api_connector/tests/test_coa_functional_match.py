@@ -53,6 +53,31 @@ class TestCoAFunctionalMatch(QuickbooksTestCommon):
         self.assertTrue(created)
         self.assertEqual(created.account_type, 'expense')
 
+    def test_pull_all_includes_inactive_account_and_sets_company_ids(self):
+        client = self._mock_client()
+        client.query_all.return_value = [{
+            'Id': '21',
+            'SyncToken': '0',
+            'Name': 'Old Bank Account',
+            'AcctNum': '1060',
+            'AccountType': 'Bank',
+            'AccountSubType': 'Checking',
+            'Active': False,
+        }]
+
+        self.env['qb.sync.accounts'].pull_all(client, self.config, 'account')
+
+        client.query_all.assert_called_once()
+        where = client.query_all.call_args.kwargs.get('where_clause')
+        self.assertIn('Active IN (true, false)', where)
+        created = self.env['account.account'].search([
+            ('qb_account_id', '=', '21'),
+        ], limit=1)
+        self.assertTrue(created)
+        self.assertFalse(created.active)
+        if 'company_ids' in created._fields:
+            self.assertIn(self.company, created.company_ids)
+
     def test_single_pull_uses_new_matcher(self):
         account = self.env['account.account'].with_context(skip_qb_sync=True).create({
             'name': 'Accounts Payable',

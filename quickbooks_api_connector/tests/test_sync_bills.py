@@ -50,6 +50,29 @@ class TestSyncBills(QuickbooksTestCommon):
         self.assertEqual(vals['qb_bill_id'], '500')
         self.assertEqual(vals['partner_id'], self.vendor.id)
 
+    def test_account_based_bill_line_resolves_qb_account_with_company_ids(self):
+        expense = self.env['account.account'].with_context(skip_qb_sync=True).create({
+            'name': 'QBO Bill Expense',
+            'code': '6099',
+            'account_type': 'expense',
+            'qb_account_id': '99',
+        })
+        service = self.env['qb.sync.bills']
+        qb_data = self._make_qb_bill()['Bill']
+        qb_data['Line'] = [{
+            'DetailType': 'AccountBasedExpenseLineDetail',
+            'Amount': 42.0,
+            'Description': 'Allocated expense',
+            'AccountBasedExpenseLineDetail': {
+                'AccountRef': {'value': '99', 'name': 'QBO Bill Expense'},
+            },
+        }]
+
+        vals = service._qb_bill_to_odoo(qb_data, self.config)
+
+        line = vals['invoice_line_ids'][0][2]
+        self.assertEqual(line['account_id'], expense.id)
+
     def test_push_creates_new_bill(self):
         move = self.env['account.move'].with_context(skip_qb_sync=True).create({
             'move_type': 'in_invoice',

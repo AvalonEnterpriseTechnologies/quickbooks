@@ -7,6 +7,18 @@ class TestSyncJournalEntries(QuickbooksTestCommon):
 
     def test_qb_je_to_odoo_mapping(self):
         """Test QBO JournalEntry → Odoo account.move mapping."""
+        cash = self.env['account.account'].with_context(skip_qb_sync=True).create({
+            'name': 'QBO Cash',
+            'code': '1088',
+            'account_type': 'asset_cash',
+            'qb_account_id': '10',
+        })
+        revenue = self.env['account.account'].with_context(skip_qb_sync=True).create({
+            'name': 'QBO Revenue',
+            'code': '4088',
+            'account_type': 'income',
+            'qb_account_id': '20',
+        })
         service = self.env['qb.sync.journal.entries']
         qb_data = self._make_qb_journal_entry()['JournalEntry']
         vals = service._qb_je_to_odoo(qb_data, self.config)
@@ -20,10 +32,12 @@ class TestSyncJournalEntries(QuickbooksTestCommon):
         debit_line = vals['line_ids'][0][2]
         self.assertEqual(debit_line['debit'], 1000.00)
         self.assertEqual(debit_line['credit'], 0.0)
+        self.assertEqual(debit_line['account_id'], cash.id)
 
         credit_line = vals['line_ids'][1][2]
         self.assertEqual(credit_line['debit'], 0.0)
         self.assertEqual(credit_line['credit'], 1000.00)
+        self.assertEqual(credit_line['account_id'], revenue.id)
 
     def test_push_journal_entry(self):
         """Test pushing a journal entry to QBO."""

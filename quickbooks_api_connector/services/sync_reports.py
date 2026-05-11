@@ -40,6 +40,7 @@ class QBSyncReports(models.AbstractModel):
                 rows = self._normalized_rows(payload)
                 total_rows += len(rows)
                 self._store_derived_balances(config, snapshot, report_type, rows)
+                self._store_report_rows(config, snapshot, payload)
         self._prune_snapshots(config)
         return {'rows': total_rows}
 
@@ -89,6 +90,85 @@ class QBSyncReports(models.AbstractModel):
             self._store_account_balances(config, snapshot, report_type, rows)
         elif report_type == 'GeneralLedger':
             self._store_journal_balances(config, snapshot, rows)
+
+    def _store_report_rows(self, config, snapshot, payload):
+        ReportRow = self.env['quickbooks.report.row'].sudo()
+        ReportRow.search([('snapshot_id', '=', snapshot.id)]).unlink()
+        sequence = {'value': 0}
+        self._create_report_rows(
+            config=config,
+            snapshot=snapshot,
+            qbo_rows=payload.get('Rows', {}).get('Row', []),
+            parent=False,
+            path=[],
+            level=0,
+            sequence=sequence,
+        )
+
+    def _create_report_rows(self, config, snapshot, qbo_rows, parent, path, level, sequence):
+        ReportRow = self.env['quickbooks.report.row'].sudo()
+        for row in qbo_rows or []:
+            header = row.get('Header') or {}
+            summary = row.get('Summary') or {}
+            label = (
+                self._first_col_value(header.get('ColData'))
+                or row.get('group')
+                or self._first_col_value(row.get('ColData'))
+                or self._first_col_value(summary.get('ColData'))
+            )
+            current_parent = parent
+            current_path = path
+            if label:
+                sequence['value'] += 10
+                col_data = row.get('ColData') or summary.get('ColData') or header.get('ColData')
+                first = col_data[0] if col_data else {}
+                values = {
+                    'company_id': config.company_id.id,
+                    'snapshot_id': snapshot.id,
+                    'parent_id': parent.id if parent else False,
+                    'sequence': sequence['value'],
+                    'level': level,
+                    'path': ' / '.join(path + [label]),
+                    'label': label,
+                    'amount': self._last_numeric_value(col_data) or 0.0,
+                    'is_total': bool(summary.get('ColData')) or str(label).lower().startswith('total'),
+                    'is_section': bool(row.get('Rows')),
+                    'qb_account_id': first.get('id') or '',
+                    'account_id': self._find_account(config, {
+                        'id': first.get('id') or '',
+                        'label': label,
+                    }).id or False,
+                    'currency_id': config.company_id.currency_id.id,
+                }
+                current_parent = ReportRow.create(values)
+                current_path = path + [label]
+            if row.get('Rows'):
+                self._create_report_rows(
+                    config, snapshot, row.get('Rows', {}).get('Row', []),
+                    current_parent, current_path, level + 1, sequence,
+                )
+            if summary.get('ColData') and not (
+                label and self._first_col_value(summary.get('ColData')) == label
+            ):
+                summary_label = self._first_col_value(summary.get('ColData')) or (
+                    'Total %s' % (label or 'Section')
+                )
+                sequence['value'] += 10
+                first = summary.get('ColData')[0] if summary.get('ColData') else {}
+                ReportRow.create({
+                    'company_id': config.company_id.id,
+                    'snapshot_id': snapshot.id,
+                    'parent_id': current_parent.id if current_parent else False,
+                    'sequence': sequence['value'],
+                    'level': level + 1,
+                    'path': ' / '.join(current_path + [summary_label]),
+                    'label': summary_label,
+                    'amount': self._last_numeric_value(summary.get('ColData')) or 0.0,
+                    'is_total': True,
+                    'is_section': False,
+                    'qb_account_id': first.get('id') or '',
+                    'currency_id': config.company_id.currency_id.id,
+                })
 
     def _store_account_balances(self, config, snapshot, report_type, rows):
         Balance = self.env['quickbooks.account.balance'].sudo()

@@ -23,13 +23,16 @@ class QBSyncAccounts(models.AbstractModel):
             'qb_account_type': classification['qbo_type'],
             'qb_account_subtype': classification['qbo_subtype'],
             'qb_account_code': qb_data.get('AcctNum') or '',
-            'qb_opening_balance': qb_data.get('OpeningBalance') or 0.0,
             'qb_opening_balance_date': qb_data.get('OpeningBalanceDate') or False,
             'qb_current_balance': qb_data.get('CurrentBalance') or 0.0,
             'qb_current_balance_with_subaccounts': (
                 qb_data.get('CurrentBalanceWithSubAccounts') or 0.0
             ),
         }
+        if qb_data.get('OpeningBalance') not in (None, '', 0, 0.0, '0', '0.0', '0.00'):
+            vals['qb_opening_balance'] = qb_data.get('OpeningBalance')
+        if qb_data.get('Active') is not None:
+            vals['active'] = bool(qb_data.get('Active'))
 
         if qb_data.get('Description'):
             vals['note'] = qb_data['Description']
@@ -127,38 +130,70 @@ class QBSyncAccounts(models.AbstractModel):
     def pull_all(self, client, config, entity_type):
         """Pull the full chart of accounts from QBO."""
         where = ''
+        where_parts = ['Active IN (true, false)']
         if config.last_sync_date:
-            where = "MetaData.LastUpdatedTime > '%s'" % (
+            where_parts.append("MetaData.LastUpdatedTime > '%s'" % (
                 self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
-            )
+            ))
+        where = ' AND '.join(where_parts)
         records = client.query_all('Account', where_clause=where)
         Account = self.env['account.account']
         matcher = self.env['qb.record.matcher']
+        stats = {'matched': 0, 'created': 0, 'updated': 0, 'failed': 0}
 
         for qb_data in records:
-            vals = self._qb_account_to_odoo(qb_data)
+            qb_id = str(qb_data.get('Id') or '')
+            try:
+                vals = self._qb_account_to_odoo(qb_data)
 
-            existing, decision = matcher.find_odoo_match_for_account(
-                qb_data, config.company_id, return_reason=True,
-            )
+                existing, decision = matcher.find_odoo_match_for_account(
+                    qb_data, config.company_id, return_reason=True,
+                )
 
-            if existing:
-                matcher.link_odoo_record(existing, 'account', qb_data)
-                update_vals = self._existing_account_update_vals(existing, vals, config)
-                existing.with_context(skip_qb_sync=True).write(update_vals)
-            else:
-                vals = self._prepare_new_account_vals(vals, config.company_id)
-                existing = Account.with_context(skip_qb_sync=True).create(vals)
-                decision = 'created'
-            self._log_reconciliation(config, qb_data, existing, decision)
+                if existing:
+                    stats['matched'] += 1
+                    matcher.link_odoo_record(existing, 'account', qb_data)
+                    update_vals = self._existing_account_update_vals(existing, vals, config)
+                    if update_vals:
+                        existing.with_context(skip_qb_sync=True).write(update_vals)
+                        stats['updated'] += 1
+                else:
+                    vals = self._prepare_new_account_vals(vals, config.company_id)
+                    existing = Account.with_context(skip_qb_sync=True).create(vals)
+                    decision = 'created'
+                    stats['created'] += 1
+                self._log_reconciliation(config, qb_data, existing, decision)
+            except Exception as exc:
+                stats['failed'] += 1
+                _logger.exception(
+                    'Failed to pull QBO account %s (%s)',
+                    qb_id, qb_data.get('Name'),
+                )
+                self.env['quickbooks.sync.log'].log_sync(
+                    company_id=config.company_id.id,
+                    entity_type='account',
+                    direction='pull',
+                    operation='update',
+                    qb_entity_id=qb_id,
+                    state='error',
+                    error_message='%s: %s' % (qb_data.get('Name') or qb_id, exc),
+                )
 
         self.env['qb.sync.journals'].ensure_journals_for_accounts(config)
+        _logger.info(
+            'CoA pull: total=%d, matched=%d, created=%d, updated=%d, failed=%d',
+            len(records), stats['matched'], stats['created'],
+            stats['updated'], stats['failed'],
+        )
 
     def push_all(self, client, config, entity_type):
-        accounts = self.env['account.account'].search([
-            ('company_id', '=', config.company_id.id),
-            ('qb_account_id', '=', False),
-        ])
+        Account = self.env['account.account']
+        domain = [('qb_account_id', '=', False)]
+        if 'company_ids' in Account._fields:
+            domain.append(('company_ids', 'in', config.company_id.id))
+        elif 'company_id' in Account._fields:
+            domain.append(('company_id', 'in', [config.company_id.id, False]))
+        accounts = Account.search(domain)
         queue = self.env['quickbooks.sync.queue']
         for account in accounts:
             queue.enqueue(
@@ -177,13 +212,14 @@ class QBSyncAccounts(models.AbstractModel):
             'qb_account_type': vals.get('qb_account_type'),
             'qb_account_subtype': vals.get('qb_account_subtype'),
             'qb_account_code': vals.get('qb_account_code'),
-            'qb_opening_balance': vals['qb_opening_balance'],
             'qb_opening_balance_date': vals['qb_opening_balance_date'],
             'qb_current_balance': vals['qb_current_balance'],
             'qb_current_balance_with_subaccounts': (
                 vals['qb_current_balance_with_subaccounts']
             ),
         }
+        if 'qb_opening_balance' in vals:
+            update_vals['qb_opening_balance'] = vals['qb_opening_balance']
         name = vals.get('name')
         if name and self._should_update_account_name(account, name, config):
             update_vals['name'] = name
@@ -205,10 +241,11 @@ class QBSyncAccounts(models.AbstractModel):
     def _prepare_new_account_vals(self, vals, company):
         Account = self.env['account.account']
         vals = dict(vals)
-        if 'company_id' in Account._fields:
-            vals['company_id'] = company.id
-        elif 'company_ids' in Account._fields:
+        if 'company_ids' in Account._fields:
             vals['company_ids'] = [(4, company.id)]
+            vals.pop('company_id', None)
+        elif 'company_id' in Account._fields:
+            vals['company_id'] = company.id
         vals['code'] = self._available_account_code(vals.get('code'), company)
         return vals
 

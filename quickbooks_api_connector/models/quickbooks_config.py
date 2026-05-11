@@ -434,6 +434,28 @@ class QuickbooksConfig(models.Model):
             },
         }
 
+    def action_run_pending_jobs_now(self):
+        self.ensure_one()
+        if self.state != 'connected':
+            raise UserError('QuickBooks is not connected for this company.')
+        Queue = self.env['quickbooks.sync.queue']
+        pending_domain = [
+            ('company_id', '=', self.company_id.id),
+            ('state', '=', 'pending'),
+        ]
+        pending = Queue.search_count(pending_domain)
+        Queue.search(pending_domain, limit=50).process_pending_jobs()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'QuickBooks Queue',
+                'message': '%d pending job(s) were sent to the queue processor.' % pending,
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
     def action_disconnect(self):
         self.ensure_one()
         self.write({

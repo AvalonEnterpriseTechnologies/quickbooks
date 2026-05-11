@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class AccountAccount(models.Model):
@@ -28,9 +28,29 @@ class AccountAccount(models.Model):
         currency_field='company_currency_id',
         copy=False,
     )
+    qb_tb_balance = fields.Monetary(
+        string='QB Trial Balance (Latest)',
+        currency_field='company_currency_id',
+        compute='_compute_qb_tb_balance',
+    )
     qb_account_type = fields.Char(string='QB Account Type', copy=False)
     qb_account_subtype = fields.Char(string='QB Account Subtype', copy=False)
     qb_account_code = fields.Char(string='QB Account Number', copy=False)
+
+    @api.depends('qb_account_id')
+    def _compute_qb_tb_balance(self):
+        Balance = self.env['quickbooks.account.balance'].sudo()
+        for account in self:
+            balance = Balance.search([
+                ('account_id', '=', account.id),
+                ('report_type', '=', 'TrialBalance'),
+            ], order='period_end desc, id desc', limit=1)
+            if not balance and account.qb_account_id:
+                balance = Balance.search([
+                    ('qb_account_id', '=', account.qb_account_id),
+                    ('report_type', '=', 'TrialBalance'),
+                ], order='period_end desc, id desc', limit=1)
+            account.qb_tb_balance = balance.balance if balance else 0.0
 
     def action_view_qbo_balances(self):
         self.ensure_one()

@@ -12,6 +12,7 @@
                     <field name="qb_account_type" readonly="1"/>
                     <field name="qb_account_subtype" readonly="1"/>
                     <field name="qb_opening_balance" readonly="1"/>
+                    <field name="qb_tb_balance" readonly="1"/>
                     <field name="qb_current_balance" readonly="1"/>
                     <button name="action_view_qbo_balances"
                             string="View QBO Balances"
