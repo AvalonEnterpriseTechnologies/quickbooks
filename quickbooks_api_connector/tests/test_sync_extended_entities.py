@@ -287,3 +287,14 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         ], limit=1)
         self.assertEqual(benefit.benefit_type, 'retirement')
         self.assertEqual(benefit.amount, 75.0)
+
+    def test_workers_comp_class_manual_rate_estimate(self):
+        workers_comp = self.env['quickbooks.workers.comp.class'].create({
+            'company_id': self.company.id,
+            'code': '8810',
+            'name': 'Clerical Office Employees',
+            'base_rate': 0.25,
+        })
+
+        self.assertEqual(workers_comp.source, 'manual')
+        self.assertEqual(workers_comp.base_rate, 0.25)
