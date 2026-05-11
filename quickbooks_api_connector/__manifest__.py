@@ -7,9 +7,10 @@
         Comprehensive QuickBooks Online integration for Odoo 19.
 
         Requirements:
-        - The Odoo Accounting module (`account`) is a hard prerequisite
-          and is installed automatically with this module. Installation
-          will abort with a clear error if `account` is not present.
+        - The Odoo Accounting (`account`) and Accountant
+          (`account_accountant`) modules are hard prerequisites and are
+          installed automatically with this module. Installation will abort
+          with a clear error if either module is not present.
 
         Features:
         - One-time OAuth 2.0 setup wizard and sync-only settings panel
@@ -38,7 +39,7 @@
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',
     'license': 'LGPL-3',
     'depends': [
-        'base', 'base_setup', 'mail', 'account',
+        'base', 'base_setup', 'mail', 'account', 'account_accountant',
         'contacts',
     ],
     'external_dependencies': {
@@ -64,11 +65,6 @@
         'views/product_views.xml',
         'views/account_move_views.xml',
         'views/payroll_views.xml',
-        'views/purchase_order_views.xml',
-        'views/hr_expense_views.xml',
-        'views/project_views.xml',
-        'views/hr_employee_views.xml',
-        'views/account_analytic_line_views.xml',
         'views/oauth_result_template.xml',
     ],
     'post_init_hook': '_post_init_hook',
