@@ -78,6 +78,7 @@
                         <field name="sync_payments"/>
                         <field name="sync_journal_entries"/>
                         <field name="sync_credit_memos"/>
+                        <field name="sync_attachments"/>
                         <field name="sync_inventory_adjustments"/>
                         <field name="sync_payroll"/>
                     </group>
@@ -113,15 +114,19 @@
                 <group>
                     <field name="company_id" groups="base.group_multi_company"/>
                     <field name="direction"/>
+                    <field name="mode"/>
                 </group>
                 <group string="Entities to Migrate">
                     <group>
                         <field name="migrate_accounts"/>
+                        <field name="migrate_opening_balances"/>
                         <field name="migrate_tax_codes"/>
                         <field name="migrate_customers"/>
                         <field name="migrate_vendors"/>
                         <field name="migrate_projects"/>
                         <field name="migrate_products"/>
+                        <field name="migrate_recurring_transactions"/>
+                        <field name="migrate_custom_fields"/>
                     </group>
                     <group>
                         <field name="migrate_invoices"/>
@@ -130,6 +135,9 @@
                         <field name="migrate_journal_entries"/>
                         <field name="migrate_inventory_adjustments"/>
                         <field name="migrate_payroll"/>
+                        <field name="migrate_employee_benefits"/>
+                        <field name="migrate_payroll_settings"/>
+                        <field name="migrate_attachments"/>
                     </group>
                 </group>
                 <footer>

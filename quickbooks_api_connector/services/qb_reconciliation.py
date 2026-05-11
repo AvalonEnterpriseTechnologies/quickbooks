@@ -31,7 +31,7 @@ class QBReconciliation(models.AbstractModel):
                 not meta
                 or meta.get('model') not in self.env
                 or entity_type in (
-                    'attachment', 'payroll_compensation', 'payroll_employee',
+                    'payroll_compensation', 'payroll_employee',
                     'payroll_pay_item', 'payroll_schedule', 'payroll_check',
                     'work_location', 'timesheet', 'inventory_adjustment',
                 )
@@ -73,6 +73,9 @@ class QBReconciliation(models.AbstractModel):
             'term': 'sync_terms',
             'vendor_credit': 'sync_vendor_credits',
             'refund_receipt': 'sync_refund_receipts',
+            'attachment': 'sync_attachments',
+            'recurring_transaction': 'sync_recurring_transactions',
+            'custom_field_definition': 'custom_fields_enabled',
             'account': None,
         }
         return [

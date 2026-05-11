@@ -52,6 +52,11 @@ class QuickbooksSyncLog(models.Model):
          ('work_location', 'Work Location'),
          ('inventory_adjustment', 'Inventory Adjustment'),
          ('timesheet', 'Timesheet (QBT)'),
+         ('report', 'Financial Report'),
+         ('recurring_transaction', 'Recurring Transaction'),
+         ('custom_field_definition', 'Custom Field Definition'),
+         ('employee_benefit', 'Employee Benefit'),
+         ('payroll_settings', 'Payroll Settings'),
          ('full_sync', 'Full Sync')],
         required=True,
     )

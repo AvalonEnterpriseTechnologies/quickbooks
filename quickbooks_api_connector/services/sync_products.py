@@ -35,10 +35,11 @@ class QBSyncProducts(models.AbstractModel):
             'Active': product.active,
             'Taxable': bool(product.taxes_id),
         }
-        if product.categ_id:
-            data['Description'] = '%s | %s' % (
-                product.categ_id.complete_name, data['Description'],
-            )
+        if product.qb_item_category_id:
+            data['ParentRef'] = {
+                'value': product.qb_item_category_id,
+                'name': product.qb_item_category_name or '',
+            }
 
         if item_type == 'Inventory':
             data['TrackQtyOnHand'] = True
@@ -66,7 +67,10 @@ class QBSyncProducts(models.AbstractModel):
             odoo_type = 'service'
         elif qb_type == 'Inventory':
             odoo_type = 'product'
+        elif qb_type == 'Group':
+            odoo_type = 'consu'
 
+        parent_ref = qb_data.get('ParentRef') or {}
         vals = {
             'name': qb_data.get('Name', ''),
             'default_code': qb_data.get('Sku') or False,
@@ -78,13 +82,21 @@ class QBSyncProducts(models.AbstractModel):
             'qb_sync_token': str(qb_data.get('SyncToken', '')),
             'qb_last_synced': fields.Datetime.now(),
             'qb_sync_error': False,
+            'qb_item_type': qb_type,
+            'qb_item_category_id': str(parent_ref.get('value') or ''),
+            'qb_item_category_name': parent_ref.get('name') or '',
+            'qb_bundle_components': (
+                (qb_data.get('ItemGroupDetail') or {}).get('ItemGroupLine') or []
+            ) if qb_type == 'Group' else False,
         }
         if 'is_storable' in self.env['product.product']._fields:
             vals['type'] = 'consu' if odoo_type == 'product' else odoo_type
             vals['is_storable'] = qb_type == 'Inventory'
         else:
             vals['type'] = odoo_type
-        return vals
+        return self.env['qb.record.matcher'].apply_user_overrides(
+            vals, qb_data, 'product', direction='pull',
+        )
 
     def _find_qb_account(self, product, account_type):
         """Find the QBO account ID for a product's income/expense/asset account."""

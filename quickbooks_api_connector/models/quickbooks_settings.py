@@ -15,9 +15,10 @@ OPTIONAL_MODULES = {
     'stock': 'Inventory',
 }
 
-# Maps each sync toggle to the Odoo module(s) it requires.
-# When the user enables a toggle, any missing modules are installed automatically.
-TOGGLE_REQUIRED_MODULES = {
+# Maps each sync toggle to Odoo module(s) that may be useful when QBO has data
+# for the associated area. These modules are suggested to the user, never
+# installed automatically.
+TOGGLE_SUGGESTED_MODULES = {
     'qb_sync_estimates': ['sale'],
     'qb_sync_sales_receipts': ['sale'],
     'qb_sync_purchase_orders': ['purchase'],
@@ -32,6 +33,21 @@ TOGGLE_REQUIRED_MODULES = {
     'qb_payroll_enabled': ['hr'],
     'qb_payroll_create_draft_payslips': ['hr_payroll'],
     'qb_time_enabled': ['hr_timesheet'],
+}
+
+TOGGLE_DATA_AREAS = {
+    'qb_sync_estimates': ['estimates'],
+    'qb_sync_sales_receipts': ['sales_receipts'],
+    'qb_sync_purchase_orders': ['purchase_orders'],
+    'qb_sync_expenses': ['expenses'],
+    'qb_sync_time_activities': ['time_activities'],
+    'qb_sync_projects': ['projects'],
+    'qb_sync_inventory_qty': ['inventory_items'],
+    'qb_sync_inventory_adjustments': ['inventory_items'],
+    'qb_sync_inventory_valuation_accounts': ['inventory_items'],
+    'qb_payroll_enabled': ['payroll_paychecks'],
+    'qb_payroll_create_draft_payslips': ['payroll_paychecks'],
+    'qb_time_enabled': ['time_activities'],
 }
 
 
@@ -128,6 +144,40 @@ class ResConfigSettings(models.TransientModel):
     qb_default_warehouse_id = fields.Integer(string='Default Inventory Warehouse ID')
     qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
     qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=True)
+    qb_sync_reports = fields.Boolean(string='Sync Financial Reports', default=False)
+    qb_sync_recurring_transactions = fields.Boolean(
+        string='Sync Recurring Transactions',
+        default=False,
+    )
+    qb_custom_fields_enabled = fields.Boolean(
+        string='Sync Custom Fields',
+        default=False,
+    )
+    qb_sync_employee_benefits = fields.Boolean(
+        string='Sync Employee Benefits',
+        default=False,
+    )
+    qb_sync_payroll_settings = fields.Boolean(
+        string='Sync Payroll Settings',
+        default=False,
+    )
+    qb_reports_method = fields.Selection(
+        [('Accrual', 'Accrual'), ('Cash', 'Cash')],
+        string='Reports Accounting Method',
+        default='Accrual',
+    )
+    qb_reports_history_months = fields.Integer(
+        string='Reports History Months',
+        default=12,
+    )
+    qb_reports_keep_n = fields.Integer(
+        string='Report Snapshots To Keep',
+        default=12,
+    )
+    qb_reports_use_v2_now = fields.Boolean(
+        string='Use Modernized Reports Parser',
+        default=False,
+    )
 
     # --- Payroll API (Phase 3) ---
     qb_payroll_enabled = fields.Boolean(string='Enable Payroll Sync', default=False)
@@ -288,6 +338,25 @@ class ResConfigSettings(models.TransientModel):
                 ) or False,
                 'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
                 'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', True),
+                'qb_sync_reports': getattr(config, 'sync_reports', False),
+                'qb_sync_recurring_transactions': getattr(
+                    config, 'sync_recurring_transactions', False,
+                ),
+                'qb_custom_fields_enabled': getattr(
+                    config, 'custom_fields_enabled', False,
+                ),
+                'qb_sync_employee_benefits': getattr(
+                    config, 'sync_employee_benefits', False,
+                ),
+                'qb_sync_payroll_settings': getattr(
+                    config, 'sync_payroll_settings', False,
+                ),
+                'qb_reports_method': getattr(config, 'reports_method', 'Accrual'),
+                'qb_reports_history_months': getattr(
+                    config, 'reports_history_months', 12,
+                ),
+                'qb_reports_keep_n': getattr(config, 'reports_keep_n', 12),
+                'qb_reports_use_v2_now': getattr(config, 'reports_use_v2_now', False),
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
                 'qb_payroll_create_draft_payslips': getattr(
                     config, 'payroll_create_draft_payslips', False,
@@ -296,23 +365,37 @@ class ResConfigSettings(models.TransientModel):
             })
         return res
 
-    def _ensure_modules_for_toggles(self):
-        """Auto-install Odoo modules required by enabled sync toggles."""
+    def _suggest_modules_for_toggles(self):
+        """Return missing optional modules implied by enabled sync toggles.
+
+        The connector must not install addons just because a toggle was enabled.
+        Module installs are explicit user actions, ideally after qb.data.probe
+        confirms there is QBO data for that area.
+        """
         IrModule = self.env['ir.module.module'].sudo()
-        needs_reload = False
-        for toggle_field, mod_names in TOGGLE_REQUIRED_MODULES.items():
+        suggestions = set()
+        for toggle_field, mod_names in TOGGLE_SUGGESTED_MODULES.items():
             if not getattr(self, toggle_field, False):
+                continue
+            if not self._toggle_has_qbo_data(toggle_field):
                 continue
             for mod_name in mod_names:
                 module = IrModule.search([('name', '=', mod_name)], limit=1)
                 if module and module.state != 'installed':
-                    _logger.info(
-                        "Auto-installing module '%s' required by %s",
-                        mod_name, toggle_field,
-                    )
-                    module.button_immediate_install()
-                    needs_reload = True
-        return needs_reload
+                    suggestions.add(mod_name)
+        return sorted(suggestions)
+
+    def _toggle_has_qbo_data(self, toggle_field):
+        areas = TOGGLE_DATA_AREAS.get(toggle_field)
+        if not areas:
+            return False
+        config = self._get_or_create_qb_config()
+        probes = self.env['quickbooks.data.probe'].sudo().search([
+            ('company_id', '=', config.company_id.id),
+            ('area', 'in', areas),
+            ('has_data', '=', True),
+        ], limit=1)
+        return bool(probes)
 
     def _update_sync_cron(self, interval, interval_type):
         """Sync the periodic full-sync cron with user-configured interval."""
@@ -328,7 +411,7 @@ class ResConfigSettings(models.TransientModel):
     def set_values(self):
         super().set_values()
 
-        needs_reload = self._ensure_modules_for_toggles()
+        suggested_modules = self._suggest_modules_for_toggles()
 
         config = self._get_or_create_qb_config()
         interval = self.qb_auto_sync_interval or 30
@@ -364,12 +447,21 @@ class ResConfigSettings(models.TransientModel):
             'sync_classes', 'sync_terms', 'sync_attachments', 'sync_inventory_qty',
             'sync_inventory_adjustments', 'sync_inventory_valuation_accounts',
             'sync_vendor_credits', 'sync_refund_receipts', 'payroll_enabled',
+            'sync_reports', 'reports_method', 'reports_history_months',
+            'reports_keep_n', 'reports_use_v2_now',
+            'sync_recurring_transactions', 'custom_fields_enabled',
+            'sync_employee_benefits', 'sync_payroll_settings', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',
             'payroll_enabled': 'qb_payroll_enabled',
             'payroll_create_draft_payslips': 'qb_payroll_create_draft_payslips',
+            'reports_method': 'qb_reports_method',
+            'reports_history_months': 'qb_reports_history_months',
+            'reports_keep_n': 'qb_reports_keep_n',
+            'reports_use_v2_now': 'qb_reports_use_v2_now',
+            'custom_fields_enabled': 'qb_custom_fields_enabled',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)
@@ -379,10 +471,20 @@ class ResConfigSettings(models.TransientModel):
         config.write(vals)
         self._update_sync_cron(interval, interval_type)
 
-        if needs_reload:
+        if suggested_modules:
             return {
                 'type': 'ir.actions.client',
-                'tag': 'reload',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Optional Odoo modules not installed',
+                    'message': (
+                        'QuickBooks settings were saved. These optional modules '
+                        'may be useful if QBO has related data: %s. Install them '
+                        'manually only when needed.'
+                    ) % ', '.join(suggested_modules),
+                    'type': 'warning',
+                    'sticky': True,
+                },
             }
 
     # --- Quick actions ---

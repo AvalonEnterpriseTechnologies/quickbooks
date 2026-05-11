@@ -184,6 +184,18 @@ class _QBClient:
         encoded = urllib.parse.quote(query_string)
         return self._execute('GET', 'query?query=%s' % encoded)
 
+    def reports(self, report_name, params=None, testing_migration=None):
+        """Fetch a QBO Reports API payload."""
+        import urllib.parse
+        query_params = dict(params or {})
+        if testing_migration is not None:
+            query_params['testing_migration'] = 'true' if testing_migration else 'false'
+        query = urllib.parse.urlencode(query_params)
+        endpoint = 'reports/%s' % report_name
+        if query:
+            endpoint = '%s?%s' % (endpoint, query)
+        return self._execute('GET', endpoint)
+
     def read(self, entity_name, entity_id):
         return self._execute('GET', '%s/%s' % (entity_name.lower(), entity_id))
 

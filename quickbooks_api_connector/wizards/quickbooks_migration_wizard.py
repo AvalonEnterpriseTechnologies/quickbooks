@@ -20,6 +20,11 @@ class QuickbooksMigrationWizard(models.TransientModel):
          ('both', 'Full Bidirectional Sync')],
         default='import', required=True,
     )
+    mode = fields.Selection(
+        [('dry_run', 'Dry Run'), ('live', 'Live Migration')],
+        default='live',
+        required=True,
+    )
     migrate_accounts = fields.Boolean(default=True, string='Chart of Accounts')
     migrate_tax_codes = fields.Boolean(default=True, string='Tax Codes')
     migrate_customers = fields.Boolean(default=True, string='Customers')
@@ -34,6 +39,21 @@ class QuickbooksMigrationWizard(models.TransientModel):
         default=False, string='Inventory Adjustments',
     )
     migrate_payroll = fields.Boolean(default=False, string='Payroll Read Data')
+    migrate_opening_balances = fields.Boolean(
+        default=True,
+        string='Opening Balances / Trial Balance Snapshot',
+        help='Queue financial reports after the Chart of Accounts so QBO opening '
+             'and current balances can be validated before posting any Odoo '
+             'opening-balance journal entries.',
+    )
+    migrate_recurring_transactions = fields.Boolean(
+        default=False,
+        string='Recurring Transactions',
+    )
+    migrate_custom_fields = fields.Boolean(default=False, string='Custom Fields')
+    migrate_employee_benefits = fields.Boolean(default=False, string='Employee Benefits')
+    migrate_payroll_settings = fields.Boolean(default=False, string='Payroll Settings')
+    migrate_attachments = fields.Boolean(default=False, string='Attachments')
 
     def action_start_migration(self):
         """Queue migration jobs in dependency order."""
@@ -47,6 +67,8 @@ class QuickbooksMigrationWizard(models.TransientModel):
 
         if self.migrate_accounts:
             ordered_entities.append('account')
+        if self.migrate_opening_balances:
+            ordered_entities.append('report')
         if self.migrate_tax_codes:
             ordered_entities.append('tax_code')
         if self.migrate_customers:
@@ -57,6 +79,10 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('project')
         if self.migrate_products:
             ordered_entities.append('product')
+        if self.migrate_recurring_transactions:
+            ordered_entities.append('recurring_transaction')
+        if self.migrate_custom_fields:
+            ordered_entities.append('custom_field_definition')
         if self.migrate_invoices:
             ordered_entities.append('invoice')
         if self.migrate_bills:
@@ -73,6 +99,12 @@ class QuickbooksMigrationWizard(models.TransientModel):
                 'payroll_employee', 'payroll_compensation', 'payroll_pay_item',
                 'payroll_schedule', 'payroll_check', 'work_location',
             ])
+        if self.migrate_employee_benefits:
+            ordered_entities.append('employee_benefit')
+        if self.migrate_payroll_settings:
+            ordered_entities.append('payroll_settings')
+        if self.migrate_attachments:
+            ordered_entities.append('attachment')
 
         directions = []
         if self.direction in ('import', 'both'):
@@ -82,13 +114,46 @@ class QuickbooksMigrationWizard(models.TransientModel):
 
         priority = 100
         count = 0
+        run = self.env['quickbooks.migration.run'].create({
+            'company_id': self.company_id.id,
+            'mode': self.mode,
+            'state': 'planning' if self.mode == 'dry_run' else 'running',
+        })
+        probe_by_area = {
+            probe.area: probe for probe in self.env['quickbooks.data.probe'].search([
+                ('company_id', '=', self.company_id.id),
+            ])
+        }
         for entity_type in ordered_entities:
             for direction in directions:
-                engine.enqueue_full_entity_sync(
-                    config, entity_type, direction, priority=priority,
+                idempotency_key = 'migration_%s_%s_%s_%s' % (
+                    run.id, entity_type, direction, self.company_id.id,
                 )
+                step = self.env['quickbooks.migration.run.step'].create({
+                    'run_id': run.id,
+                    'sequence': 100 - priority,
+                    'entity_type': entity_type,
+                    'direction': direction,
+                    'status': 'pending',
+                    'expected_count': self._expected_count(entity_type, probe_by_area),
+                    'idempotency_key': idempotency_key,
+                })
+                if self.mode == 'live':
+                    engine.enqueue_full_entity_sync(
+                        config, entity_type, direction, priority=priority,
+                    )
+                    step.status = 'queued'
+                else:
+                    step.status = 'skipped'
                 count += 1
             priority -= 5
+
+        if self.mode == 'dry_run':
+            run.write({
+                'state': 'completed',
+                'finished_at': fields.Datetime.now(),
+                'summary': '%d migration steps planned. No jobs were queued.' % count,
+            })
 
         return {
             'type': 'ir.actions.client',
@@ -96,10 +161,30 @@ class QuickbooksMigrationWizard(models.TransientModel):
             'params': {
                 'title': 'QuickBooks Migration',
                 'message': (
-                    '%d migration jobs queued. '
-                    'Entities will sync in dependency order.'
-                ) % count,
+                    '%d migration %s. Entities will sync in dependency order.'
+                ) % (
+                    count,
+                    'steps planned; no jobs queued' if self.mode == 'dry_run' else 'jobs queued',
+                ),
                 'type': 'success',
                 'sticky': True,
             },
         }
+
+    def _expected_count(self, entity_type, probe_by_area):
+        area_map = {
+            'recurring_transaction': 'recurring_transactions',
+            'product': 'inventory_items',
+            'project': 'projects',
+            'time_activity': 'time_activities',
+            'expense': 'expenses',
+            'purchase_order': 'purchase_orders',
+            'estimate': 'estimates',
+            'sales_receipt': 'sales_receipts',
+            'attachment': 'attachments',
+            'class': 'classes',
+            'department': 'departments',
+            'custom_field_definition': 'custom_field_definitions',
+        }
+        probe = probe_by_area.get(area_map.get(entity_type, ''))
+        return probe.sample_count if probe else 0

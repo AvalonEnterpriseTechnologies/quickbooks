@@ -23,3 +23,19 @@ class HrEmployee(models.Model):
     qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
     qb_do_not_sync = fields.Boolean(string='Exclude from QB Sync', default=False)
     qb_sync_error = fields.Text(string='QB Sync Error', copy=False)
+    qb_workers_comp_class_id = fields.Many2one(
+        'quickbooks.workers.comp.class',
+        string='QB Workers Comp Class',
+        ondelete='set null',
+    )
+    qb_workers_comp_estimated_premium = fields.Float(
+        string='Estimated Workers Comp Premium',
+        compute='_compute_qb_workers_comp_estimated_premium',
+    )
+
+    @api.depends('qb_workers_comp_class_id.base_rate')
+    def _compute_qb_workers_comp_estimated_premium(self):
+        for employee in self:
+            employee.qb_workers_comp_estimated_premium = (
+                employee.qb_workers_comp_class_id.base_rate or 0.0
+            )

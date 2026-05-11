@@ -45,11 +45,16 @@ ENTITY_SERVICE_MAP = {
     'work_location': 'qb.sync.work.locations',
     'inventory_adjustment': 'qb.sync.inventory.adjustments',
     'timesheet': 'qb.sync.timesheets',
+    'report': 'qb.sync.reports',
+    'recurring_transaction': 'qb.sync.recurring.transactions',
+    'custom_field_definition': 'qb.sync.custom.fields',
+    'employee_benefit': 'qb.sync.employee.benefits',
+    'payroll_settings': 'qb.sync.payroll.settings',
 }
 
 PULL_ONLY_ENTITIES = frozenset([
     'account', 'tax_code', 'term', 'attachment',
-    'exchange_rate', 'company_info',
+    'exchange_rate', 'company_info', 'report',
 ])
 
 CDC_QBO_TO_ENTITY = {
@@ -78,6 +83,7 @@ CDC_QBO_TO_ENTITY = {
     'Vendor': 'vendor',
     'VendorCredit': 'vendor_credit',
     'Project': 'project',
+    'RecurringTransaction': 'recurring_transaction',
 }
 
 
@@ -101,12 +107,19 @@ class QBSyncEngine(models.AbstractModel):
         start = time.time()
 
         try:
+            is_full_entity_job = not job.qb_entity_id and not job.odoo_record_id
             if job.direction == 'push':
-                result = service.push(client, config, job)
+                if is_full_entity_job:
+                    result = self._run_bulk_method(service, 'push_all', client, config, job.entity_type)
+                else:
+                    result = service.push(client, config, job)
                 if getattr(config, 'verify_after_push', True):
                     self._verify_push_readback(client, config, job, result or {})
             else:
-                result = service.pull(client, config, job)
+                if is_full_entity_job:
+                    result = self._run_bulk_method(service, 'pull_all', client, config, job.entity_type)
+                else:
+                    result = service.pull(client, config, job)
 
             duration_ms = int((time.time() - start) * 1000)
             qb_id = job.qb_entity_id or (result or {}).get('qb_id', '')
@@ -146,6 +159,22 @@ class QBSyncEngine(models.AbstractModel):
             )
             raise
 
+    def _run_bulk_method(self, service, method_name, client, config, entity_type):
+        """Dispatch full-entity queue rows to the service bulk method.
+
+        Migration/manual wizards enqueue entity-level jobs without record IDs. Most
+        per-record pull/push methods intentionally no-op for those rows, so route
+        them to pull_all/push_all here.
+        """
+        method = getattr(service, method_name, None)
+        if not method:
+            raise UserError(
+                '%s does not support %s for %s.'
+                % (service._name, method_name, entity_type)
+            )
+        result = method(client, config, entity_type)
+        return result or {}
+
     def run_full_sync(self, config):
         client = self.env['qb.api.client'].get_client(config)
         full_start = time.time()
@@ -167,6 +196,11 @@ class QBSyncEngine(models.AbstractModel):
             'payroll_schedule', 'payroll_check', 'work_location', 'timesheet',
             'inventory_adjustment',
             'attachment',
+            'report',
+            'recurring_transaction',
+            'custom_field_definition',
+            'employee_benefit',
+            'payroll_settings',
         ]
         toggle_map = {
             'company_info': True,
@@ -205,6 +239,13 @@ class QBSyncEngine(models.AbstractModel):
             'class': getattr(config, 'sync_classes', False),
             'term': getattr(config, 'sync_terms', False),
             'attachment': getattr(config, 'sync_attachments', False),
+            'report': getattr(config, 'sync_reports', False),
+            'recurring_transaction': getattr(
+                config, 'sync_recurring_transactions', False,
+            ),
+            'custom_field_definition': getattr(config, 'custom_fields_enabled', False),
+            'employee_benefit': getattr(config, 'sync_employee_benefits', False),
+            'payroll_settings': getattr(config, 'sync_payroll_settings', False),
         }
         cdc_records = self._collect_cdc_records(client, config, entity_order)
 

@@ -29,6 +29,7 @@ class QuickbooksSyncWizard(models.TransientModel):
     sync_payments = fields.Boolean(default=True)
     sync_journal_entries = fields.Boolean(default=True)
     sync_credit_memos = fields.Boolean(default=True)
+    sync_attachments = fields.Boolean(default=False)
     sync_inventory_adjustments = fields.Boolean(default=False)
     sync_payroll = fields.Boolean(default=False)
 
@@ -51,6 +52,7 @@ class QuickbooksSyncWizard(models.TransientModel):
             ('bill_payment', self.sync_payments),
             ('journal_entry', self.sync_journal_entries),
             ('credit_memo', self.sync_credit_memos),
+            ('attachment', self.sync_attachments),
             ('inventory_adjustment', self.sync_inventory_adjustments),
             ('payroll_employee', self.sync_payroll),
             ('payroll_compensation', self.sync_payroll),

@@ -28,9 +28,11 @@ class QBSyncCompanyInfo(models.AbstractModel):
         if not info:
             return {}
 
-        config.write({
+        config_vals = {
             'qb_company_name': info.get('CompanyName', ''),
-        })
+        }
+        config_vals.update(self._subscription_capability_values(info))
+        config.write(config_vals)
 
         company = config.company_id
         company_vals = {}
@@ -98,6 +100,46 @@ class QBSyncCompanyInfo(models.AbstractModel):
             )
 
         return {'qb_id': str(info.get('Id', config.realm_id))}
+
+    def _subscription_capability_values(self, info):
+        """Best-effort subscription and feature capability detection.
+
+        QBO CompanyInfo payloads vary by region and account tier. Treat unknowns
+        conservatively so settings can show "requires validation" instead of
+        silently enabling unsupported features.
+        """
+        text = ' '.join(
+            str(info.get(key) or '')
+            for key in ('SubscriptionStatus', 'SubscriptionPlan', 'NameValue')
+        ).lower()
+        tier = 'unknown'
+        if 'advanced' in text:
+            tier = 'advanced'
+        elif 'plus' in text:
+            tier = 'plus'
+        elif 'essential' in text:
+            tier = 'essentials'
+        elif 'simple' in text or 'start' in text:
+            tier = 'simple_start'
+
+        prefs = info.get('Preferences') or {}
+        accounting_prefs = prefs.get('AccountingInfoPrefs') or {}
+        sales_prefs = prefs.get('SalesFormsPrefs') or {}
+
+        return {
+            'subscription_tier': tier,
+            'tier_supports_classes': bool(
+                accounting_prefs.get('ClassTrackingPerTxn')
+                or accounting_prefs.get('ClassTrackingPerTxnLine')
+                or tier in ('plus', 'advanced')
+            ),
+            'tier_supports_custom_fields': bool(
+                sales_prefs.get('CustomField')
+                or tier == 'advanced'
+            ),
+            'tier_supports_inventory': tier in ('plus', 'advanced'),
+            'payroll_subscription_active': 'payroll' in text and 'inactive' not in text,
+        }
 
     def pull_all(self, client, config, entity_type):
         self._pull_company_info(client, config)

@@ -89,6 +89,27 @@
                                        placeholder="Paste the verifier token from Intuit's Webhooks tab"/>
                             </div>
                         </div>
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_sync_reports"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_sync_reports" string="Financial Reports"/>
+                                <div class="text-muted small mb8">
+                                    Pull Balance Sheet, Profit and Loss, Trial Balance,
+                                    and General Ledger snapshots from QBO.
+                                </div>
+                                <field name="qb_reports_method"/>
+                                <field name="qb_reports_history_months"/>
+                                <field name="qb_reports_keep_n"/>
+                                <field name="qb_reports_use_v2_now"/>
+                                <field name="qb_sync_recurring_transactions"/>
+                                <field name="qb_custom_fields_enabled"/>
+                                <field name="qb_sync_employee_benefits"/>
+                                <field name="qb_sync_payroll_settings"/>
+                            </div>
+                        </div>
                     </div>
 
                 </app>
