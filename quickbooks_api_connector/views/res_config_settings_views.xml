@@ -107,6 +107,7 @@
                                 <field name="qb_sync_recurring_transactions"/>
                                 <field name="qb_custom_fields_enabled"/>
                                 <field name="qb_sync_employee_benefits"/>
+                                <field name="qb_sync_payroll_settings"/>
                             </div>
                         </div>
                     </div>

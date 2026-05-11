@@ -12,6 +12,7 @@ from . import quickbooks_custom_field_definition
 from . import quickbooks_employee_benefit
 from . import quickbooks_workers_comp_class
 from . import quickbooks_hr_advisor_note
+from . import quickbooks_payroll_settings
 from . import quickbooks_payroll_compensation
 from . import quickbooks_payroll_employee
 from . import quickbooks_payroll_pay_item

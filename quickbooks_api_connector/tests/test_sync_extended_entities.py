@@ -307,3 +307,20 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         })
 
         self.assertEqual(note.api_status, 'manual')
+
+    def test_payroll_settings_snapshot_created(self):
+        self.config.payroll_enabled = True
+        service = self.env['qb.sync.payroll.settings']
+
+        with patch.object(
+            self.env['qb.payroll.client'].__class__, 'fetch_pay_items',
+            return_value={'payrollPayItems': [{'id': 'P1'}]},
+        ), patch.object(
+            self.env['qb.payroll.client'].__class__, 'fetch_pay_schedules',
+            return_value={'payrollPaySchedules': [{'id': 'S1'}]},
+        ), patch.object(service.__class__, '_work_locations', return_value={}):
+            result = service.pull_all(self._mock_client(), self.config, 'payroll_settings')
+
+        self.assertEqual(result['count'], 1)
+        snapshot = self.env['quickbooks.payroll.settings'].search([], limit=1)
+        self.assertTrue(snapshot.pay_items_json)

@@ -49,6 +49,7 @@ ENTITY_SERVICE_MAP = {
     'recurring_transaction': 'qb.sync.recurring.transactions',
     'custom_field_definition': 'qb.sync.custom.fields',
     'employee_benefit': 'qb.sync.employee.benefits',
+    'payroll_settings': 'qb.sync.payroll.settings',
 }
 
 PULL_ONLY_ENTITIES = frozenset([
@@ -199,6 +200,7 @@ class QBSyncEngine(models.AbstractModel):
             'recurring_transaction',
             'custom_field_definition',
             'employee_benefit',
+            'payroll_settings',
         ]
         toggle_map = {
             'company_info': True,
@@ -243,6 +245,7 @@ class QBSyncEngine(models.AbstractModel):
             ),
             'custom_field_definition': getattr(config, 'custom_fields_enabled', False),
             'employee_benefit': getattr(config, 'sync_employee_benefits', False),
+            'payroll_settings': getattr(config, 'sync_payroll_settings', False),
         }
         cdc_records = self._collect_cdc_records(client, config, entity_order)
 

@@ -134,6 +134,7 @@
                         <field name="migrate_inventory_adjustments"/>
                         <field name="migrate_payroll"/>
                         <field name="migrate_employee_benefits"/>
+                        <field name="migrate_payroll_settings"/>
                     </group>
                 </group>
                 <footer>
