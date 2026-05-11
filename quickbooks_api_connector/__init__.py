@@ -6,17 +6,17 @@ from . import wizards
 from . import services
 
 
-REQUIRED_MODULES = ('account',)
+REQUIRED_MODULES = ('account', 'account_accountant')
 
 
 def _ensure_required_modules_installed(env):
     """Hard-fail the install if a required Odoo module is not actually installed.
 
-    The manifest already lists `account` in `depends`, which makes Odoo's module
-    loader install it as part of the dependency graph. This runtime check is a
-    belt-and-braces guard for unusual installation paths (manual database
-    surgery, broken upgrades, partial restores) where a dependency could end up
-    in a state other than `installed` while this module is being initialized.
+    The manifest already lists these modules in `depends`, which makes Odoo's
+    module loader install them as part of the dependency graph. This runtime
+    check is a belt-and-braces guard for unusual installation paths (manual
+    database surgery, broken upgrades, partial restores) where a dependency
+    could end up in a state other than `installed` while this module initializes.
     """
     Module = env['ir.module.module'].sudo()
     missing = []
