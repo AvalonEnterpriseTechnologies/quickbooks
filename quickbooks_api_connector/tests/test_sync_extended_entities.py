@@ -352,3 +352,18 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         self.assertEqual(vals['qb_item_type'], 'Group')
         self.assertEqual(vals['qb_item_category_id'], 'CAT1')
         self.assertEqual(vals['qb_bundle_components'][0]['Qty'], 2)
+
+    def test_attachment_target_supports_item_parent(self):
+        product = self.env['product.product'].create({
+            'name': 'Attachable Item',
+            'qb_item_id': 'I1',
+        })
+
+        target = self.env['qb.sync.attachments']._find_odoo_target({
+            'AttachableRef': [{
+                'EntityRef': {'type': 'Item', 'value': product.qb_item_id},
+            }],
+        })
+
+        self.assertEqual(target['res_model'], 'product.product')
+        self.assertEqual(target['res_id'], product.id)

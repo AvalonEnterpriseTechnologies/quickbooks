@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import logging
 
@@ -34,8 +35,17 @@ class QBSyncAttachments(models.AbstractModel):
             'JournalEntry': 'journal_entry',
             'Payment': 'payment',
             'BillPayment': 'bill_payment',
+            'Estimate': 'estimate',
+            'SalesReceipt': 'sales_receipt',
+            'RefundReceipt': 'refund_receipt',
+            'PurchaseOrder': 'purchase_order',
+            'Purchase': 'expense',
+            'Deposit': 'deposit',
+            'Transfer': 'transfer',
             'Customer': 'customer',
             'Vendor': 'vendor',
+            'Employee': 'employee',
+            'Item': 'product',
         }
         entity_type = entity_types.get(qb_type)
         if not entity_type:
@@ -56,6 +66,10 @@ class QBSyncAttachments(models.AbstractModel):
                 ('CreditMemo', getattr(move, 'qb_creditmemo_id', False)),
                 ('VendorCredit', getattr(move, 'qb_vendorcredit_id', False)),
                 ('JournalEntry', getattr(move, 'qb_je_id', False)),
+                ('SalesReceipt', getattr(move, 'qb_salesreceipt_id', False)),
+                ('RefundReceipt', getattr(move, 'qb_refundreceipt_id', False)),
+                ('Deposit', getattr(move, 'qb_deposit_id', False)),
+                ('Transfer', getattr(move, 'qb_transfer_id', False)),
             ]
         elif attachment.res_model == 'account.payment' and attachment.res_id:
             payment = self.env['account.payment'].browse(attachment.res_id)
@@ -64,11 +78,27 @@ class QBSyncAttachments(models.AbstractModel):
                 ('BillPayment', getattr(payment, 'qb_billpayment_id', False)),
             ]
         else:
-            return None
+            record = self.env[attachment.res_model].browse(attachment.res_id) if attachment.res_model else False
+            candidates = self._generic_entity_ref_candidates(record) if record else []
         for qb_type, qb_id in candidates:
             if qb_id:
                 return {'type': qb_type, 'value': qb_id}
         return None
+
+    def _generic_entity_ref_candidates(self, record):
+        mapping = [
+            ('res.partner', 'Customer', 'qb_customer_id'),
+            ('res.partner', 'Vendor', 'qb_vendor_id'),
+            ('hr.employee', 'Employee', 'qb_employee_id'),
+            ('product.product', 'Item', 'qb_item_id'),
+            ('purchase.order', 'PurchaseOrder', 'qb_po_id'),
+            ('sale.order', 'Estimate', 'qb_estimate_id'),
+        ]
+        return [
+            (qb_type, getattr(record, field_name, False))
+            for model_name, qb_type, field_name in mapping
+            if record._name == model_name and field_name in record._fields
+        ]
 
     def push(self, client, config, job):
         if http_requests is None:
@@ -122,13 +152,24 @@ class QBSyncAttachments(models.AbstractModel):
         if file_url and http_requests is not None:
             response = http_requests.get(file_url, timeout=120)
             if response.status_code < 400:
+                content_hash = hashlib.sha1(response.content).hexdigest()
+                target_vals = self._find_odoo_target(qb_data)
+                existing = self.env['ir.attachment'].sudo().search([
+                    ('name', '=', file_name),
+                    ('checksum', '=', content_hash),
+                    ('res_model', '=', target_vals.get('res_model')),
+                    ('res_id', '=', target_vals.get('res_id')),
+                ], limit=1)
+                if existing:
+                    return {'qb_id': str(qb_data.get('Id', ''))}
                 vals = {
                     'name': file_name,
                     'datas': base64.b64encode(response.content),
                     'mimetype': qb_data.get('ContentType') or response.headers.get('content-type'),
                     'description': qb_data.get('Note'),
+                    'qb_attachment_id': str(qb_data.get('Id', '')),
                 }
-                vals.update(self._find_odoo_target(qb_data))
+                vals.update(target_vals)
                 self.env['ir.attachment'].sudo().create(vals)
             else:
                 _logger.warning(
@@ -149,7 +190,10 @@ class QBSyncAttachments(models.AbstractModel):
 
     def push_all(self, client, config, entity_type):
         attachments = self.env['ir.attachment'].search([
-            ('res_model', 'in', ('account.move', 'account.payment')),
+            ('res_model', 'in', (
+                'account.move', 'account.payment', 'res.partner', 'hr.employee',
+                'product.product', 'purchase.order', 'sale.order',
+            )),
             ('datas', '!=', False),
         ])
         queue = self.env['quickbooks.sync.queue']

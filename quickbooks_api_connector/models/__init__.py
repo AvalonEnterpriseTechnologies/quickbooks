@@ -29,6 +29,7 @@ from . import account_tax
 from . import account_analytic_account
 from . import account_analytic_line
 from . import account_payment_term
+from . import ir_attachment
 
 # Extend models from optional modules only when Odoo has loaded them
 # (checking sys.modules instead of import, because on Odoo.sh all addon

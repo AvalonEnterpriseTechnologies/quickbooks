@@ -194,6 +194,13 @@ ENTITY_META = {
         'name_field': 'reference',
         'qb_display_field': 'PrivateNote',
     },
+    'attachment': {
+        'model': 'ir.attachment',
+        'qb_name': 'Attachable',
+        'qb_id_field': 'qb_attachment_id',
+        'name_field': 'name',
+        'qb_display_field': 'FileName',
+    },
 }
 
 

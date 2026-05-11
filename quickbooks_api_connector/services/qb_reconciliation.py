@@ -31,7 +31,7 @@ class QBReconciliation(models.AbstractModel):
                 not meta
                 or meta.get('model') not in self.env
                 or entity_type in (
-                    'attachment', 'payroll_compensation', 'payroll_employee',
+                    'payroll_compensation', 'payroll_employee',
                     'payroll_pay_item', 'payroll_schedule', 'payroll_check',
                     'work_location', 'timesheet', 'inventory_adjustment',
                 )

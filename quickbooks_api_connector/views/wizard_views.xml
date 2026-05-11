@@ -78,6 +78,7 @@
                         <field name="sync_payments"/>
                         <field name="sync_journal_entries"/>
                         <field name="sync_credit_memos"/>
+                        <field name="sync_attachments"/>
                         <field name="sync_inventory_adjustments"/>
                         <field name="sync_payroll"/>
                     </group>
@@ -135,6 +136,7 @@
                         <field name="migrate_payroll"/>
                         <field name="migrate_employee_benefits"/>
                         <field name="migrate_payroll_settings"/>
+                        <field name="migrate_attachments"/>
                     </group>
                 </group>
                 <footer>
