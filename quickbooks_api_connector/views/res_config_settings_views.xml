@@ -105,6 +105,7 @@
                                 <field name="qb_reports_keep_n"/>
                                 <field name="qb_reports_use_v2_now"/>
                                 <field name="qb_sync_recurring_transactions"/>
+                                <field name="qb_custom_fields_enabled"/>
                             </div>
                         </div>
                     </div>

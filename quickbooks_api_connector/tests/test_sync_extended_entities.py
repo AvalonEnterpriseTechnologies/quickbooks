@@ -239,3 +239,24 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         ], limit=1)
         self.assertEqual(template.name, 'Monthly Rent')
         self.assertEqual(template.txn_type, 'Bill')
+
+    def test_custom_field_definition_upsert(self):
+        definition = {
+            'id': 'CF1',
+            'name': 'Job Number',
+            'type': 'TEXT',
+            'active': True,
+            'entityTypes': ['Invoice'],
+        }
+
+        record = self.env['qb.sync.custom.fields']._upsert_definition(
+            self.config, definition,
+        )
+
+        self.assertEqual(record.qb_definition_id, 'CF1')
+        self.assertEqual(record.name, 'Job Number')
+        self.assertEqual(record.entity_type, 'Invoice')
+
+    def test_payroll_client_keeps_existing_model_name(self):
+        self.assertTrue(self.env['qb.payroll.client'])
+        self.assertTrue(self.env['qb.graphql.client'])

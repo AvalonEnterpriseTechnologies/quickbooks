@@ -51,6 +51,7 @@ QB_ENTITY_TYPES = [
     ('timesheet', 'Timesheet (QBT)'),
     ('report', 'Financial Report'),
     ('recurring_transaction', 'Recurring Transaction'),
+    ('custom_field_definition', 'Custom Field Definition'),
 ]
 
 MAX_RETRIES = 5

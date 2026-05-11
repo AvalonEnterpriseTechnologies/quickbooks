@@ -17,6 +17,7 @@ QBO_PRODUCTION_BASE = 'https://quickbooks.api.intuit.com'
 SCOPES_BASE = 'com.intuit.quickbooks.accounting'
 SCOPE_PAYROLL_COMPENSATION = 'payroll.compensation.read'
 SCOPE_OPENID_PROFILE = 'openid profile email'
+SCOPE_CUSTOM_FIELD_DEFINITIONS = 'app-foundations.custom-field-definitions.read'
 
 
 class QBAuthService(models.AbstractModel):
@@ -33,6 +34,8 @@ class QBAuthService(models.AbstractModel):
             scopes.append(SCOPE_PAYROLL_COMPENSATION)
         if getattr(config, 'qbt_enabled', False):
             scopes.extend(SCOPE_OPENID_PROFILE.split())
+        if getattr(config, 'custom_fields_enabled', False):
+            scopes.append(SCOPE_CUSTOM_FIELD_DEFINITIONS)
         return ' '.join(dict.fromkeys(scopes))
 
     def get_required_scope_set(self, config):

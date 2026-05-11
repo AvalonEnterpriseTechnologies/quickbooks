@@ -149,6 +149,10 @@ class ResConfigSettings(models.TransientModel):
         string='Sync Recurring Transactions',
         default=False,
     )
+    qb_custom_fields_enabled = fields.Boolean(
+        string='Sync Custom Fields',
+        default=False,
+    )
     qb_reports_method = fields.Selection(
         [('Accrual', 'Accrual'), ('Cash', 'Cash')],
         string='Reports Accounting Method',
@@ -330,6 +334,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_recurring_transactions': getattr(
                     config, 'sync_recurring_transactions', False,
                 ),
+                'qb_custom_fields_enabled': getattr(
+                    config, 'custom_fields_enabled', False,
+                ),
                 'qb_reports_method': getattr(config, 'reports_method', 'Accrual'),
                 'qb_reports_history_months': getattr(
                     config, 'reports_history_months', 12,
@@ -428,7 +435,7 @@ class ResConfigSettings(models.TransientModel):
             'sync_vendor_credits', 'sync_refund_receipts', 'payroll_enabled',
             'sync_reports', 'reports_method', 'reports_history_months',
             'reports_keep_n', 'reports_use_v2_now',
-            'sync_recurring_transactions', 'payroll_enabled',
+            'sync_recurring_transactions', 'custom_fields_enabled', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
         ]
         field_map = {
@@ -439,6 +446,7 @@ class ResConfigSettings(models.TransientModel):
             'reports_history_months': 'qb_reports_history_months',
             'reports_keep_n': 'qb_reports_keep_n',
             'reports_use_v2_now': 'qb_reports_use_v2_now',
+            'custom_fields_enabled': 'qb_custom_fields_enabled',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)

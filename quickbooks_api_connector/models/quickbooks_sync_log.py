@@ -54,6 +54,7 @@ class QuickbooksSyncLog(models.Model):
          ('timesheet', 'Timesheet (QBT)'),
          ('report', 'Financial Report'),
          ('recurring_transaction', 'Recurring Transaction'),
+         ('custom_field_definition', 'Custom Field Definition'),
          ('full_sync', 'Full Sync')],
         required=True,
     )

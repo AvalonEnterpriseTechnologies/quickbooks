@@ -47,6 +47,7 @@ ENTITY_SERVICE_MAP = {
     'timesheet': 'qb.sync.timesheets',
     'report': 'qb.sync.reports',
     'recurring_transaction': 'qb.sync.recurring.transactions',
+    'custom_field_definition': 'qb.sync.custom.fields',
 }
 
 PULL_ONLY_ENTITIES = frozenset([
@@ -195,6 +196,7 @@ class QBSyncEngine(models.AbstractModel):
             'attachment',
             'report',
             'recurring_transaction',
+            'custom_field_definition',
         ]
         toggle_map = {
             'company_info': True,
@@ -237,6 +239,7 @@ class QBSyncEngine(models.AbstractModel):
             'recurring_transaction': getattr(
                 config, 'sync_recurring_transactions', False,
             ),
+            'custom_field_definition': getattr(config, 'custom_fields_enabled', False),
         }
         cdc_records = self._collect_cdc_records(client, config, entity_order)
 

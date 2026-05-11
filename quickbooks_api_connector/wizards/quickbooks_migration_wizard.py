@@ -45,6 +45,7 @@ class QuickbooksMigrationWizard(models.TransientModel):
         default=False,
         string='Recurring Transactions',
     )
+    migrate_custom_fields = fields.Boolean(default=False, string='Custom Fields')
 
     def action_start_migration(self):
         """Queue migration jobs in dependency order."""
@@ -72,6 +73,8 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('product')
         if self.migrate_recurring_transactions:
             ordered_entities.append('recurring_transaction')
+        if self.migrate_custom_fields:
+            ordered_entities.append('custom_field_definition')
         if self.migrate_invoices:
             ordered_entities.append('invoice')
         if self.migrate_bills:

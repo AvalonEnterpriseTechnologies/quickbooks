@@ -142,6 +142,7 @@
                             <group string="Reports">
                                 <field name="sync_reports"/>
                                 <field name="sync_recurring_transactions"/>
+                                <field name="custom_fields_enabled"/>
                                 <field name="reports_method"/>
                                 <field name="reports_history_months"/>
                                 <field name="reports_keep_n"/>

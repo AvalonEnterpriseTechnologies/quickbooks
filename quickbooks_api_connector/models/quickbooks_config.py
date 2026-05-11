@@ -141,6 +141,10 @@ class QuickbooksConfig(models.Model):
         default=False,
         string='Sync Recurring Transactions',
     )
+    custom_fields_enabled = fields.Boolean(
+        default=False,
+        string='Sync Custom Fields',
+    )
     reports_method = fields.Selection(
         [('Accrual', 'Accrual'), ('Cash', 'Cash')],
         default='Accrual',
