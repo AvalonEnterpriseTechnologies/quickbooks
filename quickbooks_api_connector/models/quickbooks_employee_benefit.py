@@ -10,7 +10,10 @@ class QuickbooksEmployeeBenefit(models.Model):
         'res.company', required=True, default=lambda self: self.env.company,
         ondelete='cascade',
     )
-    employee_id = fields.Many2one('hr.employee', ondelete='set null')
+    # Stored as a soft int reference so this model can load on databases
+    # where the optional `hr` module is not installed. Resolved against
+    # `hr.employee` lazily through ``_resolve_employee`` when needed.
+    employee_id = fields.Integer(string='Odoo Employee ID', index=True)
     qb_employee_id = fields.Char(index=True)
     employee_name = fields.Char()
     benefit_type = fields.Selection(
