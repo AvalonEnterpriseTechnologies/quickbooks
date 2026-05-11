@@ -44,6 +44,35 @@ class QuickbooksConfig(models.Model):
     )
     realm_id = fields.Char(string='Realm ID (Company ID)')
     qb_company_name = fields.Char(string='QB Company Name', readonly=True)
+    granted_scopes = fields.Char(
+        string='Granted OAuth Scopes',
+        readonly=True,
+        help='Space-separated OAuth scopes last granted by Intuit.',
+    )
+    subscription_tier = fields.Selection(
+        [
+            ('simple_start', 'Simple Start'),
+            ('essentials', 'Essentials'),
+            ('plus', 'Plus'),
+            ('advanced', 'Advanced'),
+            ('unknown', 'Unknown'),
+        ],
+        string='QuickBooks Subscription Tier',
+        default='unknown',
+        readonly=True,
+    )
+    tier_supports_classes = fields.Boolean(
+        string='Supports Classes', readonly=True,
+    )
+    tier_supports_custom_fields = fields.Boolean(
+        string='Supports Custom Fields', readonly=True,
+    )
+    tier_supports_inventory = fields.Boolean(
+        string='Supports Inventory', readonly=True,
+    )
+    payroll_subscription_active = fields.Boolean(
+        string='Payroll Subscription Active', readonly=True,
+    )
     access_token_encrypted = fields.Text(copy=False)
     refresh_token_encrypted = fields.Text(copy=False)
     token_expiry = fields.Datetime(string='Token Expiry')
@@ -297,9 +326,9 @@ class QuickbooksConfig(models.Model):
         self.ensure_one()
         return self._decrypt(self.refresh_token_encrypted)
 
-    def set_tokens(self, access_token, refresh_token, expires_in=3600):
+    def set_tokens(self, access_token, refresh_token, expires_in=3600, scope=None):
         self.ensure_one()
-        self.write({
+        vals = {
             'access_token_encrypted': self._encrypt(access_token),
             'refresh_token_encrypted': self._encrypt(refresh_token),
             'token_expiry': fields.Datetime.now() + timedelta(seconds=expires_in),
@@ -308,7 +337,10 @@ class QuickbooksConfig(models.Model):
             ),
             'state': 'connected',
             'error_message': False,
-        })
+        }
+        if scope is not None:
+            vals['granted_scopes'] = scope
+        self.write(vals)
 
     def is_token_expired(self):
         self.ensure_one()

@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector',
-    'version': '19.0.3.1.0',
+    'version': '19.0.4.0.0',
     'category': 'Accounting',
     'summary': 'Full QuickBooks Online connector for Odoo 19 — Accounting, Payroll, Time',
     'description': """
@@ -16,7 +16,7 @@
         - Bidirectional sync: customers, vendors, products, invoices,
           bills, payments, journal entries, tax codes, vendor credits,
           refund receipts, deposits, transfers, classes, payment terms
-        - Extended sync (prompted to install when enabled in Settings):
+        - Extended sync (suggests optional Odoo modules only when needed):
           purchase orders (purchase), expenses (hr_expense),
           employees/departments (hr), projects (project), timesheets (hr_timesheet),
           inventory quantities (stock), sales (sale)
@@ -30,8 +30,9 @@
         - Rate-limited API client (sliding window, 450 req/min)
         - Configuration via Settings > QuickBooks
 
-        Optional modules are installed on-demand from the Settings page
-        when the user enables the corresponding sync features.
+        Optional modules are never installed automatically. The connector
+        probes QBO for associated data and suggests installation only when
+        data exists and the user explicitly confirms.
     """,
     'author': 'Avalon Enterprise Technologies',
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',

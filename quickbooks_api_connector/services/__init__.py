@@ -1,5 +1,6 @@
 from . import qb_auth_service
 from . import qb_api_client
+from . import qb_data_probe
 from . import qb_sync_engine
 from . import qb_conflict_resolver
 from . import qb_record_matcher

@@ -15,9 +15,10 @@ OPTIONAL_MODULES = {
     'stock': 'Inventory',
 }
 
-# Maps each sync toggle to the Odoo module(s) it requires.
-# When the user enables a toggle, any missing modules are installed automatically.
-TOGGLE_REQUIRED_MODULES = {
+# Maps each sync toggle to Odoo module(s) that may be useful when QBO has data
+# for the associated area. These modules are suggested to the user, never
+# installed automatically.
+TOGGLE_SUGGESTED_MODULES = {
     'qb_sync_estimates': ['sale'],
     'qb_sync_sales_receipts': ['sale'],
     'qb_sync_purchase_orders': ['purchase'],
@@ -32,6 +33,21 @@ TOGGLE_REQUIRED_MODULES = {
     'qb_payroll_enabled': ['hr'],
     'qb_payroll_create_draft_payslips': ['hr_payroll'],
     'qb_time_enabled': ['hr_timesheet'],
+}
+
+TOGGLE_DATA_AREAS = {
+    'qb_sync_estimates': ['estimates'],
+    'qb_sync_sales_receipts': ['sales_receipts'],
+    'qb_sync_purchase_orders': ['purchase_orders'],
+    'qb_sync_expenses': ['expenses'],
+    'qb_sync_time_activities': ['time_activities'],
+    'qb_sync_projects': ['projects'],
+    'qb_sync_inventory_qty': ['inventory_items'],
+    'qb_sync_inventory_adjustments': ['inventory_items'],
+    'qb_sync_inventory_valuation_accounts': ['inventory_items'],
+    'qb_payroll_enabled': ['payroll_paychecks'],
+    'qb_payroll_create_draft_payslips': ['payroll_paychecks'],
+    'qb_time_enabled': ['time_activities'],
 }
 
 
@@ -296,23 +312,37 @@ class ResConfigSettings(models.TransientModel):
             })
         return res
 
-    def _ensure_modules_for_toggles(self):
-        """Auto-install Odoo modules required by enabled sync toggles."""
+    def _suggest_modules_for_toggles(self):
+        """Return missing optional modules implied by enabled sync toggles.
+
+        The connector must not install addons just because a toggle was enabled.
+        Module installs are explicit user actions, ideally after qb.data.probe
+        confirms there is QBO data for that area.
+        """
         IrModule = self.env['ir.module.module'].sudo()
-        needs_reload = False
-        for toggle_field, mod_names in TOGGLE_REQUIRED_MODULES.items():
+        suggestions = set()
+        for toggle_field, mod_names in TOGGLE_SUGGESTED_MODULES.items():
             if not getattr(self, toggle_field, False):
+                continue
+            if not self._toggle_has_qbo_data(toggle_field):
                 continue
             for mod_name in mod_names:
                 module = IrModule.search([('name', '=', mod_name)], limit=1)
                 if module and module.state != 'installed':
-                    _logger.info(
-                        "Auto-installing module '%s' required by %s",
-                        mod_name, toggle_field,
-                    )
-                    module.button_immediate_install()
-                    needs_reload = True
-        return needs_reload
+                    suggestions.add(mod_name)
+        return sorted(suggestions)
+
+    def _toggle_has_qbo_data(self, toggle_field):
+        areas = TOGGLE_DATA_AREAS.get(toggle_field)
+        if not areas:
+            return False
+        config = self._get_or_create_qb_config()
+        probes = self.env['quickbooks.data.probe'].sudo().search([
+            ('company_id', '=', config.company_id.id),
+            ('area', 'in', areas),
+            ('has_data', '=', True),
+        ], limit=1)
+        return bool(probes)
 
     def _update_sync_cron(self, interval, interval_type):
         """Sync the periodic full-sync cron with user-configured interval."""
@@ -328,7 +358,7 @@ class ResConfigSettings(models.TransientModel):
     def set_values(self):
         super().set_values()
 
-        needs_reload = self._ensure_modules_for_toggles()
+        suggested_modules = self._suggest_modules_for_toggles()
 
         config = self._get_or_create_qb_config()
         interval = self.qb_auto_sync_interval or 30
@@ -379,10 +409,20 @@ class ResConfigSettings(models.TransientModel):
         config.write(vals)
         self._update_sync_cron(interval, interval_type)
 
-        if needs_reload:
+        if suggested_modules:
             return {
                 'type': 'ir.actions.client',
-                'tag': 'reload',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Optional Odoo modules not installed',
+                    'message': (
+                        'QuickBooks settings were saved. These optional modules '
+                        'may be useful if QBO has related data: %s. Install them '
+                        'manually only when needed.'
+                    ) % ', '.join(suggested_modules),
+                    'type': 'warning',
+                    'sticky': True,
+                },
             }
 
     # --- Quick actions ---

@@ -64,6 +64,12 @@
                     <group string="Connection Info"
                            invisible="state == 'draft'">
                         <field name="realm_id" readonly="1"/>
+                        <field name="granted_scopes" readonly="1"/>
+                        <field name="subscription_tier" readonly="1"/>
+                        <field name="tier_supports_classes" readonly="1"/>
+                        <field name="tier_supports_custom_fields" readonly="1"/>
+                        <field name="tier_supports_inventory" readonly="1"/>
+                        <field name="payroll_subscription_active" readonly="1"/>
                         <field name="last_sync_date" readonly="1"/>
                     </group>
 

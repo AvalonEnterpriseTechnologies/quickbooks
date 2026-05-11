@@ -101,12 +101,19 @@ class QBSyncEngine(models.AbstractModel):
         start = time.time()
 
         try:
+            is_full_entity_job = not job.qb_entity_id and not job.odoo_record_id
             if job.direction == 'push':
-                result = service.push(client, config, job)
+                if is_full_entity_job:
+                    result = self._run_bulk_method(service, 'push_all', client, config, job.entity_type)
+                else:
+                    result = service.push(client, config, job)
                 if getattr(config, 'verify_after_push', True):
                     self._verify_push_readback(client, config, job, result or {})
             else:
-                result = service.pull(client, config, job)
+                if is_full_entity_job:
+                    result = self._run_bulk_method(service, 'pull_all', client, config, job.entity_type)
+                else:
+                    result = service.pull(client, config, job)
 
             duration_ms = int((time.time() - start) * 1000)
             qb_id = job.qb_entity_id or (result or {}).get('qb_id', '')
@@ -145,6 +152,22 @@ class QBSyncEngine(models.AbstractModel):
                 status='error', error_message=str(e),
             )
             raise
+
+    def _run_bulk_method(self, service, method_name, client, config, entity_type):
+        """Dispatch full-entity queue rows to the service bulk method.
+
+        Migration/manual wizards enqueue entity-level jobs without record IDs. Most
+        per-record pull/push methods intentionally no-op for those rows, so route
+        them to pull_all/push_all here.
+        """
+        method = getattr(service, method_name, None)
+        if not method:
+            raise UserError(
+                '%s does not support %s for %s.'
+                % (service._name, method_name, entity_type)
+            )
+        result = method(client, config, entity_type)
+        return result or {}
 
     def run_full_sync(self, config):
         client = self.env['qb.api.client'].get_client(config)

@@ -100,3 +100,62 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
             ('qb_compensation_id', '=', 'C1'),
         ], limit=1)
         self.assertEqual(comp.name, 'Salary')
+
+    def test_full_entity_queue_job_dispatches_pull_all(self):
+        client = self._mock_client()
+        job = self.env['quickbooks.sync.queue'].new({
+            'company_id': self.company.id,
+            'entity_type': 'customer',
+            'direction': 'pull',
+            'operation': 'update',
+        })
+
+        with patch.object(
+            self.env['qb.api.client'].__class__, 'get_client', return_value=client,
+        ), patch.object(
+            self.env['qb.sync.customers'].__class__, 'pull_all', return_value={'count': 1},
+        ) as pull_all:
+            self.env['qb.sync.engine'].execute_job(job)
+
+        pull_all.assert_called_once_with(client, self.config, 'customer')
+
+    def test_settings_save_does_not_auto_install_suggested_modules(self):
+        settings = self.env['res.config.settings'].create({
+            'company_id': self.company.id,
+            'qb_sync_projects': True,
+        })
+
+        with patch.object(
+            self.env['ir.module.module'].__class__, 'button_immediate_install',
+        ) as install:
+            settings.set_values()
+
+        install.assert_not_called()
+
+    def test_settings_suggestions_require_qbo_probe_data(self):
+        settings = self.env['res.config.settings'].create({
+            'company_id': self.company.id,
+            'qb_sync_projects': True,
+        })
+
+        self.assertEqual(settings._suggest_modules_for_toggles(), [])
+
+        self.env['quickbooks.data.probe'].create({
+            'company_id': self.company.id,
+            'area': 'projects',
+            'has_data': True,
+            'sample_count': 1,
+        })
+        self.assertIn('project', settings._suggest_modules_for_toggles())
+
+    def test_data_probe_persists_qbo_data_presence(self):
+        client = self._mock_client()
+        client.query.return_value = {'QueryResponse': {'totalCount': 3}}
+
+        probe = self.env['qb.data.probe'].run_area(
+            self.config, client, 'purchase_orders',
+        )
+
+        self.assertTrue(probe.has_data)
+        self.assertEqual(probe.sample_count, 3)
+        self.assertEqual(probe.area, 'purchase_orders')
