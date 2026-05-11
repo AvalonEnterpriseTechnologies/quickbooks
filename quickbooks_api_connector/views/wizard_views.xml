@@ -114,6 +114,7 @@
                 <group>
                     <field name="company_id" groups="base.group_multi_company"/>
                     <field name="direction"/>
+                    <field name="mode"/>
                 </group>
                 <group string="Entities to Migrate">
                     <group>

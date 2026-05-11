@@ -383,3 +383,24 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         )
 
         self.assertEqual(vals['default_code'], 'ABC-123')
+
+    def test_migration_dry_run_creates_run_without_queueing_jobs(self):
+        wizard = self.env['quickbooks.migration.wizard'].create({
+            'company_id': self.company.id,
+            'mode': 'dry_run',
+            'migrate_accounts': True,
+            'migrate_products': False,
+            'migrate_invoices': False,
+            'migrate_bills': False,
+            'migrate_payments': False,
+        })
+
+        with patch.object(
+            self.env['qb.sync.engine'].__class__, 'enqueue_full_entity_sync',
+        ) as enqueue:
+            wizard.action_start_migration()
+
+        enqueue.assert_not_called()
+        run = self.env['quickbooks.migration.run'].search([], limit=1)
+        self.assertEqual(run.state, 'completed')
+        self.assertEqual(run.step_ids[0].status, 'skipped')

@@ -20,6 +20,11 @@ class QuickbooksMigrationWizard(models.TransientModel):
          ('both', 'Full Bidirectional Sync')],
         default='import', required=True,
     )
+    mode = fields.Selection(
+        [('dry_run', 'Dry Run'), ('live', 'Live Migration')],
+        default='live',
+        required=True,
+    )
     migrate_accounts = fields.Boolean(default=True, string='Chart of Accounts')
     migrate_tax_codes = fields.Boolean(default=True, string='Tax Codes')
     migrate_customers = fields.Boolean(default=True, string='Customers')
@@ -109,13 +114,46 @@ class QuickbooksMigrationWizard(models.TransientModel):
 
         priority = 100
         count = 0
+        run = self.env['quickbooks.migration.run'].create({
+            'company_id': self.company_id.id,
+            'mode': self.mode,
+            'state': 'planning' if self.mode == 'dry_run' else 'running',
+        })
+        probe_by_area = {
+            probe.area: probe for probe in self.env['quickbooks.data.probe'].search([
+                ('company_id', '=', self.company_id.id),
+            ])
+        }
         for entity_type in ordered_entities:
             for direction in directions:
-                engine.enqueue_full_entity_sync(
-                    config, entity_type, direction, priority=priority,
+                idempotency_key = 'migration_%s_%s_%s_%s' % (
+                    run.id, entity_type, direction, self.company_id.id,
                 )
+                step = self.env['quickbooks.migration.run.step'].create({
+                    'run_id': run.id,
+                    'sequence': 100 - priority,
+                    'entity_type': entity_type,
+                    'direction': direction,
+                    'status': 'pending',
+                    'expected_count': self._expected_count(entity_type, probe_by_area),
+                    'idempotency_key': idempotency_key,
+                })
+                if self.mode == 'live':
+                    engine.enqueue_full_entity_sync(
+                        config, entity_type, direction, priority=priority,
+                    )
+                    step.status = 'queued'
+                else:
+                    step.status = 'skipped'
                 count += 1
             priority -= 5
+
+        if self.mode == 'dry_run':
+            run.write({
+                'state': 'completed',
+                'finished_at': fields.Datetime.now(),
+                'summary': '%d migration steps planned. No jobs were queued.' % count,
+            })
 
         return {
             'type': 'ir.actions.client',
@@ -123,10 +161,30 @@ class QuickbooksMigrationWizard(models.TransientModel):
             'params': {
                 'title': 'QuickBooks Migration',
                 'message': (
-                    '%d migration jobs queued. '
-                    'Entities will sync in dependency order.'
-                ) % count,
+                    '%d migration %s. Entities will sync in dependency order.'
+                ) % (
+                    count,
+                    'steps planned; no jobs queued' if self.mode == 'dry_run' else 'jobs queued',
+                ),
                 'type': 'success',
                 'sticky': True,
             },
         }
+
+    def _expected_count(self, entity_type, probe_by_area):
+        area_map = {
+            'recurring_transaction': 'recurring_transactions',
+            'product': 'inventory_items',
+            'project': 'projects',
+            'time_activity': 'time_activities',
+            'expense': 'expenses',
+            'purchase_order': 'purchase_orders',
+            'estimate': 'estimates',
+            'sales_receipt': 'sales_receipts',
+            'attachment': 'attachments',
+            'class': 'classes',
+            'department': 'departments',
+            'custom_field_definition': 'custom_field_definitions',
+        }
+        probe = probe_by_area.get(area_map.get(entity_type, ''))
+        return probe.sample_count if probe else 0
