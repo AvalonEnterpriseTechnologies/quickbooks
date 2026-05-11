@@ -384,6 +384,47 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
 
         self.assertEqual(vals['default_code'], 'ABC-123')
 
+    def test_deposit_payload_includes_required_qbo_fields(self):
+        bank_account = self.env['account.account'].create({
+            'name': 'QB Bank',
+            'code': '101010',
+            'account_type': 'asset_cash',
+            'qb_account_id': '101',
+        })
+        income_account = self.env['account.account'].create({
+            'name': 'Deposit Source',
+            'code': '401010',
+            'account_type': 'income',
+            'qb_account_id': '401',
+        })
+        move = self.env['account.move'].create({
+            'move_type': 'entry',
+            'date': '2026-01-15',
+            'line_ids': [
+                (0, 0, {
+                    'name': 'Bank',
+                    'account_id': bank_account.id,
+                    'debit': 100.0,
+                    'credit': 0.0,
+                }),
+                (0, 0, {
+                    'name': 'Source',
+                    'account_id': income_account.id,
+                    'debit': 0.0,
+                    'credit': 100.0,
+                }),
+            ],
+        })
+
+        payload = self.env['qb.sync.deposits']._odoo_to_qb_deposit(move)
+
+        self.assertEqual(payload['DepositToAccountRef']['value'], '101')
+        self.assertEqual(payload['Line'][0]['DetailType'], 'DepositLineDetail')
+        self.assertEqual(
+            payload['Line'][0]['DepositLineDetail']['AccountRef']['value'],
+            '401',
+        )
+
     def test_migration_dry_run_creates_run_without_queueing_jobs(self):
         wizard = self.env['quickbooks.migration.wizard'].create({
             'company_id': self.company.id,

@@ -22,22 +22,13 @@ class QBSyncDeposits(models.AbstractModel):
         if not move.exists():
             return {}
 
-        lines = []
-        for line in move.line_ids.filtered(lambda l: l.debit > 0):
-            detail = {
-                'DetailType': 'DepositLineDetail',
-                'Amount': line.debit,
-                'DepositLineDetail': {},
-            }
-            if line.account_id and hasattr(line.account_id, 'qb_account_id') and line.account_id.qb_account_id:
-                detail['DepositLineDetail']['AccountRef'] = {
-                    'value': line.account_id.qb_account_id,
-                }
-            lines.append(detail)
-
-        payload = {'Line': lines}
-        if move.date:
-            payload['TxnDate'] = move.date.isoformat()
+        payload = self._odoo_to_qb_deposit(move)
+        if not payload:
+            _logger.info(
+                'Skipping move %s as QBO Deposit; missing deposit account or source lines.',
+                move.display_name,
+            )
+            return {'skipped': True}
 
         qb_id = move.qb_deposit_id
         matcher = self.env['qb.record.matcher']
@@ -63,6 +54,57 @@ class QBSyncDeposits(models.AbstractModel):
             'qb_last_synced': fields.Datetime.now(),
         })
         return {'qb_id': str(created.get('Id', ''))}
+
+    def _odoo_to_qb_deposit(self, move):
+        """Build a valid QBO Deposit payload from an Odoo journal entry.
+
+        QBO requires a top-level DepositToAccountRef and every line must include
+        DepositLineDetail. Treat the liquidity debit line as the destination
+        account and credit lines as the deposited sources.
+        """
+        deposit_line = self._deposit_destination_line(move)
+        if not deposit_line:
+            return {}
+
+        lines = []
+        for line in move.line_ids.filtered(lambda l: l.credit > 0):
+            qb_account_id = getattr(line.account_id, 'qb_account_id', False)
+            if not qb_account_id:
+                continue
+            lines.append({
+                'DetailType': 'DepositLineDetail',
+                'Amount': line.credit,
+                'Description': line.name or move.ref or move.name or '',
+                'DepositLineDetail': {
+                    'AccountRef': {'value': qb_account_id},
+                },
+            })
+        if not lines:
+            return {}
+
+        payload = {
+            'DepositToAccountRef': {
+                'value': deposit_line.account_id.qb_account_id,
+            },
+            'Line': lines,
+        }
+        if move.date:
+            payload['TxnDate'] = move.date.isoformat()
+        if move.ref:
+            payload['PrivateNote'] = move.ref[:4000]
+        return payload
+
+    def _deposit_destination_line(self, move):
+        for line in move.line_ids.filtered(lambda l: l.debit > 0):
+            account = line.account_id
+            if not getattr(account, 'qb_account_id', False):
+                continue
+            if getattr(account, 'account_type', '') in ('asset_cash', 'liability_credit_card'):
+                return line
+        return False
+
+    def _is_deposit_candidate(self, move):
+        return bool(self._odoo_to_qb_deposit(move))
 
     def pull(self, client, config, job):
         qb_id = job.qb_entity_id
@@ -107,6 +149,8 @@ class QBSyncDeposits(models.AbstractModel):
         ])
         queue = self.env['quickbooks.sync.queue']
         for move in moves:
+            if not self._is_deposit_candidate(move):
+                continue
             queue.enqueue(
                 entity_type='deposit',
                 direction='push',
