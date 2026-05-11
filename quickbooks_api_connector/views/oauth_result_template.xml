@@ -1,27 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="qb_oauth_result_template" name="QuickBooks OAuth Result">
-        <t t-call="web.login_layout">
-            <div class="container mt-5">
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <div t-attf-class="card border-#{success and 'success' or 'danger'}">
-                            <div t-attf-class="card-header bg-#{success and 'success' or 'danger'} text-white">
-                                <h4 class="mb-0">
-                                    <t t-if="success">QuickBooks Connected</t>
-                                    <t t-else="">Connection Failed</t>
-                                </h4>
-                            </div>
-                            <div class="card-body">
-                                <p><t t-esc="message"/></p>
-                                <a href="/odoo/accounting" class="btn btn-primary mt-3">
-                                    Return to Odoo
-                                </a>
-                            </div>
+        <html>
+            <head>
+                <title>
+                    <t t-if="success">QuickBooks Connected</t>
+                    <t t-else="">QuickBooks Connection Failed</t>
+                </title>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <style>
+                    body {
+                        background: #f5f7fa;
+                        color: #1f2933;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                        margin: 0;
+                    }
+                    .qb-result {
+                        align-items: center;
+                        display: flex;
+                        justify-content: center;
+                        min-height: 100vh;
+                        padding: 24px;
+                    }
+                    .qb-card {
+                        background: #fff;
+                        border-radius: 8px;
+                        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+                        max-width: 520px;
+                        overflow: hidden;
+                        width: 100%;
+                    }
+                    .qb-card__header {
+                        color: #fff;
+                        font-size: 20px;
+                        font-weight: 600;
+                        padding: 18px 24px;
+                    }
+                    .qb-card__header--success { background: #198754; }
+                    .qb-card__header--error { background: #dc3545; }
+                    .qb-card__body {
+                        font-size: 16px;
+                        line-height: 1.5;
+                        padding: 24px;
+                    }
+                    .qb-button {
+                        background: #0d6efd;
+                        border-radius: 4px;
+                        color: #fff;
+                        display: inline-block;
+                        margin-top: 12px;
+                        padding: 10px 16px;
+                        text-decoration: none;
+                    }
+                </style>
+            </head>
+            <body>
+                <main class="qb-result">
+                    <div class="qb-card">
+                        <div t-attf-class="qb-card__header #{success and 'qb-card__header--success' or 'qb-card__header--error'}">
+                            <t t-if="success">QuickBooks Connected</t>
+                            <t t-else="">Connection Failed</t>
+                        </div>
+                        <div class="qb-card__body">
+                            <p><t t-esc="message"/></p>
+                            <a href="/odoo/accounting" class="qb-button">
+                                Return to Odoo
+                            </a>
                         </div>
                     </div>
-                </div>
-            </div>
-        </t>
+                </main>
+            </body>
+        </html>
     </template>
 </odoo>
