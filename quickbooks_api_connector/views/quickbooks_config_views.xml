@@ -139,6 +139,13 @@
                                     <field name="sync_attachments"/>
                                 </group>
                             </group>
+                            <group string="Reports">
+                                <field name="sync_reports"/>
+                                <field name="reports_method"/>
+                                <field name="reports_history_months"/>
+                                <field name="reports_keep_n"/>
+                                <field name="reports_use_v2_now"/>
+                            </group>
                             <group string="Advanced APIs">
                                 <field name="payroll_enabled"/>
                                 <field name="payroll_create_draft_payslips"/>

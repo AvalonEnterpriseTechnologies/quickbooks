@@ -159,3 +159,41 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         self.assertTrue(probe.has_data)
         self.assertEqual(probe.sample_count, 3)
         self.assertEqual(probe.area, 'purchase_orders')
+
+    def test_report_rows_are_normalized_from_nested_payload(self):
+        payload = {
+            'Header': {'ReportName': 'BalanceSheet'},
+            'Rows': {
+                'Row': [{
+                    'Header': {'ColData': [{'value': 'Assets'}]},
+                    'Rows': {'Row': [{
+                        'ColData': [
+                            {'value': 'Checking', 'id': '10'},
+                            {'value': '1,234.56'},
+                        ],
+                    }]},
+                }],
+            },
+        }
+
+        rows = self.env['qb.sync.reports']._normalized_rows(payload)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['label'], 'Checking')
+        self.assertEqual(rows[0]['id'], '10')
+        self.assertEqual(rows[0]['amount'], 1234.56)
+
+    def test_reports_client_builds_reports_endpoint(self):
+        client = self.env['qb.api.client'].get_client(self.config)
+
+        with patch.object(client, '_execute', return_value={}) as execute:
+            client.reports(
+                'BalanceSheet',
+                params={'start_date': '2026-01-01', 'end_date': '2026-01-31'},
+                testing_migration=True,
+            )
+
+        endpoint = execute.call_args[0][1]
+        self.assertTrue(endpoint.startswith('reports/BalanceSheet?'))
+        self.assertIn('start_date=2026-01-01', endpoint)
+        self.assertIn('testing_migration=true', endpoint)

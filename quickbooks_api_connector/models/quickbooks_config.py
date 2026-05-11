@@ -136,6 +136,24 @@ class QuickbooksConfig(models.Model):
     qb_default_warehouse_id = fields.Integer(string='Default Inventory Warehouse ID')
     sync_vendor_credits = fields.Boolean(default=True, string='Sync Vendor Credits')
     sync_refund_receipts = fields.Boolean(default=True, string='Sync Refund Receipts')
+    sync_reports = fields.Boolean(default=False, string='Sync Financial Reports')
+    reports_method = fields.Selection(
+        [('Accrual', 'Accrual'), ('Cash', 'Cash')],
+        default='Accrual',
+        string='Reports Accounting Method',
+    )
+    reports_history_months = fields.Integer(
+        default=12,
+        string='Reports History Months',
+    )
+    reports_keep_n = fields.Integer(
+        default=12,
+        string='Report Snapshots To Keep',
+    )
+    reports_use_v2_now = fields.Boolean(
+        default=False,
+        string='Use Modernized Reports Parser',
+    )
 
     payroll_enabled = fields.Boolean(default=False, string='Enable Payroll API')
     payroll_create_draft_payslips = fields.Boolean(

@@ -52,6 +52,7 @@ class QuickbooksSyncLog(models.Model):
          ('work_location', 'Work Location'),
          ('inventory_adjustment', 'Inventory Adjustment'),
          ('timesheet', 'Timesheet (QBT)'),
+         ('report', 'Financial Report'),
          ('full_sync', 'Full Sync')],
         required=True,
     )

@@ -144,6 +144,24 @@ class ResConfigSettings(models.TransientModel):
     qb_default_warehouse_id = fields.Integer(string='Default Inventory Warehouse ID')
     qb_sync_vendor_credits = fields.Boolean(string='Sync Vendor Credits', default=True)
     qb_sync_refund_receipts = fields.Boolean(string='Sync Refund Receipts', default=True)
+    qb_sync_reports = fields.Boolean(string='Sync Financial Reports', default=False)
+    qb_reports_method = fields.Selection(
+        [('Accrual', 'Accrual'), ('Cash', 'Cash')],
+        string='Reports Accounting Method',
+        default='Accrual',
+    )
+    qb_reports_history_months = fields.Integer(
+        string='Reports History Months',
+        default=12,
+    )
+    qb_reports_keep_n = fields.Integer(
+        string='Report Snapshots To Keep',
+        default=12,
+    )
+    qb_reports_use_v2_now = fields.Boolean(
+        string='Use Modernized Reports Parser',
+        default=False,
+    )
 
     # --- Payroll API (Phase 3) ---
     qb_payroll_enabled = fields.Boolean(string='Enable Payroll Sync', default=False)
@@ -304,6 +322,13 @@ class ResConfigSettings(models.TransientModel):
                 ) or False,
                 'qb_sync_vendor_credits': getattr(config, 'sync_vendor_credits', True),
                 'qb_sync_refund_receipts': getattr(config, 'sync_refund_receipts', True),
+                'qb_sync_reports': getattr(config, 'sync_reports', False),
+                'qb_reports_method': getattr(config, 'reports_method', 'Accrual'),
+                'qb_reports_history_months': getattr(
+                    config, 'reports_history_months', 12,
+                ),
+                'qb_reports_keep_n': getattr(config, 'reports_keep_n', 12),
+                'qb_reports_use_v2_now': getattr(config, 'reports_use_v2_now', False),
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
                 'qb_payroll_create_draft_payslips': getattr(
                     config, 'payroll_create_draft_payslips', False,
@@ -394,12 +419,18 @@ class ResConfigSettings(models.TransientModel):
             'sync_classes', 'sync_terms', 'sync_attachments', 'sync_inventory_qty',
             'sync_inventory_adjustments', 'sync_inventory_valuation_accounts',
             'sync_vendor_credits', 'sync_refund_receipts', 'payroll_enabled',
+            'sync_reports', 'reports_method', 'reports_history_months',
+            'reports_keep_n', 'reports_use_v2_now', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',
             'payroll_enabled': 'qb_payroll_enabled',
             'payroll_create_draft_payslips': 'qb_payroll_create_draft_payslips',
+            'reports_method': 'qb_reports_method',
+            'reports_history_months': 'qb_reports_history_months',
+            'reports_keep_n': 'qb_reports_keep_n',
+            'reports_use_v2_now': 'qb_reports_use_v2_now',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)

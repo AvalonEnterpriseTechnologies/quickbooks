@@ -38,5 +38,6 @@ from . import sync_payroll_schedules
 from . import sync_payroll_checks
 from . import sync_work_locations
 from . import sync_inventory_adjustments
+from . import sync_reports
 from . import qbt_api_client
 from . import sync_timesheets

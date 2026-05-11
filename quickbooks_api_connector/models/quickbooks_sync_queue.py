@@ -49,6 +49,7 @@ QB_ENTITY_TYPES = [
     ('work_location', 'Work Location'),
     ('inventory_adjustment', 'Inventory Adjustment'),
     ('timesheet', 'Timesheet (QBT)'),
+    ('report', 'Financial Report'),
 ]
 
 MAX_RETRIES = 5

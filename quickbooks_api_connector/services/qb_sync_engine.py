@@ -45,11 +45,12 @@ ENTITY_SERVICE_MAP = {
     'work_location': 'qb.sync.work.locations',
     'inventory_adjustment': 'qb.sync.inventory.adjustments',
     'timesheet': 'qb.sync.timesheets',
+    'report': 'qb.sync.reports',
 }
 
 PULL_ONLY_ENTITIES = frozenset([
     'account', 'tax_code', 'term', 'attachment',
-    'exchange_rate', 'company_info',
+    'exchange_rate', 'company_info', 'report',
 ])
 
 CDC_QBO_TO_ENTITY = {
@@ -190,6 +191,7 @@ class QBSyncEngine(models.AbstractModel):
             'payroll_schedule', 'payroll_check', 'work_location', 'timesheet',
             'inventory_adjustment',
             'attachment',
+            'report',
         ]
         toggle_map = {
             'company_info': True,
@@ -228,6 +230,7 @@ class QBSyncEngine(models.AbstractModel):
             'class': getattr(config, 'sync_classes', False),
             'term': getattr(config, 'sync_terms', False),
             'attachment': getattr(config, 'sync_attachments', False),
+            'report': getattr(config, 'sync_reports', False),
         }
         cdc_records = self._collect_cdc_records(client, config, entity_order)
 
