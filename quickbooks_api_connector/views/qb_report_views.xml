@@ -58,9 +58,4 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_qb_balance_variances"
-              name="Balance Variances"
-              parent="menu_qb_technical_root"
-              sequence="28"
-              action="action_qb_balance_variances"/>
 </odoo>
