@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -197,6 +198,29 @@ class ResConfigSettings(models.TransientModel):
     qb_mod_stock = fields.Boolean(compute='_compute_qb_module_status')
     qb_mod_project = fields.Boolean(compute='_compute_qb_module_status')
 
+    # --- Live counters (replace the standalone Dashboard view) ---
+    qb_queue_depth = fields.Integer(
+        string='Pending Sync Jobs', compute='_compute_qb_metrics',
+    )
+    qb_failed_queue_count = fields.Integer(
+        string='Failed Sync Jobs', compute='_compute_qb_metrics',
+    )
+    qb_sync_errors_24h = fields.Integer(
+        string='Sync Errors (24h)', compute='_compute_qb_metrics',
+    )
+    qb_sync_success_24h = fields.Integer(
+        string='Sync Successes (24h)', compute='_compute_qb_metrics',
+    )
+    qb_last_successful_sync = fields.Datetime(
+        string='Last Successful Sync', compute='_compute_qb_metrics',
+    )
+    qb_coverage_summary = fields.Text(
+        string='QuickBooks Coverage', compute='_compute_qb_coverage_summary',
+        help='Read-only summary of every QBO entity this connector supports. '
+             'Generated from the live sync engine registry plus any manual '
+             'coverage rows.',
+    )
+
     def _compute_qb_config_id(self):
         Config = self.env['quickbooks.config']
         for rec in self:
@@ -212,6 +236,49 @@ class ResConfigSettings(models.TransientModel):
             rec.qb_oauth_redirect_uri = (
                 '%s/qb/oauth/callback' % base_url if base_url else False
             )
+
+    def _compute_qb_metrics(self):
+        Queue = self.env['quickbooks.sync.queue'].sudo()
+        Log = self.env['quickbooks.sync.log'].sudo()
+        since = fields.Datetime.now() - timedelta(days=1)
+        for rec in self:
+            domain = [('company_id', '=', rec.company_id.id)]
+            rec.qb_queue_depth = Queue.search_count(
+                domain + [('state', 'in', ('pending', 'processing'))],
+            )
+            rec.qb_failed_queue_count = Queue.search_count(
+                domain + [('state', '=', 'failed')],
+            )
+            rec.qb_sync_errors_24h = Log.search_count(
+                domain + [('state', '=', 'error'), ('create_date', '>=', since)],
+            )
+            rec.qb_sync_success_24h = Log.search_count(
+                domain + [('state', '=', 'success'), ('create_date', '>=', since)],
+            )
+            last = Log.search(
+                domain + [('state', '=', 'success')], limit=1,
+            )
+            rec.qb_last_successful_sync = last.create_date if last else False
+
+    def _compute_qb_coverage_summary(self):
+        Matrix = self.env['quickbooks.coverage.matrix'].sudo()
+        rows = Matrix.search([], order='area asc')
+        if not rows:
+            try:
+                Matrix.refresh_from_registry()
+                rows = Matrix.search([], order='area asc')
+            except Exception:
+                rows = Matrix.browse()
+        summary = '\n'.join(
+            '%-30s %-10s %s' % (
+                (row.area or '')[:30],
+                (row.status or '').upper(),
+                row.notes or '',
+            )
+            for row in rows
+        )
+        for rec in self:
+            rec.qb_coverage_summary = summary
 
     @api.depends_context('uid')
     def _compute_qb_module_status(self):
@@ -490,9 +557,21 @@ class ResConfigSettings(models.TransientModel):
     # --- Quick actions ---
 
     def action_qb_connect(self):
-        return self.env.ref(
-            'quickbooks_api_connector.action_quickbooks_setup_wizard',
-        ).read()[0]
+        """Save credentials inline and start the OAuth handshake.
+
+        Replaces the standalone setup wizard. Credentials must already be
+        entered in this settings panel (Client ID + Client Secret +
+        Environment) before the user clicks Connect.
+        """
+        self.ensure_one()
+        if not self.qb_client_id or not self.qb_client_secret:
+            raise UserError(
+                'Enter the Client ID and Client Secret above before '
+                'connecting to QuickBooks.'
+            )
+        self.set_values()
+        config = self._get_or_create_qb_config()
+        return config.action_connect_qb()
 
     def action_qb_validate_setup(self):
         config = self._get_or_create_qb_config()
@@ -510,38 +589,26 @@ class ResConfigSettings(models.TransientModel):
         config = self._get_or_create_qb_config()
         return config.action_sync_now()
 
-    def action_open_sync_logs(self):
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'QuickBooks Sync Logs',
-            'res_model': 'quickbooks.sync.log',
-            'view_mode': 'list,form',
-            'target': 'current',
-        }
+    def action_qb_run_pending_jobs_now(self):
+        config = self._get_or_create_qb_config()
+        return config.action_run_pending_jobs_now()
 
-    def action_open_sync_queue(self):
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'QuickBooks Sync Queue',
-            'res_model': 'quickbooks.sync.queue',
-            'view_mode': 'list,form',
-            'target': 'current',
-        }
+    def action_qb_run_initial_migration(self):
+        """Queue a full bidirectional initial migration in dependency order.
 
-    def action_open_manual_sync(self):
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Manual Sync',
-            'res_model': 'quickbooks.sync.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-        }
-
-    def action_open_migration_wizard(self):
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Initial Migration',
-            'res_model': 'quickbooks.migration.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-        }
+        Functionally equivalent to the old Initial Migration wizard, but
+        runs from a single Settings button. Uses the existing migration
+        orchestration (``quickbooks.migration.wizard``) as a headless
+        backend service so the audit trail (``quickbooks.migration.run``)
+        is preserved.
+        """
+        self.ensure_one()
+        config = self._get_or_create_qb_config()
+        if config.state != 'connected':
+            raise UserError('QuickBooks is not connected for this company.')
+        wizard = self.env['quickbooks.migration.wizard'].create({
+            'company_id': self.company_id.id,
+            'direction': 'both',
+            'mode': 'live',
+        })
+        return wizard.action_start_migration()

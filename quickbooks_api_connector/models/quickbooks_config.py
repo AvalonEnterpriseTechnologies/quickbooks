@@ -432,11 +432,12 @@ class QuickbooksConfig(models.Model):
 
     @api.model
     def action_open_or_setup(self):
-        config = self.search([('company_id', '=', self.env.company.id)], limit=1)
-        if not config or not config.client_id or not config.client_secret_encrypted:
-            return self.env.ref(
-                'quickbooks_api_connector.action_quickbooks_setup_wizard',
-            ).read()[0]
+        """Always land on the standard Settings panel.
+
+        The QuickBooks block on ``res.config.settings`` collects credentials,
+        runs the OAuth handshake, exposes sync toggles, and surfaces live
+        counters. There is no separate setup wizard to fall back to.
+        """
         return {
             'type': 'ir.actions.act_window',
             'name': 'QuickBooks Sync',

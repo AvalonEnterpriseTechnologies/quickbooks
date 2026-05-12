@@ -17,37 +17,41 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     qb_invoice_id = fields.Char(
-        string='QB Invoice ID', index=True, copy=False,
+        string='QB Invoice ID', index=True, copy=False, tracking=True,
     )
     qb_bill_id = fields.Char(
-        string='QB Bill ID', index=True, copy=False,
+        string='QB Bill ID', index=True, copy=False, tracking=True,
     )
     qb_creditmemo_id = fields.Char(
-        string='QB Credit Memo ID', index=True, copy=False,
+        string='QB Credit Memo ID', index=True, copy=False, tracking=True,
     )
     qb_je_id = fields.Char(
-        string='QB Journal Entry ID', index=True, copy=False,
+        string='QB Journal Entry ID', index=True, copy=False, tracking=True,
     )
     qb_salesreceipt_id = fields.Char(
-        string='QB Sales Receipt ID', index=True, copy=False,
+        string='QB Sales Receipt ID', index=True, copy=False, tracking=True,
     )
     qb_deposit_id = fields.Char(
-        string='QB Deposit ID', index=True, copy=False,
+        string='QB Deposit ID', index=True, copy=False, tracking=True,
     )
     qb_transfer_id = fields.Char(
-        string='QB Transfer ID', index=True, copy=False,
+        string='QB Transfer ID', index=True, copy=False, tracking=True,
     )
     qb_refundreceipt_id = fields.Char(
-        string='QB Refund Receipt ID', index=True, copy=False,
+        string='QB Refund Receipt ID', index=True, copy=False, tracking=True,
     )
     qb_vendorcredit_id = fields.Char(
-        string='QB Vendor Credit ID', index=True, copy=False,
+        string='QB Vendor Credit ID', index=True, copy=False, tracking=True,
     )
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
-    qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
-    qb_sync_error = fields.Text(string='Last Sync Error', copy=False)
+    qb_last_synced = fields.Datetime(
+        string='Last QB Sync', copy=False, tracking=True,
+    )
+    qb_sync_error = fields.Text(
+        string='Last Sync Error', copy=False, tracking=True,
+    )
     qb_do_not_sync = fields.Boolean(
-        string='Exclude from QB Sync', default=False,
+        string='Exclude from QB Sync', default=False, tracking=True,
     )
     qb_opening_snapshot_id = fields.Integer(
         string='Legacy QB Opening Snapshot ID',

@@ -24,13 +24,43 @@
                                nolabel="1" readonly="1" class="fw-bold ms-1"/>
                     </div>
 
+                    <div class="alert alert-danger" role="alert"
+                         invisible="qb_state != 'error'">
+                        <i class="fa fa-exclamation-triangle"/>
+                        QuickBooks connection error.
+                        <field name="qb_error_message" invisible="not qb_error_message"
+                               nolabel="1" readonly="1" class="d-block mt-1 small"/>
+                    </div>
+
                     <div class="alert alert-secondary" role="alert"
                          invisible="qb_state == 'connected'">
-                        QuickBooks is ready to connect. The one-time setup wizard
-                        will collect credentials if they are not already configured.
+                        QuickBooks is ready to connect. Enter your Intuit
+                        Developer credentials below, then click
+                        <strong>Connect to QuickBooks</strong>.
                     </div>
 
                     <div class="row mt16 o_settings_container">
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state == 'connected'">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label string="API Credentials"/>
+                                <div class="text-muted small mb8">
+                                    From the Intuit Developer Portal &gt; Keys
+                                    and credentials. Use the Sandbox keys for
+                                    Development.
+                                </div>
+                                <div class="content-group">
+                                    <field name="qb_environment"/>
+                                    <field name="qb_client_id"
+                                           placeholder="Your Intuit app Client ID"/>
+                                    <field name="qb_client_secret" password="True"
+                                           placeholder="Your Intuit app Client Secret"/>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-12 o_setting_box">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
@@ -46,11 +76,26 @@
                                 <button name="action_qb_validate_setup"
                                         string="Test Setup in Odoo"
                                         type="object" class="btn-secondary me-2"/>
+                                <button name="action_qb_test_connection"
+                                        string="Test Company Connection"
+                                        type="object" class="btn-secondary me-2"
+                                        invisible="qb_state != 'connected'"/>
                                 <button name="action_qb_sync_now"
                                         string="Sync Now"
                                         type="object" class="btn-primary me-2"
                                         icon="fa-refresh"
                                         invisible="qb_state != 'connected'"/>
+                                <button name="action_qb_run_pending_jobs_now"
+                                        string="Run Pending Jobs Now"
+                                        type="object" class="btn-secondary me-2"
+                                        icon="fa-play"
+                                        invisible="qb_state != 'connected'"/>
+                                <button name="action_qb_run_initial_migration"
+                                        string="Run Initial Migration"
+                                        type="object" class="btn-secondary me-2"
+                                        icon="fa-cloud-download"
+                                        invisible="qb_state != 'connected'"
+                                        confirm="This will queue a full bidirectional sync of every enabled entity. Continue?"/>
                                 <button name="action_qb_disconnect"
                                         string="Disconnect"
                                         type="object" class="btn-secondary"
@@ -58,6 +103,7 @@
                                         confirm="Disconnect from QuickBooks?"/>
                             </div>
                         </div>
+
                         <div class="col-12 o_setting_box">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
@@ -73,6 +119,7 @@
                                        widget="CopyClipboardChar"/>
                             </div>
                         </div>
+
                         <div class="col-12 o_setting_box"
                              invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane"/>
@@ -89,6 +136,30 @@
                                        placeholder="Paste the verifier token from Intuit's Webhooks tab"/>
                             </div>
                         </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label string="Sync Status"/>
+                                <div class="text-muted small mb8">
+                                    Live counters from <code>quickbooks.sync.queue</code>
+                                    and <code>quickbooks.sync.log</code>. Per-record sync
+                                    history is posted to each Odoo record's chatter.
+                                    Permanent failures raise a To-do activity on the
+                                    affected record assigned to the QuickBooks Manager
+                                    group.
+                                </div>
+                                <div class="content-group">
+                                    <field name="qb_queue_depth" readonly="1"/>
+                                    <field name="qb_failed_queue_count" readonly="1"/>
+                                    <field name="qb_sync_success_24h" readonly="1"/>
+                                    <field name="qb_sync_errors_24h" readonly="1"/>
+                                    <field name="qb_last_successful_sync" readonly="1"/>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-12 o_setting_box"
                              invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane">
@@ -110,6 +181,20 @@
                                 <field name="qb_sync_payroll_settings"/>
                             </div>
                         </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label string="Coverage"/>
+                                <div class="text-muted small mb8">
+                                    QBO entities supported by this connector.
+                                </div>
+                                <field name="qb_coverage_summary" readonly="1"
+                                       widget="text" nolabel="1"/>
+                            </div>
+                        </div>
+
                     </div>
 
                 </app>

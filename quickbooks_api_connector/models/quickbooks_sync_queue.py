@@ -176,7 +176,7 @@ class QuickbooksSyncQueue(models.Model):
                 'retry_count': retry,
                 'error_message': error_msg,
             })
-            self._send_failure_notification()
+            self._raise_failure_activity(error_msg)
         else:
             backoff = BACKOFF_SECONDS[min(retry - 1, len(BACKOFF_SECONDS) - 1)]
             self.write({
@@ -186,13 +186,46 @@ class QuickbooksSyncQueue(models.Model):
                 'error_message': error_msg,
             })
 
-    def _send_failure_notification(self):
-        template = self.env.ref(
-            'quickbooks_api_connector.mail_template_sync_failure',
+    def _raise_failure_activity(self, error_msg):
+        """Surface a permanent sync failure on the underlying Odoo record.
+
+        Uses the native ``mail.activity`` system (a To-do / warning) on the
+        record that failed to sync, assigned to the QuickBooks Manager
+        group. This replaces the previous outbound email and removes the
+        need for a dedicated Sync Queue UI to triage failures.
+        """
+        self.ensure_one()
+        if not self.odoo_model or not self.odoo_record_id:
+            return
+        if self.odoo_model not in self.env:
+            return
+        record = self.env[self.odoo_model].sudo().browse(self.odoo_record_id)
+        if not record.exists():
+            return
+        if not hasattr(record, 'activity_schedule'):
+            return
+        manager_group = self.env.ref(
+            'quickbooks_api_connector.group_qb_manager',
             raise_if_not_found=False,
         )
-        if template:
-            template.send_mail(self.id, force_send=False)
+        responsible = (
+            manager_group.users[:1] if manager_group and manager_group.users
+            else self.env.user
+        )
+        try:
+            record.activity_schedule(
+                'mail.mail_activity_data_warning',
+                summary='QuickBooks sync failed: %s %s' % (
+                    self.direction or '', self.entity_type or '',
+                ),
+                note=(error_msg or '')[:4000],
+                user_id=responsible.id,
+            )
+        except Exception:
+            _logger.exception(
+                'Failed to schedule QB failure activity on %s(%s)',
+                self.odoo_model, self.odoo_record_id,
+            )
 
     def process_pending_jobs(self, batch_size=50):
         now = fields.Datetime.now()

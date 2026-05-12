@@ -12,8 +12,12 @@ class ProductProduct(models.Model):
         string='QB Item ID', index=True, copy=False, tracking=True,
     )
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
-    qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
-    qb_sync_error = fields.Text(string='Last Sync Error', copy=False)
+    qb_last_synced = fields.Datetime(
+        string='Last QB Sync', copy=False, tracking=True,
+    )
+    qb_sync_error = fields.Text(
+        string='Last Sync Error', copy=False, tracking=True,
+    )
     qb_item_type = fields.Char(string='QB Item Type', copy=False)
     qb_item_category_id = fields.Char(string='QB Item Category ID', copy=False, index=True)
     qb_item_category_name = fields.Char(string='QB Item Category Name', copy=False)
@@ -24,7 +28,7 @@ class ProductProduct(models.Model):
         copy=False,
     )
     qb_do_not_sync = fields.Boolean(
-        string='Exclude from QB Sync', default=False,
+        string='Exclude from QB Sync', default=False, tracking=True,
     )
 
     @api.model_create_multi

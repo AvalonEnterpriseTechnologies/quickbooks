@@ -6,10 +6,12 @@ class AccountAccount(models.Model):
     _inherit = ['account.account', 'mail.thread']
 
     qb_account_id = fields.Char(
-        string='QB Account ID', index=True, copy=False,
+        string='QB Account ID', index=True, copy=False, tracking=True,
     )
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
-    qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
+    qb_last_synced = fields.Datetime(
+        string='Last QB Sync', copy=False, tracking=True,
+    )
     qb_opening_balance = fields.Monetary(
         string='QB Opening Balance',
         currency_field='company_currency_id',
@@ -23,6 +25,7 @@ class AccountAccount(models.Model):
         string='QB Current Balance',
         currency_field='company_currency_id',
         copy=False,
+        tracking=True,
     )
     qb_current_balance_with_subaccounts = fields.Monetary(
         string='QB Current Balance With Subaccounts',

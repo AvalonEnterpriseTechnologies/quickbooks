@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<data noupdate="1">
+
+    <!--
+        These ir.actions.server records bind into the standard Odoo
+        Action ▾ dropdown on each native model's list and form views via
+        binding_model_id / binding_view_types. They replace the per-model
+        custom <button> elements that previously lived in
+        views/res_partner_views.xml, views/product_views.xml,
+        views/account_account_views.xml, views/account_move_views.xml,
+        and wizards/qb_post_opening_balances_wizard_views.xml.
+
+        Server actions are not ir.ui.view records; the connector therefore
+        ships exactly one custom UI view (the QuickBooks block on the
+        standard Settings panel).
+    -->
+
+    <record id="server_action_partner_sync_to_qb" model="ir.actions.server">
+        <field name="name">Sync to QuickBooks</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('quickbooks_api_connector.group_qb_user'))]"/>
+        <field name="code">action = records.action_sync_to_qb()</field>
+    </record>
+
+    <record id="server_action_product_sync_to_qb" model="ir.actions.server">
+        <field name="name">Sync to QuickBooks</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('quickbooks_api_connector.group_qb_user'))]"/>
+        <field name="code">action = records.action_sync_to_qb()</field>
+    </record>
+
+    <record id="server_action_move_sync_to_qb" model="ir.actions.server">
+        <field name="name">Sync to QuickBooks</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('quickbooks_api_connector.group_qb_user'))]"/>
+        <field name="code">action = records.action_sync_to_qb()</field>
+    </record>
+
+    <record id="server_action_account_view_qbo_balances" model="ir.actions.server">
+        <field name="name">QuickBooks: View QBO Balances</field>
+        <field name="model_id" ref="account.model_account_account"/>
+        <field name="binding_model_id" ref="account.model_account_account"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('quickbooks_api_connector.group_qb_user'))]"/>
+        <field name="code">
+if records and len(records) == 1:
+    action = records.action_view_qbo_balances()
+        </field>
+    </record>
+
+    <record id="server_action_account_view_qbo_subaccounts" model="ir.actions.server">
+        <field name="name">QuickBooks: View QBO Sub-accounts</field>
+        <field name="model_id" ref="account.model_account_account"/>
+        <field name="binding_model_id" ref="account.model_account_account"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('quickbooks_api_connector.group_qb_user'))]"/>
+        <field name="code">
+if records and len(records) == 1:
+    action = records.action_view_qbo_subaccounts()
+        </field>
+    </record>
+
+    <record id="server_action_journal_post_qb_opening_balances" model="ir.actions.server">
+        <field name="name">QuickBooks: Post Opening Balances</field>
+        <field name="model_id" ref="account.model_account_journal"/>
+        <field name="binding_model_id" ref="account.model_account_journal"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('quickbooks_api_connector.group_qb_manager'))]"/>
+        <field name="code">
+if records and len(records) == 1:
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Post QuickBooks Opening Balances',
+        'res_model': 'qb.post.opening.balances.wizard',
+        'view_mode': 'form',
+        'target': 'new',
+        'context': {
+            'default_company_id': records.company_id.id or env.company.id,
+            'default_target_journal_id': records.id,
+        },
+    }
+        </field>
+    </record>
+
+</data>
+</odoo>

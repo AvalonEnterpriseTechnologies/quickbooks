@@ -6,7 +6,6 @@ from . import quickbooks_field_mapping
 from . import quickbooks_data_probe
 from . import quickbooks_migration_run
 from . import quickbooks_coverage_matrix
-from . import quickbooks_dashboard
 from . import res_partner
 from . import product_product
 from . import account_account

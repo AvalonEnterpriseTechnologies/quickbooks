@@ -1,5 +1,6 @@
 import json
 import logging
+import urllib.parse
 
 from odoo import http
 from odoo.http import request
@@ -19,9 +20,14 @@ QBO_APP_AUTH_FAILED_HINT = (
     "Developer Portal app's Redirect URIs list contains the exact OAuth "
     "Redirect URI shown on the QuickBooks settings page; (3) the app has not "
     "been disconnected on the Intuit side. Tokens have been saved, so you can "
-    "fix the keys/environment and click 'Test QuickBooks Company Connection' "
+    "fix the keys/environment and click 'Test Company Connection' "
     "without re-running the OAuth flow."
 )
+
+# OAuth callbacks always land on the standard Odoo Settings page so that the
+# native UI (alert banner + connection status) is the only surface the user
+# sees. No custom QWeb template is rendered here.
+_SETTINGS_URL = '/odoo/action-base_setup.action_general_configuration'
 
 
 class QuickbooksOAuthController(http.Controller):
@@ -44,28 +50,24 @@ class QuickbooksOAuthController(http.Controller):
                     'oauth_state': False,
                     'error_message': 'Authorization denied: %s' % error,
                 })
-            return request.render(
-                'quickbooks_api_connector.qb_oauth_result_template',
-                {'success': False, 'message': 'Authorization denied: %s' % error},
+            return self._redirect_to_settings(
+                'error', 'Authorization denied: %s' % error,
             )
 
         if not code or not realm_id:
-            return request.render(
-                'quickbooks_api_connector.qb_oauth_result_template',
-                {'success': False, 'message': 'Missing authorization code or realm ID.'},
+            return self._redirect_to_settings(
+                'error', 'Missing authorization code or realm ID.',
             )
 
         if not config:
-            return request.render(
-                'quickbooks_api_connector.qb_oauth_result_template',
-                {'success': False, 'message': 'Security validation failed (state mismatch).'},
+            return self._redirect_to_settings(
+                'error', 'Security validation failed (state mismatch).',
             )
 
         if config.oauth_state != state:
             _logger.warning('CSRF state mismatch in QB OAuth callback')
-            return request.render(
-                'quickbooks_api_connector.qb_oauth_result_template',
-                {'success': False, 'message': 'Security validation failed (state mismatch).'},
+            return self._redirect_to_settings(
+                'error', 'Security validation failed (state mismatch).',
             )
 
         # Step 1: exchange the authorization code for tokens. A failure here
@@ -82,12 +84,8 @@ class QuickbooksOAuthController(http.Controller):
                 'oauth_state': False,
                 'error_message': str(exc),
             })
-            return request.render(
-                'quickbooks_api_connector.qb_oauth_result_template',
-                {
-                    'success': False,
-                    'message': 'Token exchange failed: %s' % str(exc),
-                },
+            return self._redirect_to_settings(
+                'error', 'Token exchange failed: %s' % str(exc),
             )
 
         config.write({
@@ -107,28 +105,34 @@ class QuickbooksOAuthController(http.Controller):
             info = client.get('companyinfo/%s' % realm_id)
             company_name = info.get('CompanyInfo', {}).get('CompanyName', '')
             config.write({'qb_company_name': company_name})
-            return request.render(
-                'quickbooks_api_connector.qb_oauth_result_template',
-                {
-                    'success': True,
-                    'message': 'Successfully connected to %s!' % company_name,
-                },
+            return self._redirect_to_settings(
+                'success', 'Successfully connected to %s.' % company_name,
             )
         except Exception as exc:
-            return self._render_post_connect_failure(config, exc)
+            return self._handle_post_connect_failure(config, exc)
 
-    def _render_post_connect_failure(self, config, exc):
+    def _handle_post_connect_failure(self, config, exc):
         """Tokens were saved; only the post-connect read-back failed."""
         _logger.exception('QuickBooks post-connect read-back failed')
         message, hint = self._post_connect_message(exc)
         config.write({'error_message': message})
-        return request.render(
-            'quickbooks_api_connector.qb_oauth_result_template',
-            {
-                'success': False,
-                'message': '%s %s' % (message, hint),
-            },
-        )
+        return self._redirect_to_settings('warning', '%s %s' % (message, hint))
+
+    @staticmethod
+    def _redirect_to_settings(level, message):
+        """Bounce back to the standard Settings page with a flash notice.
+
+        ``level`` is one of ``success``, ``warning``, ``error``. The Odoo
+        Settings panel renders the live connection state (via the QuickBooks
+        Manager group's res.config.settings extension), so the user sees the
+        right banner immediately. The message is also passed as a query
+        parameter for any post-redirect notification the client may show.
+        """
+        params = urllib.parse.urlencode({
+            'qb_oauth_status': level,
+            'qb_oauth_message': (message or '')[:512],
+        })
+        return request.redirect('%s?%s' % (_SETTINGS_URL, params))
 
     @staticmethod
     def _post_connect_message(exc):
@@ -165,6 +169,6 @@ class QuickbooksOAuthController(http.Controller):
         return (
             'Tokens saved, but the post-connect read-back failed: %s' % str(exc),
             'You can keep the saved tokens and retry the read-back from '
-            'Settings > QuickBooks > Test QuickBooks Company Connection '
+            'Settings > QuickBooks > Test Company Connection '
             'after correcting the underlying issue.',
         )

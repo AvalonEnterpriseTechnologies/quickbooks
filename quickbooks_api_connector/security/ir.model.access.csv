@@ -16,9 +16,5 @@ access_qb_migration_run_step_manager,quickbooks.migration.run.step.manager,model
 access_qb_migration_run_step_user,quickbooks.migration.run.step.user,model_quickbooks_migration_run_step,group_qb_user,1,0,0,0
 access_qb_coverage_matrix_manager,quickbooks.coverage.matrix.manager,model_quickbooks_coverage_matrix,group_qb_manager,1,1,1,1
 access_qb_coverage_matrix_user,quickbooks.coverage.matrix.user,model_quickbooks_coverage_matrix,group_qb_user,1,0,0,0
-access_qb_dashboard_manager,quickbooks.dashboard.manager,model_quickbooks_dashboard,group_qb_manager,1,0,0,0
-access_qb_dashboard_user,quickbooks.dashboard.user,model_quickbooks_dashboard,group_qb_user,1,0,0,0
-access_qb_setup_wizard,quickbooks.setup.wizard,model_quickbooks_setup_wizard,group_qb_manager,1,1,1,1
-access_qb_sync_wizard,quickbooks.sync.wizard,model_quickbooks_sync_wizard,group_qb_manager,1,1,1,1
 access_qb_migration_wizard,quickbooks.migration.wizard,model_quickbooks_migration_wizard,group_qb_manager,1,1,1,1
 access_qb_post_opening_balances_wizard,qb.post.opening.balances.wizard,model_qb_post_opening_balances_wizard,group_qb_manager,1,1,1,1
