@@ -4,7 +4,9 @@ from odoo import api, fields, models
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
-    qb_employee_id = fields.Char(string='QB Employee ID', index=True, copy=False)
+    qb_employee_id = fields.Char(
+        string='QB Employee ID', index=True, copy=False, tracking=True,
+    )
     qb_hired_date = fields.Date(string='QB Hired Date', copy=False)
     qb_released_date = fields.Date(string='QB Released Date', copy=False)
     qb_employee_type = fields.Char(string='QB Employee Type', copy=False)
@@ -16,7 +18,7 @@ class HrEmployee(models.Model):
         copy=False,
     )
     qb_default_tax_code_ref = fields.Char(string='QB Default Tax Code Ref', copy=False)
-    qb_intuit_id = fields.Char(string='QB Intuit ID', copy=False)
+    qb_intuit_id = fields.Char(string='QB Intuit ID', copy=False, tracking=True)
     qb_employment_status = fields.Selection(
         [
             ('active', 'Active'),
@@ -30,9 +32,13 @@ class HrEmployee(models.Model):
     )
     qb_termination_date = fields.Date(string='QB Termination Date', copy=False)
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
-    qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
-    qb_do_not_sync = fields.Boolean(string='Exclude from QB Sync', default=False)
-    qb_sync_error = fields.Text(string='QB Sync Error', copy=False)
+    qb_last_synced = fields.Datetime(
+        string='Last QB Sync', copy=False, tracking=True,
+    )
+    qb_do_not_sync = fields.Boolean(
+        string='Exclude from QB Sync', default=False, tracking=True,
+    )
+    qb_sync_error = fields.Text(string='QB Sync Error', copy=False, tracking=True)
     qb_workers_comp_class_id = fields.Many2one(
         'hr.employee.category',
         string='QB Workers Comp Class',

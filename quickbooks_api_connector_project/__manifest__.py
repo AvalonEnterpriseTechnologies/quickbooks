@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector — Project Bridge',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Accounting',
     'summary': 'QuickBooks Project sync for Odoo project',
     'description': """
@@ -13,9 +13,7 @@
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',
     'license': 'LGPL-3',
     'depends': ['quickbooks_api_connector', 'project'],
-    'data': [
-        'views/project_views.xml',
-    ],
+    'data': [],
     'installable': True,
     'auto_install': True,
     'application': False,
