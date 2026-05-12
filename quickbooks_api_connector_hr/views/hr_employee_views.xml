@@ -11,14 +11,17 @@
                     <group>
                         <group string="QuickBooks IDs">
                             <field name="qb_employee_id" readonly="1"/>
-                            <field name="qb_work_location_id"/>
-                            <field name="qb_pay_schedule_id"/>
+                            <field name="qb_intuit_id" readonly="1"/>
                             <field name="qb_sync_token" readonly="1"/>
                         </group>
                         <group string="Team Status">
+                            <field name="qb_hired_date"/>
+                            <field name="qb_released_date"/>
+                            <field name="qb_employee_type"/>
                             <field name="qb_employment_status"/>
                             <field name="qb_termination_date"
                                    invisible="qb_employment_status != 'terminated'"/>
+                            <field name="qb_workers_comp_class_id"/>
                         </group>
                         <group string="Sync Status">
                             <field name="qb_last_synced" readonly="1"/>
