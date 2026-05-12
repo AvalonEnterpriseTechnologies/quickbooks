@@ -212,7 +212,7 @@ class ResConfigSettings(models.TransientModel):
         string='Sync Successes (24h)', compute='_compute_qb_metrics',
     )
     qb_last_successful_sync = fields.Datetime(
-        string='Last Successful Sync', compute='_compute_qb_metrics',
+        string='Last Success From Sync Log', compute='_compute_qb_metrics',
     )
     qb_coverage_summary = fields.Text(
         string='QuickBooks Coverage', compute='_compute_qb_coverage_summary',

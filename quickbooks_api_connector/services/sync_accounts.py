@@ -134,14 +134,13 @@ class QBSyncAccounts(models.AbstractModel):
 
     def pull_all(self, client, config, entity_type):
         """Pull the full chart of accounts from QBO."""
-        where = ''
-        where_parts = ['Active IN (true, false)']
-        if config.last_sync_date:
-            where_parts.append("MetaData.LastUpdatedTime > '%s'" % (
-                self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
-            ))
-        where = ' AND '.join(where_parts)
-        records = client.query_all('Account', where_clause=where)
+        # The Chart of Accounts is foundational for nearly every downstream
+        # entity (products, invoices, bills, journals, payments). Pull the
+        # complete active + inactive list every time instead of using
+        # config.last_sync_date; otherwise an existing connected config can
+        # skip unchanged accounts and leave the database without required
+        # account.account rows.
+        records = client.query_all('Account', where_clause='Active IN (true, false)')
         Account = self.env['account.account']
         matcher = self.env['qb.record.matcher']
         stats = {'matched': 0, 'created': 0, 'updated': 0, 'failed': 0}

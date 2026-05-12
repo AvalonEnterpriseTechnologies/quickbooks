@@ -78,6 +78,17 @@ class TestCoAFunctionalMatch(QuickbooksTestCommon):
         if 'company_ids' in created._fields:
             self.assertIn(self.company, created.company_ids)
 
+    def test_pull_all_does_not_filter_by_last_sync_date(self):
+        self.config.last_sync_date = '2026-01-31 12:00:00'
+        client = self._mock_client()
+        client.query_all.return_value = []
+
+        self.env['qb.sync.accounts'].pull_all(client, self.config, 'account')
+
+        where = client.query_all.call_args.kwargs.get('where_clause')
+        self.assertEqual(where, 'Active IN (true, false)')
+        self.assertNotIn('MetaData.LastUpdatedTime', where)
+
     def test_single_pull_uses_new_matcher(self):
         account = self.env['account.account'].with_context(skip_qb_sync=True).create({
             'name': 'Accounts Payable',
