@@ -45,7 +45,7 @@
                              invisible="qb_state == 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
-                                <label string="API Credentials"/>
+                                <span class="o_form_label">API Credentials</span>
                                 <div class="text-muted small mb8">
                                     From the Intuit Developer Portal &gt; Keys
                                     and credentials. Use the Sandbox keys for
@@ -141,7 +141,7 @@
                              invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
-                                <label string="Sync Status"/>
+                                <span class="o_form_label">Sync Status</span>
                                 <div class="text-muted small mb8">
                                     Live counters from <code>quickbooks.sync.queue</code>
                                     and <code>quickbooks.sync.log</code>. Per-record sync
@@ -186,7 +186,7 @@
                              invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane"/>
                             <div class="o_setting_right_pane">
-                                <label string="Coverage"/>
+                                <span class="o_form_label">Coverage</span>
                                 <div class="text-muted small mb8">
                                     QBO entities supported by this connector.
                                 </div>
