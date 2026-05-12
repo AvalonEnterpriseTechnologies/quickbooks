@@ -45,10 +45,10 @@ class QBSyncCustomFields(models.AbstractModel):
 
     def _upsert_definition(self, config, definition):
         vals = self._definition_vals(config, definition)
-        Definition = self.env['quickbooks.custom.field.definition'].sudo()
+        Definition = self.env['ir.model.fields'].sudo()
         existing = Definition.search([
-            ('company_id', '=', config.company_id.id),
             ('qb_definition_id', '=', vals['qb_definition_id']),
+            ('model', '=', vals['model']),
         ], limit=1)
         if existing:
             existing.write(vals)
@@ -59,16 +59,46 @@ class QBSyncCustomFields(models.AbstractModel):
         entity_types = definition.get('entityTypes') or []
         if isinstance(entity_types, list):
             entity_types = ','.join(entity_types)
+        model = self._model_for_entity(entity_types)
+        field_name = self._manual_field_name(definition)
         return {
-            'company_id': config.company_id.id,
             'qb_definition_id': str(definition.get('id') or definition.get('Id') or ''),
-            'name': definition.get('name') or definition.get('Name') or 'Custom Field',
-            'entity_type': entity_types,
-            'field_type': definition.get('type') or definition.get('fieldType') or '',
-            'active': bool(definition.get('active', True)),
-            'raw_json': definition,
+            'name': field_name,
+            'field_description': definition.get('name') or definition.get('Name') or 'Custom Field',
+            'model': model,
+            'ttype': self._ttype(definition.get('type') or definition.get('fieldType')),
+            'state': 'manual',
+            'qb_raw_json': definition,
             'qb_last_synced': fields.Datetime.now(),
         }
+
+    @staticmethod
+    def _manual_field_name(definition):
+        raw = definition.get('name') or definition.get('Name') or definition.get('id') or 'qb_custom'
+        safe = ''.join(ch.lower() if ch.isalnum() else '_' for ch in raw).strip('_')
+        return 'x_qb_%s' % (safe or 'custom')
+
+    @staticmethod
+    def _ttype(field_type):
+        field_type = str(field_type or '').lower()
+        if 'date' in field_type:
+            return 'date'
+        if 'bool' in field_type:
+            return 'boolean'
+        if 'number' in field_type or 'decimal' in field_type or 'amount' in field_type:
+            return 'float'
+        return 'char'
+
+    @staticmethod
+    def _model_for_entity(entity_types):
+        text = str(entity_types or '').lower()
+        if 'customer' in text or 'vendor' in text:
+            return 'res.partner'
+        if 'invoice' in text or 'bill' in text or 'journal' in text:
+            return 'account.move'
+        if 'item' in text or 'product' in text:
+            return 'product.product'
+        return 'res.partner'
 
 
 def extract_custom_field_values(qb_data):

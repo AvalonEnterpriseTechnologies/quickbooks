@@ -292,9 +292,5 @@ class QBSyncAccounts(models.AbstractModel):
         return False
 
     def _log_reconciliation(self, config, qb_data, account, decision):
-        self.env['quickbooks.account.reconciliation'].sudo().record_decision(
-            config=config,
-            qb_data=qb_data,
-            account=account,
-            decision=decision,
-        )
+        if account and hasattr(account, '_record_qb_link_decision'):
+            account.sudo()._record_qb_link_decision(config, qb_data, decision)

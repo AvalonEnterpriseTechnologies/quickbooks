@@ -52,14 +52,11 @@ class QBSyncReports(models.AbstractModel):
                     payload = self._fetch_report(
                         client, config, report_type, window_start, window_end, method,
                     )
-                    snapshot = self._store_snapshot(
-                        config, report_type, window_start, window_end, payload, method,
-                    )
                     rows = self._normalized_rows(payload)
                     total_rows += len(rows)
-                    self._store_derived_balances(config, snapshot, report_type, rows)
-                    self._store_report_rows(config, snapshot, payload)
-        self._prune_snapshots(config)
+                    self._store_derived_balances(
+                        config, report_type, window_start, window_end, payload, method, rows,
+                    )
         return {'rows': total_rows}
 
     def push_all(self, client, config, entity_type):
@@ -75,129 +72,19 @@ class QBSyncReports(models.AbstractModel):
         testing = True if getattr(config, 'reports_use_v2_now', False) else None
         return client.reports(report_type, params=params, testing_migration=testing)
 
-    def _store_snapshot(self, config, report_type, start_date, end_date, payload, method=None):
-        rows = self._normalized_rows(payload)
-        schema_version = self._schema_version(payload)
-        Snapshot = self.env['quickbooks.report.snapshot'].sudo()
-        vals = {
-            'company_id': config.company_id.id,
-            'report_type': report_type,
-            'period_start': start_date,
-            'period_end': end_date,
-            'accounting_method': method or getattr(config, 'reports_method', 'Accrual') or 'Accrual',
-            'schema_version': schema_version,
-            'raw_json': payload,
-            'fetched_at': fields.Datetime.now(),
-            'row_count': len(rows),
-        }
-        existing = Snapshot.search([
+    def _store_derived_balances(self, config, report_type, start_date, end_date, payload, method, rows):
+        if report_type in ACCOUNT_REPORT_TYPES:
+            self._store_account_balances(config, report_type, start_date, end_date, payload, method, rows)
+
+    def _store_account_balances(self, config, report_type, start_date, end_date, payload, method, rows):
+        Variance = self.env['qb.balance.variance'].sudo()
+        Variance.search([
             ('company_id', '=', config.company_id.id),
             ('report_type', '=', report_type),
             ('period_start', '=', start_date),
             ('period_end', '=', end_date),
-            ('accounting_method', '=', vals['accounting_method']),
-            ('schema_version', '=', schema_version),
-        ], limit=1)
-        if existing:
-            existing.write(vals)
-            return existing
-        return Snapshot.create(vals)
-
-    def _store_derived_balances(self, config, snapshot, report_type, rows):
-        if report_type in ACCOUNT_REPORT_TYPES:
-            self._store_account_balances(config, snapshot, report_type, rows)
-        elif report_type == 'GeneralLedger':
-            self._store_journal_balances(config, snapshot, rows)
-        elif report_type in PARTNER_BALANCE_REPORTS:
-            self._store_partner_balances(config, snapshot, report_type, rows)
-        elif report_type == 'InventoryValuationSummary':
-            self._store_inventory_balances(config, snapshot, rows)
-        elif report_type == 'SalesTaxLiabilityReport':
-            self._store_tax_liabilities(config, snapshot, rows)
-
-    def _store_report_rows(self, config, snapshot, payload):
-        ReportRow = self.env['quickbooks.report.row'].sudo()
-        ReportRow.search([('snapshot_id', '=', snapshot.id)]).unlink()
-        sequence = {'value': 0}
-        self._create_report_rows(
-            config=config,
-            snapshot=snapshot,
-            qbo_rows=payload.get('Rows', {}).get('Row', []),
-            parent=False,
-            path=[],
-            level=0,
-            sequence=sequence,
-        )
-
-    def _create_report_rows(self, config, snapshot, qbo_rows, parent, path, level, sequence):
-        ReportRow = self.env['quickbooks.report.row'].sudo()
-        for row in qbo_rows or []:
-            header = row.get('Header') or {}
-            summary = row.get('Summary') or {}
-            label = (
-                self._first_col_value(header.get('ColData'))
-                or row.get('group')
-                or self._first_col_value(row.get('ColData'))
-                or self._first_col_value(summary.get('ColData'))
-            )
-            current_parent = parent
-            current_path = path
-            if label:
-                sequence['value'] += 10
-                col_data = row.get('ColData') or summary.get('ColData') or header.get('ColData')
-                first = col_data[0] if col_data else {}
-                values = {
-                    'company_id': config.company_id.id,
-                    'snapshot_id': snapshot.id,
-                    'parent_id': parent.id if parent else False,
-                    'sequence': sequence['value'],
-                    'level': level,
-                    'path': ' / '.join(path + [label]),
-                    'label': label,
-                    'amount': self._last_numeric_value(col_data) or 0.0,
-                    'is_total': bool(summary.get('ColData')) or str(label).lower().startswith('total'),
-                    'is_section': bool(row.get('Rows')),
-                    'qb_account_id': first.get('id') or '',
-                    'account_id': self._find_account(config, {
-                        'id': first.get('id') or '',
-                        'label': label,
-                        'path': path,
-                    }).id or False,
-                    'currency_id': config.company_id.currency_id.id,
-                }
-                current_parent = ReportRow.create(values)
-                current_path = path + [label]
-            if row.get('Rows'):
-                self._create_report_rows(
-                    config, snapshot, row.get('Rows', {}).get('Row', []),
-                    current_parent, current_path, level + 1, sequence,
-                )
-            if summary.get('ColData') and not (
-                label and self._first_col_value(summary.get('ColData')) == label
-            ):
-                summary_label = self._first_col_value(summary.get('ColData')) or (
-                    'Total %s' % (label or 'Section')
-                )
-                sequence['value'] += 10
-                first = summary.get('ColData')[0] if summary.get('ColData') else {}
-                ReportRow.create({
-                    'company_id': config.company_id.id,
-                    'snapshot_id': snapshot.id,
-                    'parent_id': current_parent.id if current_parent else False,
-                    'sequence': sequence['value'],
-                    'level': level + 1,
-                    'path': ' / '.join(current_path + [summary_label]),
-                    'label': summary_label,
-                    'amount': self._last_numeric_value(summary.get('ColData')) or 0.0,
-                    'is_total': True,
-                    'is_section': False,
-                    'qb_account_id': first.get('id') or '',
-                    'currency_id': config.company_id.currency_id.id,
-                })
-
-    def _store_account_balances(self, config, snapshot, report_type, rows):
-        Balance = self.env['quickbooks.account.balance'].sudo()
-        Balance.search([('snapshot_id', '=', snapshot.id)]).unlink()
+            ('accounting_method', '=', method or getattr(config, 'reports_method', 'Accrual') or 'Accrual'),
+        ]).unlink()
         currency = config.company_id.currency_id
         for row in rows:
             name = row.get('label')
@@ -207,121 +94,21 @@ class QBSyncReports(models.AbstractModel):
             account = self._find_account(config, row)
             if not account and not row.get('id'):
                 continue
-            Balance.create({
+            if account:
+                account.write({'qb_current_balance': amount})
+            Variance.create({
                 'company_id': config.company_id.id,
                 'account_id': account.id if account else False,
-                'qb_account_id': row.get('id') or '',
-                'account_name': name,
+                'label': name,
                 'report_type': report_type,
-                'period_end': snapshot.period_end,
-                'accounting_method': snapshot.accounting_method,
-                'debit_balance': amount if amount >= 0 else 0.0,
-                'credit_balance': abs(amount) if amount < 0 else 0.0,
-                'balance': amount,
+                'period_start': start_date,
+                'period_end': end_date,
+                'accounting_method': method or getattr(config, 'reports_method', 'Accrual') or 'Accrual',
+                'qb_amount': amount,
+                'odoo_amount': self._odoo_account_balance(account, end_date) if account else 0.0,
+                'threshold_breached': abs(amount) > (getattr(config, 'balance_variance_threshold', 0.0) or 0.0),
+                'raw_json': payload,
                 'currency_id': currency.id,
-                'snapshot_id': snapshot.id,
-            })
-
-    def _store_journal_balances(self, config, snapshot, rows):
-        Balance = self.env['quickbooks.journal.balance'].sudo()
-        Balance.search([('snapshot_id', '=', snapshot.id)]).unlink()
-        _logger.info(
-            'Stored GeneralLedger snapshot %s as report rows only; GL row layouts '
-            'are not reliable journal-balance sources.',
-            snapshot.id,
-        )
-
-    def _store_partner_balances(self, config, snapshot, report_type, rows):
-        Balance = self.env['quickbooks.partner.balance'].sudo()
-        Balance.search([('snapshot_id', '=', snapshot.id)]).unlink()
-        kind = 'customer' if 'Receivable' in report_type else 'vendor'
-        currency = config.company_id.currency_id
-        for row in rows:
-            if self._is_computed_report_row(row):
-                continue
-            label = row.get('label')
-            if not label:
-                continue
-            amounts = self._numeric_values(row.get('columns') or [])
-            if not amounts:
-                continue
-            buckets = self._aging_buckets(amounts)
-            partner = self._find_partner(kind, row)
-            Balance.create({
-                'company_id': config.company_id.id,
-                'partner_id': partner.id if partner else False,
-                'partner_name': label,
-                'qb_customer_id': row.get('id') if kind == 'customer' else '',
-                'qb_vendor_id': row.get('id') if kind == 'vendor' else '',
-                'kind': kind,
-                'period_end': snapshot.period_end,
-                'total': buckets['total'],
-                'bucket_current': buckets['current'],
-                'bucket_1_30': buckets['1_30'],
-                'bucket_31_60': buckets['31_60'],
-                'bucket_61_90': buckets['61_90'],
-                'bucket_over_90': buckets['over_90'],
-                'currency_id': currency.id,
-                'snapshot_id': snapshot.id,
-            })
-
-    def _store_inventory_balances(self, config, snapshot, rows):
-        Balance = self.env['quickbooks.inventory.balance'].sudo()
-        Balance.search([('snapshot_id', '=', snapshot.id)]).unlink()
-        currency = config.company_id.currency_id
-        for row in rows:
-            if self._is_computed_report_row(row):
-                continue
-            label = row.get('label')
-            if not label:
-                continue
-            values = self._numeric_values(row.get('columns') or [])
-            if not values:
-                continue
-            product = self._find_product(row)
-            qty = values[0] if len(values) >= 1 else 0.0
-            avg_cost = values[-2] if len(values) >= 2 else 0.0
-            value = values[-1]
-            Balance.create({
-                'company_id': config.company_id.id,
-                'product_id': product.id if product else False,
-                'product_name': label,
-                'qb_item_id': row.get('id') or '',
-                'period_end': snapshot.period_end,
-                'qty_on_hand': qty,
-                'avg_cost': avg_cost,
-                'value': value,
-                'currency_id': currency.id,
-                'snapshot_id': snapshot.id,
-            })
-
-    def _store_tax_liabilities(self, config, snapshot, rows):
-        Liability = self.env['quickbooks.tax.liability'].sudo()
-        Liability.search([('snapshot_id', '=', snapshot.id)]).unlink()
-        currency = config.company_id.currency_id
-        for row in rows:
-            if self._is_computed_report_row(row):
-                continue
-            label = row.get('label')
-            values = self._numeric_values(row.get('columns') or [])
-            if not label or not values:
-                continue
-            tax = self.env['account.tax'].sudo().search([
-                ('company_id', '=', config.company_id.id),
-                '|',
-                ('qb_taxcode_id', '=', row.get('id') or ''),
-                ('name', '=', label),
-            ], limit=1)
-            Liability.create({
-                'company_id': config.company_id.id,
-                'tax_id': tax.id if tax else False,
-                'tax_agency': label,
-                'period_start': snapshot.period_start,
-                'period_end': snapshot.period_end,
-                'taxable_amount': values[-2] if len(values) >= 2 else 0.0,
-                'tax_amount': values[-1],
-                'currency_id': currency.id,
-                'snapshot_id': snapshot.id,
             })
 
     def _find_account(self, config, row):
@@ -362,6 +149,16 @@ class QBSyncReports(models.AbstractModel):
             if product:
                 return product
         return Product.search([('name', '=', row.get('label'))], limit=1)
+
+    def _odoo_account_balance(self, account, end_date):
+        if not account:
+            return 0.0
+        domain = [
+            ('account_id', '=', account.id),
+            ('date', '<=', end_date),
+            ('parent_state', '=', 'posted'),
+        ]
+        return sum(self.env['account.move.line'].sudo().search(domain).mapped('balance'))
 
     def _normalized_rows(self, payload):
         rows = []
@@ -538,14 +335,3 @@ class QBSyncReports(models.AbstractModel):
         ][month - 1]
         return value.replace(year=year, month=month, day=min(value.day, days_in_month))
 
-    def _prune_snapshots(self, config):
-        keep = max(getattr(config, 'reports_keep_n', 12) or 12, 1)
-        Snapshot = self.env['quickbooks.report.snapshot'].sudo()
-        for report_type in REPORT_TYPES:
-            snapshots = Snapshot.search([
-                ('company_id', '=', config.company_id.id),
-                ('report_type', '=', report_type),
-            ], order='period_end desc, fetched_at desc')
-            old = snapshots[keep:]
-            if old:
-                old.unlink()

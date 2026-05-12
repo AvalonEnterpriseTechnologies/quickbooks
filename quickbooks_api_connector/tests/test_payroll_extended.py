@@ -18,7 +18,7 @@ class TestPayrollExtended(QuickbooksTestCommon):
         )
 
         self.assertEqual(count, 1)
-        item = self.env['quickbooks.payroll.pay.item'].search([
+        item = self.env['hr.salary.rule'].search([
             ('qb_pay_item_id', '=', 'PI1'),
         ], limit=1)
         self.assertEqual(item.name, 'Regular Pay')
@@ -39,10 +39,10 @@ class TestPayrollExtended(QuickbooksTestCommon):
         )
 
         self.assertEqual(count, 1)
-        schedule = self.env['quickbooks.payroll.pay.schedule'].search([
+        schedule = self.env['hr.payroll.structure.type'].search([
             ('qb_pay_schedule_id', '=', 'PS1'),
         ], limit=1)
-        self.assertEqual(schedule.frequency, 'BIWEEKLY')
+        self.assertEqual(schedule.qb_frequency, 'BIWEEKLY')
 
     def test_checks_are_persisted(self):
         data = {
@@ -62,7 +62,7 @@ class TestPayrollExtended(QuickbooksTestCommon):
         )
 
         self.assertEqual(count, 1)
-        check = self.env['quickbooks.payroll.check'].search([
+        check = self.env['hr.payslip'].search([
             ('qb_check_id', '=', 'CHK1'),
         ], limit=1)
-        self.assertEqual(check.net_pay, 950.0)
+        self.assertEqual(check.qb_net_pay, 950.0)

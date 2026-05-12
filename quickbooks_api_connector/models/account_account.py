@@ -2,7 +2,7 @@ from odoo import api, fields, models
 
 
 class AccountAccount(models.Model):
-    _inherit = 'account.account'
+    _inherit = ['account.account', 'mail.thread']
 
     qb_account_id = fields.Char(
         string='QB Account ID', index=True, copy=False,
@@ -39,33 +39,37 @@ class AccountAccount(models.Model):
     qb_parent_account_id = fields.Char(string='QB Parent Account ID', copy=False)
     qb_is_subaccount = fields.Boolean(string='QB Sub-account', copy=False)
     qb_fqn = fields.Char(string='QB Fully Qualified Name', copy=False)
+    qb_link_decision = fields.Selection(
+        [
+            ('linked_by_id', 'Linked by QuickBooks ID'),
+            ('linked_by_code', 'Linked by Function + Code'),
+            ('linked_by_name', 'Linked by Function + Name'),
+            ('linked_by_compatible_code', 'Linked by Compatible Code'),
+            ('linked_by_compatible_name', 'Linked by Compatible Name'),
+            ('created', 'Created in Odoo'),
+            ('conflict', 'Conflict'),
+        ],
+        string='QB Link Decision',
+        copy=False,
+        tracking=True,
+    )
 
     @api.depends('qb_account_id')
     def _compute_qb_tb_balance(self):
-        Balance = self.env['quickbooks.account.balance'].sudo()
         for account in self:
-            balance = Balance.search([
-                ('account_id', '=', account.id),
-                ('report_type', '=', 'TrialBalance'),
-            ], order='period_end desc, id desc', limit=1)
-            if not balance and account.qb_account_id:
-                balance = Balance.search([
-                    ('qb_account_id', '=', account.qb_account_id),
-                    ('report_type', '=', 'TrialBalance'),
-                ], order='period_end desc, id desc', limit=1)
-            account.qb_tb_balance = balance.balance if balance else 0.0
+            account.qb_tb_balance = account.qb_current_balance or 0.0
 
     def action_view_qbo_balances(self):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': 'QuickBooks Account Balances',
-            'res_model': 'quickbooks.account.balance',
+            'name': 'QuickBooks Balance Variances',
+            'res_model': 'qb.balance.variance',
             'view_mode': 'list,form',
-            'domain': [('qb_account_id', '=', self.qb_account_id)],
+            'domain': [('account_id', '=', self.id)],
             'context': {
                 'default_account_id': self.id,
-                'default_qb_account_id': self.qb_account_id,
+                'default_label': self.display_name,
             },
         }
 
@@ -78,3 +82,27 @@ class AccountAccount(models.Model):
             'view_mode': 'list,form',
             'domain': [('qb_parent_account_id', '=', self.qb_account_id)],
         }
+
+    def _record_qb_link_decision(self, config, qb_data, decision):
+        valid = dict(self._fields['qb_link_decision'].selection)
+        decision = decision if decision in valid else 'conflict'
+        note = self._qb_link_decision_note(qb_data, decision)
+        self.write({'qb_link_decision': decision})
+        self.message_post(
+            body=note,
+            subject='QuickBooks account reconciliation',
+            subtype_xmlid='mail.mt_note',
+        )
+        return self
+
+    def _qb_link_decision_note(self, qb_data, decision):
+        self.ensure_one()
+        if decision == 'created':
+            return 'Created missing Odoo account from QuickBooks account %s.' % (
+                qb_data.get('Name') or qb_data.get('Id') or '',
+            )
+        return 'Linked QuickBooks account %s to Odoo account %s using decision %s.' % (
+            qb_data.get('Name') or qb_data.get('Id') or '',
+            self.display_name,
+            decision,
+        )

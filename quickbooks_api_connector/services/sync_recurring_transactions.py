@@ -19,7 +19,7 @@ class QBSyncRecurringTransactions(models.AbstractModel):
         return {'qb_id': str(recurring.get('Id', ''))}
 
     def push(self, client, config, job):
-        template = self.env['quickbooks.recurring.template'].browse(job.odoo_record_id)
+        template = self.env[job.odoo_model].browse(job.odoo_record_id)
         if not template.exists():
             return {}
         payload = self._odoo_to_qbo(template)
@@ -45,33 +45,20 @@ class QBSyncRecurringTransactions(models.AbstractModel):
         return {'count': len(records)}
 
     def push_all(self, client, config, entity_type):
-        templates = self.env['quickbooks.recurring.template'].search([
-            ('company_id', '=', config.company_id.id),
-            ('qb_recurring_id', '=', False),
-        ])
-        queue = self.env['quickbooks.sync.queue']
-        for template in templates:
-            queue.enqueue(
-                entity_type='recurring_transaction',
-                direction='push',
-                operation='create',
-                odoo_record_id=template.id,
-                odoo_model='quickbooks.recurring.template',
-                company=config.company_id,
-            )
-        return {'count': len(templates)}
+        _logger.info('Recurring templates are created from native recurring documents.')
+        return {'count': 0}
 
     def _upsert_template(self, config, recurring):
         vals = self._qb_to_template_vals(config, recurring)
-        Template = self.env['quickbooks.recurring.template'].sudo()
+        Template = self._target_model(vals['txn_type'])
+        write_vals = self._native_vals(Template, vals, config)
         existing = Template.search([
-            ('company_id', '=', config.company_id.id),
             ('qb_recurring_id', '=', vals['qb_recurring_id']),
         ], limit=1)
         if existing:
-            existing.with_context(skip_qb_sync=True).write(vals)
+            existing.with_context(skip_qb_sync=True).write(write_vals)
             return existing
-        return Template.with_context(skip_qb_sync=True).create(vals)
+        return Template.with_context(skip_qb_sync=True).create(write_vals)
 
     def _qb_to_template_vals(self, config, recurring):
         schedule = recurring.get('ScheduleInfo') or {}
@@ -89,30 +76,42 @@ class QBSyncRecurringTransactions(models.AbstractModel):
             'qb_sync_token': str(recurring.get('SyncToken', '')),
             'txn_type': txn_type,
             'active': bool(recurring.get('Active', True)),
-            'schedule_type': schedule.get('Type') or recurring.get('Type') or '',
-            'interval_type': interval.get('Type') or '',
-            'next_date': schedule.get('NextDate') or False,
-            'previous_date': schedule.get('PreviousDate') or False,
-            'raw_json': recurring,
+            'auto_post': self._auto_post(schedule.get('Type') or recurring.get('Type')),
+            'auto_post_until': schedule.get('EndDate') or False,
+            'invoice_date': schedule.get('NextDate') or False,
+            'date': schedule.get('NextDate') or False,
+            'qb_raw_json': recurring,
             'qb_last_synced': fields.Datetime.now(),
         }
 
     def _odoo_to_qbo(self, template):
-        payload = dict(template.raw_json or {})
+        payload = dict(template.qb_raw_json or {})
         payload.update({
             'Name': template.name,
-            'TxnType': template.txn_type,
-            'Active': template.active,
+            'Active': getattr(template, 'active', True),
         })
-        if template.schedule_type or template.interval_type or template.next_date:
-            schedule = dict(payload.get('ScheduleInfo') or {})
-            if template.schedule_type:
-                schedule['Type'] = template.schedule_type
-            if template.next_date:
-                schedule['NextDate'] = fields.Date.to_string(template.next_date)
-            if template.interval_type:
-                interval = dict(schedule.get('IntervalInfo') or {})
-                interval['Type'] = template.interval_type
-                schedule['IntervalInfo'] = interval
-            payload['ScheduleInfo'] = schedule
         return payload
+
+    def _target_model(self, txn_type):
+        if txn_type in ('Estimate',) and 'sale.order' in self.env:
+            return self.env['sale.order'].sudo()
+        return self.env['account.move'].sudo()
+
+    def _native_vals(self, Model, vals, config):
+        result = {key: value for key, value in vals.items() if key in Model._fields}
+        if Model._name == 'account.move':
+            result.setdefault('move_type', 'entry')
+            if 'journal_id' in Model._fields and not result.get('journal_id'):
+                journal = self.env['qb.sync.journals'].ensure_general_journal(
+                    config,
+                    key='qbo:general:recurring',
+                    name='QuickBooks Recurring Transactions',
+                )
+                result['journal_id'] = journal.id
+        return result
+
+    @staticmethod
+    def _auto_post(schedule_type):
+        if str(schedule_type or '').lower() in ('automated', 'scheduled'):
+            return 'at_date'
+        return 'no'

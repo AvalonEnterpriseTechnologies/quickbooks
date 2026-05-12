@@ -27,23 +27,25 @@ class QBSyncPayrollSchedules(models.AbstractModel):
         _logger.info('Skipping payroll schedule push_all; Payroll GraphQL is read-only.')
 
     def _upsert_schedules(self, data, config):
-        Schedule = self.env['quickbooks.payroll.pay.schedule']
+        if 'hr.payroll.structure.type' not in self.env:
+            _logger.warning("hr_payroll module not installed — skipping pay schedule sync")
+            return 0
+        Schedule = self.env['hr.payroll.structure.type'].sudo()
         count = 0
         for schedule in data.get('payrollPaySchedules', []):
             qb_id = str(schedule.get('id') or '')
             if not qb_id:
                 continue
             vals = {
-                'company_id': config.company_id.id,
                 'qb_pay_schedule_id': qb_id,
                 'name': schedule.get('name') or qb_id,
-                'frequency': schedule.get('frequency'),
-                'active': bool(schedule.get('active', True)),
-                'next_pay_date': schedule.get('nextPayDate') or False,
+                'qb_frequency': schedule.get('frequency'),
+                'qb_next_pay_date': schedule.get('nextPayDate') or False,
                 'qb_last_synced': fields.Datetime.now(),
+                'qb_raw_json': schedule,
             }
+            vals = {key: value for key, value in vals.items() if key in Schedule._fields}
             existing = Schedule.search([
-                ('company_id', '=', config.company_id.id),
                 ('qb_pay_schedule_id', '=', qb_id),
             ], limit=1)
             if existing:

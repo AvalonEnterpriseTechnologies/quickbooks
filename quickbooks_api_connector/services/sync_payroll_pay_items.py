@@ -27,22 +27,26 @@ class QBSyncPayrollPayItems(models.AbstractModel):
         _logger.info('Skipping payroll pay item push_all; Payroll GraphQL is read-only.')
 
     def _upsert_pay_items(self, data, config):
-        PayItem = self.env['quickbooks.payroll.pay.item']
+        if 'hr.salary.rule' not in self.env:
+            _logger.warning("hr_payroll module not installed — skipping pay item sync")
+            return 0
+        PayItem = self.env['hr.salary.rule'].sudo()
         count = 0
         for item in data.get('payrollPayItems', []):
             qb_id = str(item.get('id') or '')
             if not qb_id:
                 continue
             vals = {
-                'company_id': config.company_id.id,
                 'qb_pay_item_id': qb_id,
                 'name': item.get('name') or qb_id,
-                'pay_item_type': item.get('type'),
+                'code': item.get('code') or qb_id,
+                'qb_pay_item_type': item.get('type'),
                 'active': bool(item.get('active', True)),
                 'qb_last_synced': fields.Datetime.now(),
+                'qb_raw_json': item,
             }
+            vals = {key: value for key, value in vals.items() if key in PayItem._fields}
             existing = PayItem.search([
-                ('company_id', '=', config.company_id.id),
                 ('qb_pay_item_id', '=', qb_id),
             ], limit=1)
             if existing:

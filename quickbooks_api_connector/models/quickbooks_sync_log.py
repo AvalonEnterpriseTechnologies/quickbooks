@@ -95,7 +95,18 @@ class QuickbooksSyncLog(models.Model):
     @api.model
     def log_sync(self, **kwargs):
         try:
-            return self.sudo().create(kwargs)
+            log = self.sudo().create(kwargs)
+            odoo_model = kwargs.get('odoo_model')
+            odoo_record_id = kwargs.get('odoo_record_id')
+            if odoo_model and odoo_record_id and odoo_model in self.env:
+                record = self.env[odoo_model].browse(odoo_record_id)
+                if record.exists() and hasattr(record, 'message_post'):
+                    record.message_post(
+                        body=kwargs.get('error_message') or kwargs.get('response_data') or log.summary,
+                        subject='QuickBooks Sync',
+                        subtype_xmlid='mail.mt_note',
+                    )
+            return log
         except Exception:
             _logger.exception('Failed to write sync log')
             return self.browse()

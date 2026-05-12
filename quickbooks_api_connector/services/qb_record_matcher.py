@@ -139,7 +139,7 @@ ENTITY_META = {
         'qb_display_field': 'DisplayName',
     },
     'department': {
-        'model': 'hr.department',
+        'model': 'account.analytic.account',
         'qb_name': 'Department',
         'qb_id_field': 'qb_department_id',
         'name_field': 'name',
@@ -202,14 +202,14 @@ ENTITY_META = {
         'qb_display_field': 'FileName',
     },
     'recurring_transaction': {
-        'model': 'quickbooks.recurring.template',
+        'model': 'account.move',
         'qb_name': 'RecurringTransaction',
         'qb_id_field': 'qb_recurring_id',
         'name_field': 'name',
         'qb_display_field': 'Name',
     },
     'custom_field_definition': {
-        'model': 'quickbooks.custom.field.definition',
+        'model': 'ir.model.fields',
         'qb_name': 'CustomFieldDefinition',
         'qb_id_field': 'qb_definition_id',
         'name_field': 'name',
@@ -402,12 +402,12 @@ class QBRecordMatcher(models.AbstractModel):
 
     def _fallback_model(self, entity_type):
         return {
-            'payroll_compensation': 'quickbooks.payroll.compensation',
-            'payroll_employee': 'quickbooks.payroll.employee',
-            'payroll_pay_item': 'quickbooks.payroll.pay.item',
-            'payroll_schedule': 'quickbooks.payroll.pay.schedule',
-            'payroll_check': 'quickbooks.payroll.check',
-            'work_location': 'quickbooks.work.location',
+            'payroll_compensation': 'hr.contract',
+            'payroll_employee': 'hr.employee',
+            'payroll_pay_item': 'hr.salary.rule',
+            'payroll_schedule': 'hr.payroll.structure.type',
+            'payroll_check': 'hr.payslip',
+            'work_location': 'hr.work.location',
             'timesheet': 'account.analytic.line',
         }.get(entity_type, 'quickbooks.sync.queue')
 

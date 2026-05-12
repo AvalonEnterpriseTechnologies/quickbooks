@@ -35,7 +35,10 @@ class QBSyncPayrollChecks(models.AbstractModel):
             self.pull_all(None, config, 'payroll_check')
 
     def _upsert_checks(self, data, config):
-        Check = self.env['quickbooks.payroll.check']
+        if 'hr.payslip' not in self.env:
+            _logger.warning("hr_payroll module not installed — skipping payroll check sync")
+            return 0
+        Payslip = self.env['hr.payslip'].sudo()
         count = 0
         for check in data.get('payrollChecks', []):
             qb_id = str(check.get('id') or '')
@@ -47,26 +50,25 @@ class QBSyncPayrollChecks(models.AbstractModel):
                 'company_id': config.company_id.id,
                 'qb_check_id': qb_id,
                 'qb_employee_id': qb_employee_id,
-                'odoo_employee_id': employee.id if employee else False,
-                'display_name': check.get('displayName') or qb_id,
-                'check_date': check.get('checkDate') or False,
-                'pay_period_start': check.get('payPeriodStart') or False,
-                'pay_period_end': check.get('payPeriodEnd') or False,
-                'gross_pay': float(check.get('grossPay') or 0.0),
-                'net_pay': float(check.get('netPay') or 0.0),
-                'status': check.get('status'),
+                'employee_id': employee.id if employee else False,
+                'name': check.get('displayName') or qb_id,
+                'date_from': check.get('payPeriodStart') or check.get('checkDate') or False,
+                'date_to': check.get('payPeriodEnd') or check.get('checkDate') or False,
+                'qb_gross_pay': float(check.get('grossPay') or 0.0),
+                'qb_net_pay': float(check.get('netPay') or 0.0),
+                'qb_status': check.get('status'),
                 'qb_last_synced': fields.Datetime.now(),
+                'qb_raw_json': check,
             }
-            existing = Check.search([
+            vals = {key: value for key, value in vals.items() if key in Payslip._fields}
+            existing = Payslip.search([
                 ('company_id', '=', config.company_id.id),
                 ('qb_check_id', '=', qb_id),
             ], limit=1)
             if existing:
                 existing.write(vals)
             else:
-                existing = Check.create(vals)
-            if getattr(config, 'payroll_create_draft_payslips', False):
-                self._ensure_draft_payslip(existing, employee)
+                Payslip.create(vals)
             count += 1
         return count
 
@@ -77,15 +79,3 @@ class QBSyncPayrollChecks(models.AbstractModel):
             ('qb_employee_id', '=', qb_employee_id),
         ], limit=1)
 
-    def _ensure_draft_payslip(self, check, employee):
-        if not employee or 'hr.payslip' not in self.env or check.odoo_payslip_id:
-            return
-        vals = {
-            'employee_id': employee.id,
-            'name': check.display_name,
-            'date_from': check.pay_period_start or check.check_date,
-            'date_to': check.pay_period_end or check.check_date,
-            'company_id': check.company_id.id,
-        }
-        payslip = self.env['hr.payslip'].create(vals)
-        check.write({'odoo_payslip_id': payslip.id})

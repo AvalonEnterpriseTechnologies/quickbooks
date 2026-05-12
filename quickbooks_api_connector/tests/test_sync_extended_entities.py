@@ -95,7 +95,7 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         count = self.env['qb.sync.payroll']._upsert_compensations(data, self.config)
 
         self.assertEqual(count, 1)
-        comp = self.env['quickbooks.payroll.compensation'].search([
+        comp = self.env['hr.contract'].search([
             ('qb_employee_id', '=', 'E1'),
             ('qb_compensation_id', '=', 'C1'),
         ], limit=1)
@@ -234,11 +234,11 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
 
         self.env['qb.sync.recurring.transactions'].pull(client, self.config, job)
 
-        template = self.env['quickbooks.recurring.template'].search([
+        template = self.env['account.move'].search([
             ('qb_recurring_id', '=', 'R1'),
         ], limit=1)
         self.assertEqual(template.name, 'Monthly Rent')
-        self.assertEqual(template.txn_type, 'Bill')
+        self.assertEqual(template.qb_recurring_id, 'R1')
 
     def test_custom_field_definition_upsert(self):
         definition = {
@@ -254,8 +254,8 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         )
 
         self.assertEqual(record.qb_definition_id, 'CF1')
-        self.assertEqual(record.name, 'Job Number')
-        self.assertEqual(record.entity_type, 'Invoice')
+        self.assertEqual(record.name, 'x_qb_job_number')
+        self.assertEqual(record.model, 'account.move')
 
     def test_payroll_client_keeps_existing_model_name(self):
         self.assertTrue(self.env['qb.payroll.client'])
@@ -282,31 +282,33 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
         )
 
         self.assertEqual(count, 1)
-        benefit = self.env['quickbooks.employee.benefit'].search([
-            ('source_check_id', '=', 'PC1'),
+        benefit = self.env['hr.payslip.input'].search([
+            ('qb_source_check_id', '=', 'PC1'),
         ], limit=1)
-        self.assertEqual(benefit.benefit_type, 'retirement')
+        self.assertEqual(benefit.qb_benefit_type, 'retirement')
         self.assertEqual(benefit.amount, 75.0)
 
     def test_workers_comp_class_manual_rate_estimate(self):
-        workers_comp = self.env['quickbooks.workers.comp.class'].create({
-            'company_id': self.company.id,
-            'code': '8810',
+        workers_comp = self.env['hr.employee.category'].create({
             'name': 'Clerical Office Employees',
-            'base_rate': 0.25,
+            'qb_workers_comp_code': '8810',
+            'qb_workers_comp_rate': 0.25,
         })
 
-        self.assertEqual(workers_comp.source, 'manual')
-        self.assertEqual(workers_comp.base_rate, 0.25)
+        self.assertEqual(workers_comp.qb_workers_comp_source, 'manual')
+        self.assertEqual(workers_comp.qb_workers_comp_rate, 0.25)
 
-    def test_hr_advisor_note_is_manual_only(self):
-        note = self.env['quickbooks.hr.advisor.note'].create({
-            'company_id': self.company.id,
-            'name': 'Handbook update',
-            'category': 'handbook',
+    def test_hr_advisor_note_posts_to_employee_chatter(self):
+        employee = self.env['hr.employee'].create({
+            'name': 'Clerical Office Employees',
         })
 
-        self.assertEqual(note.api_status, 'manual')
+        employee.message_post(
+            subject='handbook',
+            body='Handbook update',
+            subtype_xmlid='mail.mt_note',
+        )
+        self.assertTrue(employee.message_ids.filtered(lambda msg: msg.subject == 'handbook'))
 
     def test_payroll_settings_snapshot_created(self):
         self.config.payroll_enabled = True
@@ -322,18 +324,20 @@ class TestExtendedEntitySync(QuickbooksTestCommon):
             result = service.pull_all(self._mock_client(), self.config, 'payroll_settings')
 
         self.assertEqual(result['count'], 1)
-        snapshot = self.env['quickbooks.payroll.settings'].search([], limit=1)
-        self.assertTrue(snapshot.pay_items_json)
+        saved = self.env['ir.config_parameter'].sudo().get_param(
+            'quickbooks.payroll.settings.%s' % self.company.id,
+        )
+        self.assertIn('pay_items', saved)
 
     def test_bank_rule_is_manual_only(self):
-        rule = self.env['quickbooks.bank.rule'].create({
-            'company_id': self.company.id,
+        rule = self.env['account.reconcile.model'].create({
             'name': 'Fuel purchases',
-            'conditions_json': {'description_contains': 'FUEL'},
+            'rule_type': 'writeoff_button',
+            'qb_conditions_json': {'description_contains': 'FUEL'},
         })
 
-        self.assertEqual(rule.api_status, 'manual')
-        self.assertEqual(rule.conditions_json['description_contains'], 'FUEL')
+        self.assertEqual(rule.qb_api_status, 'manual')
+        self.assertEqual(rule.qb_conditions_json['description_contains'], 'FUEL')
 
     def test_qbo_group_item_maps_bundle_components_and_category(self):
         vals = self.env['qb.sync.products']._qb_item_to_odoo({

@@ -1,11 +1,10 @@
-from odoo import api, fields, models
+from odoo import fields, models
 
 
-class AccountAnalyticAccount(models.Model):
-    _inherit = 'account.analytic.account'
+class HrWorkLocation(models.Model):
+    _inherit = 'hr.work.location'
 
-    qb_class_id = fields.Char(string='QB Class ID', index=True, copy=False)
-    qb_department_id = fields.Char(string='QB Department ID', index=True, copy=False)
+    qb_work_location_id = fields.Char(string='QB Work Location ID', index=True, copy=False)
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
     qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
     qb_do_not_sync = fields.Boolean(string='Exclude from QB Sync', default=False)

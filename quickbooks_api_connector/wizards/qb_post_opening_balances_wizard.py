@@ -13,7 +13,7 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
     )
     as_of_date = fields.Date(required=True, default=lambda self: self._default_as_of_date())
     snapshot_id = fields.Many2one(
-        'quickbooks.report.snapshot',
+        'qb.balance.variance',
         domain="[('report_type', '=', 'TrialBalance'), ('company_id', '=', company_id)]",
         required=True,
     )
@@ -108,21 +108,21 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
         }
 
     def _opening_lines(self):
-        balances = self.env['quickbooks.account.balance'].search([
-            ('snapshot_id', '=', self.snapshot_id.id),
+        balances = self.env['qb.balance.variance'].search([
             ('report_type', '=', 'TrialBalance'),
             ('company_id', '=', self.company_id.id),
-        ], order='account_name')
+            ('period_end', '=', self.snapshot_id.period_end),
+        ], order='label')
         lines = []
         debit_total = credit_total = 0.0
         pnl_balance = 0.0
         unmatched = []
         for balance in balances:
-            account = balance.account_id or self._find_account_for_balance(balance)
+            account = balance.account_id
             if not account:
                 unmatched.append(balance)
                 continue
-            amount = balance.balance or 0.0
+            amount = balance.qb_amount or 0.0
             if not self._is_balance_sheet_account(account):
                 pnl_balance += amount
                 continue
@@ -133,7 +133,7 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
             debit_total += debit
             credit_total += credit
             lines.append((0, 0, {
-                'name': balance.account_name,
+                'name': balance.label,
                 'account_id': account.id,
                 'debit': debit,
                 'credit': credit,
@@ -143,11 +143,11 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
                 'The following QuickBooks Trial Balance rows are not linked to '
                 'Odoo accounts: %s. Link the accounts first or enable posting '
                 'unmatched rows to Opening Equity.'
-                % ', '.join(unmatched.mapped('account_name'))
+                % ', '.join(unmatched.mapped('label'))
             )
         if unmatched and self.allow_unmatched_to_opening_equity:
             for balance in unmatched:
-                amount = balance.balance or 0.0
+                amount = balance.qb_amount or 0.0
                 debit = amount if amount > 0 else 0.0
                 credit = abs(amount) if amount < 0 else 0.0
                 if not debit and not credit:
@@ -155,7 +155,7 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
                 debit_total += debit
                 credit_total += credit
                 lines.append((0, 0, {
-                    'name': 'Unmatched QB row: %s' % balance.account_name,
+                    'name': 'Unmatched QB row: %s' % balance.label,
                     'account_id': self.opening_equity_account_id.id,
                     'debit': debit,
                     'credit': credit,
@@ -181,15 +181,6 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
             }))
         return lines
 
-    def _find_account_for_balance(self, balance):
-        Account = self.env['account.account']
-        domain = [('qb_account_id', '=', balance.qb_account_id)]
-        if 'company_ids' in Account._fields:
-            domain.append(('company_ids', 'in', self.company_id.id))
-        elif 'company_id' in Account._fields:
-            domain.append(('company_id', '=', self.company_id.id))
-        return Account.search(domain, limit=1)
-
     @staticmethod
     def _is_balance_sheet_account(account):
         account_type = account.account_type or ''
@@ -203,7 +194,7 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
         ]
         if as_of_date:
             domain.append(('period_end', '<=', as_of_date))
-        return self.env['quickbooks.report.snapshot'].search(
+        return self.env['qb.balance.variance'].search(
             domain, order='period_end desc, fetched_at desc', limit=1,
         )
 

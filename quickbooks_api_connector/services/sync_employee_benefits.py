@@ -47,26 +47,26 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
         return lines
 
     def _upsert_line(self, config, check, line):
-        Benefit = self.env['quickbooks.employee.benefit'].sudo()
+        if 'hr.payslip.input' not in self.env:
+            _logger.warning("hr_payroll module not installed — skipping benefit line")
+            return False
+        Benefit = self.env['hr.payslip.input'].sudo()
         amount = self._amount(line.get('amount') or line.get('Amount'))
         name = line.get('name') or line.get('Name') or line.get('type') or 'Benefit'
+        payslip = self._payslip(check, config)
         vals = {
-            'company_id': config.company_id.id,
-            'employee_id': self._employee_id(check),
+            'payslip_id': payslip.id if payslip else False,
             'qb_employee_id': check.get('employeeId') or '',
-            'employee_name': check.get('displayName') or '',
-            'benefit_type': self._benefit_type(name, line.get('type')),
+            'qb_benefit_type': self._benefit_type(name, line.get('type')),
             'name': name,
+            'code': name[:64],
             'amount': amount,
-            'period_start': check.get('payPeriodStart') or False,
-            'period_end': check.get('payPeriodEnd') or check.get('checkDate') or False,
-            'source_check_id': check.get('id') or '',
-            'raw_json': line,
-            'currency_id': config.company_id.currency_id.id,
+            'qb_source_check_id': check.get('id') or '',
+            'qb_raw_json': line,
         }
+        vals = {key: value for key, value in vals.items() if key in Benefit._fields}
         existing = Benefit.search([
-            ('company_id', '=', config.company_id.id),
-            ('source_check_id', '=', vals['source_check_id']),
+            ('qb_source_check_id', '=', vals.get('qb_source_check_id')),
             ('qb_employee_id', '=', vals['qb_employee_id']),
             ('name', '=', vals['name']),
             ('amount', '=', vals['amount']),
@@ -75,6 +75,15 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
             existing.write(vals)
             return existing
         return Benefit.create(vals)
+
+    def _payslip(self, check, config):
+        if 'hr.payslip' not in self.env:
+            return False
+        qb_check_id = check.get('id') or ''
+        return self.env['hr.payslip'].sudo().search([
+            ('company_id', '=', config.company_id.id),
+            ('qb_check_id', '=', qb_check_id),
+        ], limit=1)
 
     def _employee_id(self, check):
         employee = self.env['hr.employee'].sudo().search([

@@ -49,9 +49,8 @@ class AccountMove(models.Model):
     qb_do_not_sync = fields.Boolean(
         string='Exclude from QB Sync', default=False,
     )
-    qb_opening_snapshot_id = fields.Many2one(
-        'quickbooks.report.snapshot',
-        string='QB Opening Balance Snapshot',
+    qb_opening_snapshot_id = fields.Integer(
+        string='Legacy QB Opening Snapshot ID',
         copy=False,
         index=True,
     )
@@ -65,6 +64,10 @@ class AccountMove(models.Model):
         currency_field='company_currency_id',
         copy=False,
     )
+    qb_recurring_id = fields.Char(
+        string='QB Recurring Transaction ID', index=True, copy=False,
+    )
+    qb_raw_json = fields.Json(string='QB Raw JSON', copy=False)
 
     def _post(self, soft=True):
         posted = super()._post(soft=soft)

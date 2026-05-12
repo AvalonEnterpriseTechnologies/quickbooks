@@ -9,6 +9,10 @@ class SaleOrder(models.Model):
     qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
     qb_sync_error = fields.Text(string='Last Sync Error', copy=False)
     qb_do_not_sync = fields.Boolean(string='Exclude from QB Sync', default=False)
+    qb_recurring_id = fields.Char(
+        string='QB Recurring Transaction ID', index=True, copy=False,
+    )
+    qb_raw_json = fields.Json(string='QB Raw JSON', copy=False)
 
     def write(self, vals):
         res = super().write(vals)

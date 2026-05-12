@@ -1,6 +1,6 @@
 import logging
 
-from odoo import fields, models
+from odoo import models
 
 _logger = logging.getLogger(__name__)
 
@@ -20,14 +20,14 @@ class QBSyncPayrollSettings(models.AbstractModel):
         if not getattr(config, 'payroll_enabled', False):
             return {'count': 0}
         payroll_client = self.env['qb.payroll.client']
-        vals = {
-            'company_id': config.company_id.id,
-            'fetched_at': fields.Datetime.now(),
-            'pay_items_json': payroll_client.fetch_pay_items(config),
-            'pay_schedules_json': payroll_client.fetch_pay_schedules(config),
-            'work_locations_json': self._work_locations(config),
-        }
-        self.env['quickbooks.payroll.settings'].sudo().create(vals)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quickbooks.payroll.settings.%s' % config.company_id.id,
+            str({
+                'pay_items': payroll_client.fetch_pay_items(config),
+                'pay_schedules': payroll_client.fetch_pay_schedules(config),
+                'work_locations': self._work_locations(config),
+            }),
+        )
         return {'count': 1}
 
     def push_all(self, client, config, entity_type):

@@ -41,7 +41,10 @@ class QBSyncPayroll(models.AbstractModel):
         _logger.info('Skipping payroll compensation push_all; Payroll GraphQL is read-only here.')
 
     def _upsert_compensations(self, data, config):
-        Compensation = self.env['quickbooks.payroll.compensation']
+        if 'hr.contract' not in self.env:
+            _logger.warning("hr_payroll module not installed — skipping compensation sync")
+            return 0
+        Contract = self.env['hr.contract'].sudo()
         count = 0
         for emp_comp in data.get('payrollEmployeeCompensations', []):
             qb_employee_id = str(emp_comp.get('employeeId', ''))
@@ -56,16 +59,23 @@ class QBSyncPayroll(models.AbstractModel):
                     continue
                 vals = {
                     'company_id': config.company_id.id,
-                    'odoo_employee_id': employee.id if employee else False,
-                    'employee_name': employee.name if employee else False,
+                    'employee_id': employee.id if employee else False,
                     'qb_employee_id': qb_employee_id,
                     'qb_compensation_id': qb_comp_id,
-                    'name': comp.get('name') or qb_comp_id,
-                    'compensation_type': comp.get('type'),
-                    'active': bool(comp.get('active', True)),
+                    'name': comp.get('name') or (employee.name if employee else qb_comp_id),
+                    'qb_employment_status': comp.get('type'),
                     'qb_last_synced': fields.Datetime.now(),
+                    'qb_raw_json': comp,
                 }
-                existing = Compensation.search([
+                wage = comp.get('wage') or comp.get('rate') or comp.get('amount')
+                if isinstance(wage, dict):
+                    wage = wage.get('value') or wage.get('amount')
+                try:
+                    vals['wage'] = float(wage or 0.0)
+                except (TypeError, ValueError):
+                    pass
+                vals = {key: value for key, value in vals.items() if key in Contract._fields}
+                existing = Contract.search([
                     ('company_id', '=', config.company_id.id),
                     ('qb_employee_id', '=', qb_employee_id),
                     ('qb_compensation_id', '=', qb_comp_id),
@@ -73,6 +83,6 @@ class QBSyncPayroll(models.AbstractModel):
                 if existing:
                     existing.write(vals)
                 else:
-                    Compensation.create(vals)
+                    Contract.create(vals)
                 count += 1
         return count

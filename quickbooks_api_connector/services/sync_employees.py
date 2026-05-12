@@ -31,16 +31,16 @@ class QBSyncEmployees(models.AbstractModel):
             'work_phone': (qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber', False),
             'mobile_phone': (qb_data.get('Mobile') or {}).get('FreeFormNumber', False),
             'qb_employee_id': str(qb_data.get('Id', '')),
-            'qb_work_location_id': str(
-                (qb_data.get('WorkLocationRef') or {}).get('value') or ''
+            'qb_hired_date': qb_data.get('HiredDate') or False,
+            'qb_released_date': qb_data.get('ReleasedDate') or False,
+            'qb_employee_type': qb_data.get('EmployeeType') or False,
+            'qb_web_addr': (qb_data.get('WebAddr') or {}).get('URI') or False,
+            'qb_organization': bool(qb_data.get('Organization')),
+            'qb_use_time_entry': self._normalize_time_entry(qb_data.get('UseTimeEntry')),
+            'qb_default_tax_code_ref': (
+                (qb_data.get('DefaultTaxCodeRef') or {}).get('value') or False
             ),
-            'qb_pay_schedule_id': str(
-                (qb_data.get('PayScheduleRef') or {}).get('value') or ''
-            ),
-            'qb_employment_status': self._normalize_employment_status(
-                qb_data.get('EmploymentStatus') or qb_data.get('Active')
-            ),
-            'qb_termination_date': qb_data.get('ReleasedDate') or False,
+            'qb_intuit_id': qb_data.get('IntuitId') or False,
             'qb_sync_token': str(qb_data.get('SyncToken', '')),
             'qb_last_synced': fields.Datetime.now(),
             'qb_sync_error': False,
@@ -49,10 +49,6 @@ class QBSyncEmployees(models.AbstractModel):
         addr = qb_data.get('PrimaryAddr') or {}
         if addr.get('Line1'):
             vals['work_location_name'] = addr['Line1']
-
-        hire_date = qb_data.get('HiredDate')
-        if hire_date and 'first_contract_date' in self.env['hr.employee']._fields:
-            vals['first_contract_date'] = hire_date[:10]
 
         return {
             key: value for key, value in vals.items()
@@ -72,16 +68,8 @@ class QBSyncEmployees(models.AbstractModel):
             data['PrimaryPhone'] = {'FreeFormNumber': employee.work_phone}
         if employee.mobile_phone:
             data['Mobile'] = {'FreeFormNumber': employee.mobile_phone}
-        if getattr(employee, 'qb_work_location_id', False):
-            data['WorkLocationRef'] = {'value': employee.qb_work_location_id}
-        if getattr(employee, 'qb_pay_schedule_id', False):
-            data['PayScheduleRef'] = {'value': employee.qb_pay_schedule_id}
-        if getattr(employee, 'qb_employment_status', False):
-            data['EmploymentStatus'] = self._qbo_employment_status(
-                employee.qb_employment_status
-            )
-        if getattr(employee, 'qb_termination_date', False):
-            data['ReleasedDate'] = employee.qb_termination_date.isoformat()
+        if getattr(employee, 'qb_released_date', False):
+            data['ReleasedDate'] = employee.qb_released_date.isoformat()
         address = getattr(employee, 'address_id', False)
         if address:
             data['PrimaryAddr'] = {
@@ -116,6 +104,14 @@ class QBSyncEmployees(models.AbstractModel):
             'leave': 'Leave',
             'inactive': 'Inactive',
         }.get(status or 'active', 'Active')
+
+    @staticmethod
+    def _normalize_time_entry(value):
+        if value in ('UseTimeEntry', 'use_time_entry', True):
+            return 'use_time_entry'
+        if value in ('DoNotUseTimeEntry', 'do_not_use_time_entry', False):
+            return 'do_not_use_time_entry'
+        return False
 
     def push(self, client, config, job):
         if not self._check_model():
