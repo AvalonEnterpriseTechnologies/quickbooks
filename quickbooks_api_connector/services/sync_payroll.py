@@ -45,11 +45,19 @@ class QBSyncPayroll(models.AbstractModel):
             _logger.warning("hr_payroll module not installed — skipping compensation sync")
             return 0
         Contract = self.env['hr.contract'].sudo()
+        if 'qb_compensation_id' not in Contract._fields:
+            _logger.warning(
+                "QuickBooks payroll bridge fields are not loaded — skipping compensation sync"
+            )
+            return 0
         count = 0
         for emp_comp in data.get('payrollEmployeeCompensations', []):
             qb_employee_id = str(emp_comp.get('employeeId', ''))
             employee = False
-            if 'hr.employee' in self.env:
+            if (
+                'hr.employee' in self.env
+                and 'qb_employee_id' in self.env['hr.employee']._fields
+            ):
                 employee = self.env['hr.employee'].search([
                     ('qb_employee_id', '=', qb_employee_id),
                 ], limit=1)

@@ -13,6 +13,11 @@ class QBSyncEmployees(models.AbstractModel):
         if 'hr.employee' not in self.env:
             _logger.warning("hr module not installed — skipping employee sync")
             return False
+        if 'qb_employee_id' not in self.env['hr.employee']._fields:
+            _logger.warning(
+                "QuickBooks HR bridge fields are not loaded — skipping employee sync"
+            )
+            return False
         return True
 
     def _qb_employee_to_odoo(self, qb_data):

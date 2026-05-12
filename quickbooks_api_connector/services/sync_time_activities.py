@@ -24,7 +24,11 @@ class QBSyncTimeActivities(models.AbstractModel):
         }
 
         emp_ref = qb_data.get('EmployeeRef')
-        if emp_ref and 'hr.employee' in self.env:
+        if (
+            emp_ref
+            and 'hr.employee' in self.env
+            and 'qb_employee_id' in self.env['hr.employee']._fields
+        ):
             employee = self.env['hr.employee'].search(
                 [('qb_employee_id', '=', emp_ref.get('value'))], limit=1,
             )
@@ -46,7 +50,7 @@ class QBSyncTimeActivities(models.AbstractModel):
             'Description': line.name or '',
         }
         if hasattr(line, 'employee_id') and line.employee_id:
-            if line.employee_id.qb_employee_id:
+            if 'qb_employee_id' in line.employee_id._fields and line.employee_id.qb_employee_id:
                 data['EmployeeRef'] = {'value': line.employee_id.qb_employee_id}
         return {k: v for k, v in data.items() if v is not None}
 

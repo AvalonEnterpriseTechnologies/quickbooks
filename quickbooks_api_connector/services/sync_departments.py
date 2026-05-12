@@ -13,14 +13,19 @@ class QBSyncDepartments(models.AbstractModel):
         if 'account.analytic.account' not in self.env:
             _logger.warning("analytic accounting not installed — skipping department sync")
             return False
+        if 'qb_department_id' not in self.env['account.analytic.account']._fields:
+            _logger.warning(
+                "QuickBooks analytic account fields are not loaded — skipping department sync"
+            )
+            return False
         return True
 
     def _department_plan(self, company):
         Plan = self.env['account.analytic.plan'].sudo()
-        plan = Plan.search([
-            ('name', '=', 'QuickBooks Departments'),
-            ('company_id', 'in', [company.id, False]),
-        ], limit=1)
+        domain = [('name', '=', 'QuickBooks Departments')]
+        if 'company_id' in Plan._fields:
+            domain.append(('company_id', 'in', [company.id, False]))
+        plan = Plan.search(domain, limit=1)
         if not plan:
             vals = {'name': 'QuickBooks Departments'}
             if 'company_id' in Plan._fields:

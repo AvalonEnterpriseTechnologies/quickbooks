@@ -281,6 +281,8 @@ class QBRecordMatcher(models.AbstractModel):
         Model = self.env[meta['model']]
         base_domain = self._company_domain(Model, company)
         qb_id = str(qb_data.get('Id') or '')
+        if meta['qb_id_field'] not in Model._fields:
+            return Model.browse()
         if qb_id:
             match = Model.search(base_domain + [(meta['qb_id_field'], '=', qb_id)], limit=1)
             if match:
@@ -366,6 +368,8 @@ class QBRecordMatcher(models.AbstractModel):
     def find_qbo_match(self, client, entity_type, odoo_record):
         meta = self.get_meta(entity_type)
         if not meta:
+            return {}
+        if meta['qb_id_field'] not in odoo_record._fields:
             return {}
         qb_name = meta['qb_name']
         where = self._qbo_where_for_record(entity_type, odoo_record, meta)

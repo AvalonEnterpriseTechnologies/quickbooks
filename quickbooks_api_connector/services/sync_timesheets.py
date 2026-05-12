@@ -22,7 +22,11 @@ class QBSyncTimesheets(models.AbstractModel):
         }
 
         user_id = ts_data.get('user_id')
-        if user_id and 'hr.employee' in self.env:
+        if (
+            user_id
+            and 'hr.employee' in self.env
+            and 'qb_employee_id' in self.env['hr.employee']._fields
+        ):
             employee = self.env['hr.employee'].search(
                 [('qb_employee_id', '=', str(user_id))], limit=1,
             )
@@ -40,7 +44,7 @@ class QBSyncTimesheets(models.AbstractModel):
             'notes': line.name or '',
         }
         employee = getattr(line, 'employee_id', False)
-        if employee and employee.qb_employee_id:
+        if employee and 'qb_employee_id' in employee._fields and employee.qb_employee_id:
             payload['user_id'] = int(employee.qb_employee_id)
         jobcode = getattr(line, 'account_id', False)
         project_id = self._project_jobcode_id(line)
@@ -63,6 +67,8 @@ class QBSyncTimesheets(models.AbstractModel):
         elif 'account_id' in Project._fields:
             domain = [('account_id', '=', account.id)]
         if not domain:
+            return False
+        if 'qb_project_id' not in Project._fields:
             return False
         project = Project.search(domain + [('qb_project_id', '!=', False)], limit=1)
         return project.qb_project_id if project else False

@@ -51,6 +51,11 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
             _logger.warning("hr_payroll module not installed — skipping benefit line")
             return False
         Benefit = self.env['hr.payslip.input'].sudo()
+        if 'qb_source_check_id' not in Benefit._fields:
+            _logger.warning(
+                "QuickBooks payroll bridge fields are not loaded — skipping benefit line"
+            )
+            return False
         amount = self._amount(line.get('amount') or line.get('Amount'))
         name = line.get('name') or line.get('Name') or line.get('type') or 'Benefit'
         payslip = self._payslip(check, config)
@@ -86,6 +91,8 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
         ], limit=1)
 
     def _employee_id(self, check):
+        if 'qb_employee_id' not in self.env['hr.employee']._fields:
+            return False
         employee = self.env['hr.employee'].sudo().search([
             ('qb_employee_id', '=', check.get('employeeId') or ''),
         ], limit=1)

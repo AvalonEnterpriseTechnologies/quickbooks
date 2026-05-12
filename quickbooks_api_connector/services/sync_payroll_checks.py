@@ -39,6 +39,11 @@ class QBSyncPayrollChecks(models.AbstractModel):
             _logger.warning("hr_payroll module not installed — skipping payroll check sync")
             return 0
         Payslip = self.env['hr.payslip'].sudo()
+        if 'qb_check_id' not in Payslip._fields:
+            _logger.warning(
+                "QuickBooks payroll bridge fields are not loaded — skipping payroll check sync"
+            )
+            return 0
         count = 0
         for check in data.get('payrollChecks', []):
             qb_id = str(check.get('id') or '')
@@ -74,6 +79,8 @@ class QBSyncPayrollChecks(models.AbstractModel):
 
     def _find_employee(self, qb_employee_id):
         if not qb_employee_id or 'hr.employee' not in self.env:
+            return False
+        if 'qb_employee_id' not in self.env['hr.employee']._fields:
             return False
         return self.env['hr.employee'].search([
             ('qb_employee_id', '=', qb_employee_id),

@@ -13,6 +13,11 @@ class QBSyncProjects(models.AbstractModel):
         if 'project.project' not in self.env:
             _logger.warning('project module not installed; skipping project sync')
             return False
+        if 'qb_project_id' not in self.env['project.project']._fields:
+            _logger.warning(
+                'QuickBooks project bridge fields are not loaded; skipping project sync'
+            )
+            return False
         return True
 
     def _odoo_project_to_qb_customer(self, project):

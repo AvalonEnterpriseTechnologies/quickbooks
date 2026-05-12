@@ -42,6 +42,8 @@ class QBSyncPayrollEmployees(models.AbstractModel):
     def _find_employee(self, qb_employee_id):
         if 'hr.employee' not in self.env:
             return False
+        if 'qb_employee_id' not in self.env['hr.employee']._fields:
+            return False
         return self.env['hr.employee'].search([
             ('qb_employee_id', '=', qb_employee_id),
         ], limit=1)
@@ -63,6 +65,8 @@ class QBSyncPayrollEmployees(models.AbstractModel):
         if 'hr.contract' not in self.env:
             return False
         Contract = self.env['hr.contract'].sudo()
+        if 'qb_employee_id' not in Contract._fields:
+            return False
         contract = Contract.search([
             ('employee_id', '=', employee.id),
             ('company_id', '=', config.company_id.id),
