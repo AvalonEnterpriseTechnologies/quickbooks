@@ -56,10 +56,13 @@
         <field name="active">True</field>
     </record>
 
-    <!-- Daily read-only payroll checks pull; Intuit Payroll GraphQL is rate-sensitive -->
-    <record id="ir_cron_qb_payroll_checks" model="ir.cron">
-        <field name="name">QuickBooks: Pull Payroll Checks</field>
-        <field name="model_id" ref="model_qb_sync_payroll_checks"/>
+    <!-- Daily orchestrated payroll pull: settings -> work locations -> schedules
+         -> pay items -> employees -> tax setup -> compensations -> checks
+         -> benefits. Skips checks + benefits for companies whose payroll has
+         been cut over to Odoo (qb_payroll_archived = True). -->
+    <record id="ir_cron_qb_payroll_full" model="ir.cron">
+        <field name="name">QuickBooks: Pull Payroll (Full)</field>
+        <field name="model_id" ref="model_qb_sync_payroll_orchestrator"/>
         <field name="state">code</field>
         <field name="code">model.cron_pull_for_all_companies()</field>
         <field name="interval_number">1</field>

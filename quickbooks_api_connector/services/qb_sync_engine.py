@@ -40,6 +40,7 @@ ENTITY_SERVICE_MAP = {
     'company_info': 'qb.sync.company.info',
     'payroll_compensation': 'qb.sync.payroll',
     'payroll_employee': 'qb.sync.payroll.employees',
+    'payroll_tax_setup': 'qb.sync.payroll.employees',
     'payroll_pay_item': 'qb.sync.payroll.pay.items',
     'payroll_schedule': 'qb.sync.payroll.schedules',
     'payroll_check': 'qb.sync.payroll.checks',
@@ -193,15 +194,23 @@ class QBSyncEngine(models.AbstractModel):
             'deposit', 'transfer',
             'journal_entry',
             'time_activity',
-            'payroll_employee', 'payroll_compensation', 'payroll_pay_item',
-            'payroll_schedule', 'payroll_check', 'work_location', 'timesheet',
+            # Payroll runs in strict dependency order: settings + work
+            # locations seed reference data, then schedules and items
+            # define structures + rules, then employee data + tax setup
+            # populate the per-employee surface, and finally compensations,
+            # checks, and benefits hang off the now-complete graph.
+            'payroll_settings',
+            'work_location',
+            'payroll_schedule', 'payroll_pay_item',
+            'payroll_employee', 'payroll_tax_setup',
+            'payroll_compensation',
+            'payroll_check', 'employee_benefit',
+            'timesheet',
             'inventory_adjustment',
             'attachment',
             'report',
             'recurring_transaction',
             'custom_field_definition',
-            'employee_benefit',
-            'payroll_settings',
         ]
         toggle_map = {
             'company_info': True,
@@ -229,11 +238,32 @@ class QBSyncEngine(models.AbstractModel):
             'department': getattr(config, 'sync_departments', False),
             'time_activity': getattr(config, 'sync_time_activities', False),
             'project': getattr(config, 'sync_projects', False),
-            'payroll_compensation': getattr(config, 'payroll_enabled', False),
-            'payroll_employee': getattr(config, 'payroll_enabled', False),
-            'payroll_pay_item': getattr(config, 'payroll_enabled', False),
-            'payroll_schedule': getattr(config, 'payroll_enabled', False),
-            'payroll_check': getattr(config, 'payroll_enabled', False),
+            'payroll_compensation': (
+                getattr(config, 'payroll_enabled', False)
+                and not getattr(config, 'qb_payroll_archived', False)
+                and bool(getattr(config, 'sync_payroll_compensations', True))
+            ),
+            'payroll_employee': (
+                getattr(config, 'payroll_enabled', False)
+                and bool(getattr(config, 'sync_payroll_employees', True))
+            ),
+            'payroll_tax_setup': (
+                getattr(config, 'payroll_enabled', False)
+                and bool(getattr(config, 'sync_payroll_tax_setup', True))
+            ),
+            'payroll_pay_item': (
+                getattr(config, 'payroll_enabled', False)
+                and bool(getattr(config, 'sync_payroll_pay_items', True))
+            ),
+            'payroll_schedule': (
+                getattr(config, 'payroll_enabled', False)
+                and bool(getattr(config, 'sync_payroll_pay_schedules', True))
+            ),
+            'payroll_check': (
+                getattr(config, 'payroll_enabled', False)
+                and not getattr(config, 'qb_payroll_archived', False)
+                and bool(getattr(config, 'sync_payroll_checks', True))
+            ),
             'work_location': getattr(config, 'payroll_enabled', False),
             'timesheet': getattr(config, 'qbt_enabled', False),
             'inventory_adjustment': getattr(config, 'sync_inventory_adjustments', False),
@@ -245,7 +275,10 @@ class QBSyncEngine(models.AbstractModel):
                 config, 'sync_recurring_transactions', False,
             ),
             'custom_field_definition': getattr(config, 'custom_fields_enabled', False),
-            'employee_benefit': getattr(config, 'sync_employee_benefits', False),
+            'employee_benefit': (
+                getattr(config, 'sync_employee_benefits', False)
+                and not getattr(config, 'qb_payroll_archived', False)
+            ),
             'payroll_settings': getattr(config, 'sync_payroll_settings', False),
         }
         cdc_records = self._collect_cdc_records(client, config, entity_order)

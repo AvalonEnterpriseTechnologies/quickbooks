@@ -1,28 +1,30 @@
 {
     'name': 'QuickBooks API Connector — HR Payroll Bridge',
-    'version': '19.0.1.0.2',
+    'version': '19.0.2.0.0',
     'category': 'Accounting',
-    'summary': 'QuickBooks Payroll sync fields for Odoo Payroll',
+    'summary': 'QuickBooks Payroll sync fields and archive for Odoo Payroll',
     'description': """
         Bridge module that wires QuickBooks Payroll GraphQL data into Odoo
         Payroll native models (hr.contract, hr.payslip, hr.payslip.input,
-        hr.salary.rule, hr.payroll.structure.type).
+        hr.salary.rule, hr.payroll.structure, hr.payroll.structure.type)
+        and into a dedicated read-only archive (qb.payroll.check) so that
+        historical QuickBooks paychecks remain auditable after Odoo takes
+        over as the live payroll system of record.
 
-        Requires the Enterprise HR Payroll stack (``hr_payroll`` and
-        ``hr_contract``). It is shipped with ``installable=False`` so that
-        Odoo installations that do not have those Enterprise modules in
-        their addons path can still load the rest of the
-        ``quickbooks_api_connector`` family. Flip ``installable`` to True
-        in this manifest only after confirming that ``hr_payroll`` AND
-        ``hr_contract`` are both present in the addons path; the module
-        will then auto-install when both are installed.
+        Auto-installs when both ``hr_payroll`` and ``hr_contract`` are
+        present in the addons path. Odoo's dependency resolver guarantees
+        the module is silently skipped otherwise — the manifest no longer
+        needs to be edited by hand.
     """,
     'author': 'Avalon Enterprise Technologies',
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',
     'license': 'LGPL-3',
     'depends': ['quickbooks_api_connector', 'hr_payroll', 'hr_contract'],
-    'data': [],
-    'installable': False,
+    'data': [
+        'security/ir.model.access.csv',
+    ],
+    'post_init_hook': '_post_init_seed_payroll',
+    'installable': True,
     'auto_install': True,
     'application': False,
 }

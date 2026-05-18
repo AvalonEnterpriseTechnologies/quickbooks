@@ -4,6 +4,11 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+# Each query is shaped against the QuickBooks Online Payroll GraphQL surface
+# documented on developer.intuit.com. The connector reads only fields that
+# the GraphQL endpoint actually returns, so partially-entitled subscriptions
+# (e.g. Core without Tax Setup) degrade gracefully into the smaller subset.
+
 PAYROLL_COMPENSATIONS_QUERY = """
 query PayrollEmployeeCompensations {
     payrollEmployeeCompensations {
@@ -13,6 +18,12 @@ query PayrollEmployeeCompensations {
             name
             type
             active
+            rate
+            rateType
+            effectiveDate
+            frequency
+            payScheduleId
+            defaultHoursPerWeek
         }
     }
 }
@@ -23,11 +34,70 @@ query PayrollEmployees {
     payrollEmployees {
         id
         displayName
+        givenName
+        familyName
         employmentStatus
+        employeeType
         workLocationId
         payScheduleId
         hireDate
         terminationDate
+        birthDate
+        ssn
+        email
+        phone
+        workersCompClassId
+        mailingAddress {
+            line1
+            line2
+            city
+            state
+            postalCode
+            country
+        }
+        workAddress {
+            line1
+            line2
+            city
+            state
+            postalCode
+            country
+        }
+        directDeposit {
+            bankRoutingNumber
+            bankAccountNumber
+            accountType
+            amount
+            allocationType
+        }
+    }
+}
+"""
+
+PAYROLL_TAX_SETUP_QUERY = """
+query PayrollEmployeeTaxSetup {
+    payrollEmployeeTaxSetup {
+        employeeId
+        federalW4 {
+            filingStatus
+            multipleJobs
+            dependentsAmount
+            otherIncome
+            deductions
+            extraWithholding
+            exempt
+        }
+        stateW4 {
+            stateCode
+            filingStatus
+            allowances
+            extraWithholding
+            exempt
+            additionalFields {
+                key
+                value
+            }
+        }
     }
 }
 """
@@ -37,7 +107,15 @@ query PayrollPayItems {
     payrollPayItems {
         id
         name
+        code
         type
+        category
+        calculationType
+        taxability
+        glAccountId
+        liabilityAccountId
+        vendorId
+        isYtd
         active
     }
 }
@@ -51,6 +129,10 @@ query PayrollPaySchedules {
         frequency
         active
         nextPayDate
+        periodStart
+        periodEnd
+        payDate
+        assignedEmployeeIds
     }
 }
 """
@@ -62,20 +144,59 @@ query PayrollChecks($startDate: String, $endDate: String) {
         employeeId
         displayName
         checkDate
+        checkNumber
+        paymentMethod
+        journalRefId
         payPeriodStart
         payPeriodEnd
         grossPay
         netPay
         status
+        earnings {
+            payItemId
+            name
+            hours
+            rate
+            amount
+        }
+        taxes {
+            payItemId
+            name
+            type
+            jurisdiction
+            employee
+            employer
+            amount
+        }
         deductions {
+            payItemId
+            name
+            type
+            employee
+            employer
+            amount
+            isPreTax
+        }
+        employerContributions {
+            payItemId
+            name
+            amount
+        }
+        benefits {
+            payItemId
             name
             type
             amount
         }
-        benefits {
-            name
-            type
-            amount
+        ytd {
+            grossPay
+            netPay
+            federalIncome
+            stateIncome
+            fica
+            medicare
+            futa
+            suta
         }
     }
 }
@@ -91,6 +212,9 @@ class QBPayrollClient(models.AbstractModel):
 
     def fetch_payroll_employees(self, config):
         return self.execute_graphql(config, PAYROLL_EMPLOYEES_QUERY)
+
+    def fetch_employee_tax_setup(self, config):
+        return self.execute_graphql(config, PAYROLL_TAX_SETUP_QUERY)
 
     def fetch_pay_items(self, config):
         return self.execute_graphql(config, PAYROLL_PAY_ITEMS_QUERY)

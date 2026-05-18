@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, fields, models
+from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -14,6 +14,17 @@ class QBSyncPayroll(models.AbstractModel):
         return {}
 
     def pull(self, client, config, job):
+        return self._pull_compensations(config)
+
+    def pull_all(self, client, config, entity_type):
+        if not getattr(config, 'payroll_enabled', False):
+            return
+        return self._pull_compensations(config)
+
+    def push_all(self, client, config, entity_type):
+        _logger.info('Skipping payroll compensation push_all; Payroll GraphQL is read-only.')
+
+    def _pull_compensations(self, config):
         payroll_client = self.env['qb.payroll.client']
         try:
             data = payroll_client.fetch_compensations(config)
@@ -21,46 +32,25 @@ class QBSyncPayroll(models.AbstractModel):
             _logger.exception('Payroll compensation pull failed')
             return {}
 
-        self._upsert_compensations(data, config)
-        return {'qb_id': 'payroll_batch'}
-
-    def pull_all(self, client, config, entity_type):
-        if not getattr(config, 'payroll_enabled', False):
-            return
-        payroll_client = self.env['qb.payroll.client']
-        try:
-            data = payroll_client.fetch_compensations(config)
-        except Exception:
-            _logger.exception('Payroll compensation pull_all failed')
-            return
-
         count = self._upsert_compensations(data, config)
         _logger.info('Pulled %d employee compensation records', count)
-
-    def push_all(self, client, config, entity_type):
-        _logger.info('Skipping payroll compensation push_all; Payroll GraphQL is read-only here.')
+        return {'qb_id': 'payroll_compensations_batch', 'count': count}
 
     def _upsert_compensations(self, data, config):
         if 'hr.contract' not in self.env:
-            _logger.warning("hr_payroll module not installed — skipping compensation sync")
+            _logger.warning("hr_payroll module not installed - skipping compensation sync")
             return 0
         Contract = self.env['hr.contract'].sudo()
         if 'qb_compensation_id' not in Contract._fields:
             _logger.warning(
-                "QuickBooks payroll bridge fields are not loaded — skipping compensation sync"
+                "QuickBooks payroll bridge fields are not loaded - skipping "
+                "compensation sync"
             )
             return 0
         count = 0
         for emp_comp in data.get('payrollEmployeeCompensations', []):
             qb_employee_id = str(emp_comp.get('employeeId', ''))
-            employee = False
-            if (
-                'hr.employee' in self.env
-                and 'qb_employee_id' in self.env['hr.employee']._fields
-            ):
-                employee = self.env['hr.employee'].search([
-                    ('qb_employee_id', '=', qb_employee_id),
-                ], limit=1)
+            employee = self._find_employee(qb_employee_id)
             for comp in emp_comp.get('compensations', []):
                 qb_comp_id = str(comp.get('id', ''))
                 if not qb_employee_id or not qb_comp_id:
@@ -75,13 +65,31 @@ class QBSyncPayroll(models.AbstractModel):
                     'qb_last_synced': fields.Datetime.now(),
                     'qb_raw_json': comp,
                 }
-                wage = comp.get('wage') or comp.get('rate') or comp.get('amount')
-                if isinstance(wage, dict):
-                    wage = wage.get('value') or wage.get('amount')
+                if 'qb_pay_schedule_id' in Contract._fields and comp.get('payScheduleId'):
+                    vals['qb_pay_schedule_id'] = str(comp['payScheduleId'])
+                rate = comp.get('rate') or comp.get('wage') or comp.get('amount')
+                if isinstance(rate, dict):
+                    rate = rate.get('value') or rate.get('amount')
                 try:
-                    vals['wage'] = float(wage or 0.0)
+                    rate_value = float(rate or 0.0)
                 except (TypeError, ValueError):
-                    pass
+                    rate_value = 0.0
+                if rate_value and 'wage' in Contract._fields:
+                    vals['wage'] = rate_value
+                if rate_value and 'qb_rate' in Contract._fields:
+                    vals['qb_rate'] = rate_value
+                rate_type = str(comp.get('rateType') or '').lower()
+                if rate_type and 'qb_rate_type' in Contract._fields:
+                    if rate_type in ('hourly', 'salary', 'commission'):
+                        vals['qb_rate_type'] = rate_type
+                if (
+                    comp.get('defaultHoursPerWeek') is not None
+                    and 'qb_default_hours_per_week' in Contract._fields
+                ):
+                    try:
+                        vals['qb_default_hours_per_week'] = float(comp['defaultHoursPerWeek'])
+                    except (TypeError, ValueError):
+                        pass
                 vals = {key: value for key, value in vals.items() if key in Contract._fields}
                 existing = Contract.search([
                     ('company_id', '=', config.company_id.id),
@@ -94,3 +102,12 @@ class QBSyncPayroll(models.AbstractModel):
                     Contract.create(vals)
                 count += 1
         return count
+
+    def _find_employee(self, qb_employee_id):
+        if not qb_employee_id or 'hr.employee' not in self.env:
+            return False
+        if 'qb_employee_id' not in self.env['hr.employee']._fields:
+            return False
+        return self.env['hr.employee'].sudo().search([
+            ('qb_employee_id', '=', qb_employee_id),
+        ], limit=1)

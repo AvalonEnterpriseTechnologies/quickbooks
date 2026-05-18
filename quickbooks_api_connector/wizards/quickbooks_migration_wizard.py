@@ -38,7 +38,26 @@ class QuickbooksMigrationWizard(models.TransientModel):
     migrate_inventory_adjustments = fields.Boolean(
         default=False, string='Inventory Adjustments',
     )
-    migrate_payroll = fields.Boolean(default=False, string='Payroll Read Data')
+    # Legacy "all-payroll-in-one" toggle. Kept on the model so older code
+    # paths (server actions, scripted runs) continue to work, but the UI
+    # now exposes the individual phases below.
+    migrate_payroll = fields.Boolean(default=False, string='Payroll Read Data (Legacy)')
+    migrate_payroll_settings_data = fields.Boolean(
+        default=False, string='Payroll Settings Snapshot',
+    )
+    migrate_pay_schedules = fields.Boolean(default=True, string='Pay Schedules')
+    migrate_pay_items = fields.Boolean(default=True, string='Pay Items')
+    migrate_work_locations = fields.Boolean(default=True, string='Work Locations')
+    migrate_payroll_employees = fields.Boolean(default=True, string='Payroll Employees')
+    migrate_payroll_tax_setup = fields.Boolean(
+        default=True, string='Payroll Tax Setup (W-4 / state)',
+    )
+    migrate_payroll_compensations = fields.Boolean(
+        default=True, string='Payroll Compensations',
+    )
+    migrate_payroll_checks = fields.Boolean(
+        default=True, string='Payroll Checks (history)',
+    )
     migrate_opening_balances = fields.Boolean(
         default=True,
         string='Opening Balances / Trial Balance Snapshot',
@@ -94,11 +113,26 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('journal_entry')
         if self.migrate_inventory_adjustments:
             ordered_entities.append('inventory_adjustment')
-        if self.migrate_payroll:
-            ordered_entities.extend([
-                'payroll_employee', 'payroll_compensation', 'payroll_pay_item',
-                'payroll_schedule', 'payroll_check', 'work_location',
-            ])
+        # Payroll runs in dependency order: settings + work locations +
+        # schedules + items seed the structure, employees + tax setup
+        # populate the per-employee surface, and only then do compensations
+        # / checks / benefits hang off the now-complete graph.
+        if self.migrate_payroll_settings_data or self.migrate_payroll:
+            ordered_entities.append('payroll_settings')
+        if self.migrate_work_locations or self.migrate_payroll:
+            ordered_entities.append('work_location')
+        if self.migrate_pay_schedules or self.migrate_payroll:
+            ordered_entities.append('payroll_schedule')
+        if self.migrate_pay_items or self.migrate_payroll:
+            ordered_entities.append('payroll_pay_item')
+        if self.migrate_payroll_employees or self.migrate_payroll:
+            ordered_entities.append('payroll_employee')
+        if self.migrate_payroll_tax_setup or self.migrate_payroll:
+            ordered_entities.append('payroll_tax_setup')
+        if self.migrate_payroll_compensations or self.migrate_payroll:
+            ordered_entities.append('payroll_compensation')
+        if self.migrate_payroll_checks or self.migrate_payroll:
+            ordered_entities.append('payroll_check')
         if self.migrate_employee_benefits:
             ordered_entities.append('employee_benefit')
         if self.migrate_payroll_settings:

@@ -218,6 +218,38 @@ class ResConfigSettings(models.TransientModel):
     qb_payroll_create_draft_payslips = fields.Boolean(
         string='Create Draft Payslips From Payroll Checks', default=False,
     )
+    qb_sync_payroll_pay_schedules = fields.Boolean(
+        string='Sync Pay Schedules', default=True,
+    )
+    qb_sync_payroll_pay_items = fields.Boolean(
+        string='Sync Pay Items', default=True,
+    )
+    qb_sync_payroll_employees_detail = fields.Boolean(
+        string='Sync Payroll Employees', default=True,
+    )
+    qb_sync_payroll_tax_setup = fields.Boolean(
+        string='Sync Payroll Tax Setup (W-4 / state)', default=True,
+    )
+    qb_sync_payroll_compensations = fields.Boolean(
+        string='Sync Payroll Compensations', default=True,
+    )
+    qb_sync_payroll_checks_history = fields.Boolean(
+        string='Sync Payroll Checks (history)', default=True,
+    )
+    qb_payroll_post_archive_journal = fields.Boolean(
+        string='Post Archive Journal Per QBO Paycheck',
+        default=False,
+    )
+    qb_payroll_archived = fields.Boolean(
+        string='QuickBooks Payroll Archived',
+        related='qb_config_id.qb_payroll_archived',
+        readonly=True,
+    )
+    qb_payroll_cutover_date = fields.Datetime(
+        string='QuickBooks Payroll Cutover Date',
+        related='qb_config_id.qb_payroll_cutover_date',
+        readonly=True,
+    )
 
     # --- QuickBooks Time / TSheets API (Phase 4) ---
     qb_time_enabled = fields.Boolean(string='Enable QuickBooks Time Sync', default=False)
@@ -467,6 +499,27 @@ class ResConfigSettings(models.TransientModel):
                 'qb_payroll_create_draft_payslips': getattr(
                     config, 'payroll_create_draft_payslips', False,
                 ),
+                'qb_sync_payroll_pay_schedules': getattr(
+                    config, 'sync_payroll_pay_schedules', True,
+                ),
+                'qb_sync_payroll_pay_items': getattr(
+                    config, 'sync_payroll_pay_items', True,
+                ),
+                'qb_sync_payroll_employees_detail': getattr(
+                    config, 'sync_payroll_employees', True,
+                ),
+                'qb_sync_payroll_tax_setup': getattr(
+                    config, 'sync_payroll_tax_setup', True,
+                ),
+                'qb_sync_payroll_compensations': getattr(
+                    config, 'sync_payroll_compensations', True,
+                ),
+                'qb_sync_payroll_checks_history': getattr(
+                    config, 'sync_payroll_checks', True,
+                ),
+                'qb_payroll_post_archive_journal': getattr(
+                    config, 'qb_payroll_post_archive_journal', False,
+                ),
                 'qb_time_enabled': getattr(config, 'qbt_enabled', False),
             })
         return res
@@ -560,6 +613,9 @@ class ResConfigSettings(models.TransientModel):
             'sync_recurring_transactions', 'custom_fields_enabled',
             'sync_employee_benefits', 'sync_payroll_settings', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
+            'sync_payroll_pay_schedules', 'sync_payroll_pay_items',
+            'sync_payroll_tax_setup', 'sync_payroll_compensations',
+            'sync_payroll_checks', 'qb_payroll_post_archive_journal',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',
@@ -570,6 +626,13 @@ class ResConfigSettings(models.TransientModel):
             'reports_keep_n': 'qb_reports_keep_n',
             'reports_use_v2_now': 'qb_reports_use_v2_now',
             'custom_fields_enabled': 'qb_custom_fields_enabled',
+            'sync_payroll_pay_schedules': 'qb_sync_payroll_pay_schedules',
+            'sync_payroll_pay_items': 'qb_sync_payroll_pay_items',
+            'sync_payroll_employees': 'qb_sync_payroll_employees_detail',
+            'sync_payroll_tax_setup': 'qb_sync_payroll_tax_setup',
+            'sync_payroll_compensations': 'qb_sync_payroll_compensations',
+            'sync_payroll_checks': 'qb_sync_payroll_checks_history',
+            'qb_payroll_post_archive_journal': 'qb_payroll_post_archive_journal',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)
@@ -652,6 +715,16 @@ class ResConfigSettings(models.TransientModel):
         """
         config = self._get_or_create_qb_config()
         return config.action_apply_qbo_account_mapping()
+
+    def action_qb_cutover_payroll(self):
+        """Run the payroll cutover audit + flip via quickbooks.config."""
+        config = self._get_or_create_qb_config()
+        return config.action_qb_cutover_payroll()
+
+    def action_qb_payroll_audit_only(self):
+        """Run only the pre-cutover audit and post results to the chatter."""
+        config = self._get_or_create_qb_config()
+        return config.action_qb_payroll_audit_only()
 
     def action_qb_run_initial_migration(self):
         """Queue a full bidirectional initial migration in dependency order.

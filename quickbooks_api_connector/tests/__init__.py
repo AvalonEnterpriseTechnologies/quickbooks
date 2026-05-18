@@ -21,3 +21,6 @@ from . import test_sync_terms
 from . import test_sync_classes
 from . import test_sync_deposits
 from . import test_sync_transfers
+from . import test_payroll_bridge_fields_load
+from . import test_payroll_extended
+from . import test_payroll_cutover

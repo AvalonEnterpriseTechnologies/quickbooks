@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_payroll_check_payroll_user,qb.payroll.check payroll user,model_qb_payroll_check,hr_payroll.group_hr_payroll_user,1,0,0,0
+access_qb_payroll_check_payroll_manager,qb.payroll.check payroll manager,model_qb_payroll_check,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_payroll_check_line_payroll_user,qb.payroll.check.line payroll user,model_qb_payroll_check_line,hr_payroll.group_hr_payroll_user,1,0,0,0
+access_qb_payroll_check_line_payroll_manager,qb.payroll.check.line payroll manager,model_qb_payroll_check_line,hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_qb_payroll_settings_snapshot_payroll_user,qb.payroll.settings.snapshot payroll user,model_qb_payroll_settings_snapshot,hr_payroll.group_hr_payroll_user,1,0,0,0
+access_qb_payroll_settings_snapshot_payroll_manager,qb.payroll.settings.snapshot payroll manager,model_qb_payroll_settings_snapshot,hr_payroll.group_hr_payroll_manager,1,1,1,1

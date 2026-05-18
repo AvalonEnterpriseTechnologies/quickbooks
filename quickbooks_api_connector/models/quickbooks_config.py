@@ -203,7 +203,49 @@ class QuickbooksConfig(models.Model):
     payroll_create_draft_payslips = fields.Boolean(
         default=False,
         string='Create Draft Payslips From Payroll Checks',
-        help='When hr_payroll is installed, create draft Odoo payslips from pulled QBO payroll checks.',
+        help='Deprecated: paychecks now land in qb.payroll.check (read-only '
+             'archive) regardless of this flag. Kept for backward compatibility '
+             'with old wizards.',
+    )
+    sync_payroll_pay_schedules = fields.Boolean(
+        default=True, string='Sync Payroll Pay Schedules',
+    )
+    sync_payroll_pay_items = fields.Boolean(
+        default=True, string='Sync Payroll Pay Items',
+    )
+    sync_payroll_employees = fields.Boolean(
+        default=True, string='Sync Payroll Employees',
+    )
+    sync_payroll_tax_setup = fields.Boolean(
+        default=True, string='Sync Payroll Tax Setup',
+    )
+    sync_payroll_compensations = fields.Boolean(
+        default=True, string='Sync Payroll Compensations',
+    )
+    sync_payroll_checks = fields.Boolean(
+        default=True, string='Sync Payroll Checks (history)',
+    )
+    qb_payroll_post_archive_journal = fields.Boolean(
+        string='Post Archive Journal Per QBO Paycheck',
+        default=False,
+        help='When set, each imported QuickBooks paycheck posts a balanced '
+             'mirror journal entry (debit salary expense, credit payroll '
+             'liabilities, credit net-pay clearing) so the Odoo GL ties to '
+             'QuickBooks without re-running payroll.',
+    )
+    qb_payroll_archived = fields.Boolean(
+        string='QuickBooks Payroll Archived',
+        default=False,
+        copy=False,
+        tracking=True,
+        help='Set by the Cutover To Odoo Payroll action. Daily payroll '
+             'check / benefit pulls are skipped while True; settings, '
+             'schedules, pay items, and employees keep syncing for audit.',
+    )
+    qb_payroll_cutover_date = fields.Datetime(
+        string='QuickBooks Payroll Cutover Date',
+        copy=False,
+        tracking=True,
     )
     qbt_enabled = fields.Boolean(default=False, string='Enable QuickBooks Time API')
     qbt_access_token_encrypted = fields.Text(copy=False)
@@ -687,6 +729,283 @@ class QuickbooksConfig(models.Model):
             note=note,
             user_id=responsible.id,
         )
+
+    # ------------------------------------------------------------------
+    # Payroll cutover
+    # ------------------------------------------------------------------
+    REQUIRED_PAYROLL_FIELDS = (
+        'wage_type', 'schedule_pay', 'structure_type_id', 'resource_calendar_id',
+    )
+    REQUIRED_W4_FEDERAL_FIELDS = ('qb_federal_filing_status',)
+    REQUIRED_KS_W4_FIELDS = (
+        'l10n_ks_filing_status', 'l10n_ks_form_effective_date',
+    )
+
+    def action_qb_cutover_payroll(self):
+        """Run the pre-cutover audit and (if clean) seal QBO as archive.
+
+        On a successful flip:
+          * ``qb_payroll_archived`` is set to True (cron skips checks / benefits)
+          * ``qb_payroll_cutover_date`` records the timestamp
+          * The KS_SIT rule is attached to every US payroll structure that
+            originated from QuickBooks pay schedules.
+        """
+        self.ensure_one()
+        return self._run_payroll_cutover(commit=True)
+
+    def action_qb_payroll_audit_only(self):
+        self.ensure_one()
+        return self._run_payroll_cutover(commit=False)
+
+    def _run_payroll_cutover(self, commit):
+        if not self.payroll_enabled:
+            raise UserError('QuickBooks payroll sync is not enabled for this company.')
+        if self.qb_payroll_archived and commit:
+            raise UserError(
+                'QuickBooks payroll is already archived (cutover date: %s).'
+                % self.qb_payroll_cutover_date,
+            )
+
+        audit = self._build_payroll_audit()
+        self._post_payroll_audit_summary(audit, commit=commit)
+
+        if audit['blocking_employees'] or audit['blocking_structures']:
+            if commit:
+                raise UserError(
+                    'Pre-cutover audit found %d employee(s) and %d structure(s) '
+                    'that are not ready. See the chatter on this configuration '
+                    'for details, fix them, and run the cutover again.'
+                    % (
+                        len(audit['blocking_employees']),
+                        len(audit['blocking_structures']),
+                    ),
+                )
+            return self._notification(
+                'QuickBooks Payroll Audit',
+                'Audit complete: %d employee(s) and %d structure(s) need fixes '
+                'before cutover.' % (
+                    len(audit['blocking_employees']),
+                    len(audit['blocking_structures']),
+                ),
+                'warning',
+            )
+
+        if not commit:
+            return self._notification(
+                'QuickBooks Payroll Audit',
+                'Audit clean: every active employee has the contract, W-4, '
+                'and structure data required to run payroll in Odoo. '
+                'Run "Cutover To Odoo Payroll" when ready.',
+                'success',
+            )
+
+        self._attach_ks_sit_to_us_structures()
+        self.write({
+            'qb_payroll_archived': True,
+            'qb_payroll_cutover_date': fields.Datetime.now(),
+        })
+        self.message_post(
+            body='<b>QuickBooks Payroll Cutover complete.</b> '
+                 'Daily payroll-check / benefit pulls are now suspended for this '
+                 'company; Odoo Payroll is the system of record going forward.',
+            subject='QuickBooks Payroll Cutover',
+            subtype_xmlid='mail.mt_note',
+        )
+        return self._notification(
+            'QuickBooks Payroll Cutover',
+            'QuickBooks Payroll archived. Odoo Payroll is now the system of '
+            'record for this company.',
+            'success',
+            sticky=True,
+        )
+
+    def _build_payroll_audit(self):
+        """Return a structured report of employees / structures not ready."""
+        Employee = self.env['hr.employee'].sudo() if 'hr.employee' in self.env else False
+        Contract = self.env['hr.contract'].sudo() if 'hr.contract' in self.env else False
+        Structure = (
+            self.env['hr.payroll.structure'].sudo()
+            if 'hr.payroll.structure' in self.env else False
+        )
+
+        blocking_employees = []
+        warnings = []
+        if Employee and Contract:
+            employees = Employee.search([
+                ('company_id', '=', self.company_id.id),
+                ('active', '=', True),
+                ('qb_employee_id', '!=', False),
+                ('qb_employment_status', 'in', ('active', 'leave')),
+            ])
+            for emp in employees:
+                problems = self._audit_employee(emp, Contract)
+                if problems['blocking']:
+                    blocking_employees.append((emp, problems))
+                elif problems['warnings']:
+                    warnings.append((emp, problems))
+
+        blocking_structures = []
+        if Structure:
+            structures = Structure.search([
+                ('qb_pay_schedule_id', '!=', False),
+            ])
+            for struct in structures:
+                missing = self._audit_structure(struct)
+                if missing:
+                    blocking_structures.append((struct, missing))
+
+        return {
+            'blocking_employees': blocking_employees,
+            'warnings': warnings,
+            'blocking_structures': blocking_structures,
+        }
+
+    def _audit_employee(self, employee, Contract):
+        problems = {'blocking': [], 'warnings': []}
+        contract = Contract.search([
+            ('employee_id', '=', employee.id),
+            ('company_id', '=', self.company_id.id),
+        ], order='date_start desc, id desc', limit=1)
+        if not contract:
+            problems['blocking'].append('no current contract')
+            return problems
+        for field_name in self.REQUIRED_PAYROLL_FIELDS:
+            if field_name not in contract._fields:
+                continue
+            value = contract[field_name]
+            if not value:
+                problems['blocking'].append('contract.%s missing' % field_name)
+        if 'wage' in contract._fields and not contract.wage:
+            problems['warnings'].append('contract.wage is 0')
+
+        address = employee.address_id if 'address_id' in employee._fields else False
+        if not address or not address.state_id:
+            problems['blocking'].append('mailing address missing state_id')
+
+        for field_name in self.REQUIRED_W4_FEDERAL_FIELDS:
+            if field_name in employee._fields and not employee[field_name]:
+                problems['blocking'].append('federal W-4 (%s) missing' % field_name)
+
+        state_code = (
+            address.state_id.code if address and address.state_id else ''
+        )
+        if state_code == 'KS':
+            for field_name in self.REQUIRED_KS_W4_FIELDS:
+                if field_name in employee._fields and not employee[field_name]:
+                    problems['blocking'].append('Kansas K-4 (%s) missing' % field_name)
+        return problems
+
+    @staticmethod
+    def _audit_structure(structure):
+        missing = []
+        if 'type_id' in structure._fields and not structure.type_id:
+            missing.append('structure.type_id missing')
+        if 'rule_ids' in structure._fields and not structure.rule_ids:
+            missing.append('structure has no salary rules')
+        return missing
+
+    def _post_payroll_audit_summary(self, audit, commit):
+        verb = 'Cutover' if commit else 'Audit'
+        body = [
+            '<b>QuickBooks Payroll Pre-Cutover %s</b>' % verb,
+            '<ul>',
+            '<li>%d employee(s) blocking</li>' % len(audit['blocking_employees']),
+            '<li>%d employee(s) with warnings</li>' % len(audit['warnings']),
+            '<li>%d payroll structure(s) blocking</li>' % len(audit['blocking_structures']),
+            '</ul>',
+        ]
+        if audit['blocking_employees']:
+            body.append('<b>Blocking employees:</b><ul>')
+            for emp, problems in audit['blocking_employees'][:50]:
+                body.append(
+                    '<li>%s &mdash; %s</li>'
+                    % (emp.name, '; '.join(problems['blocking'])),
+                )
+            if len(audit['blocking_employees']) > 50:
+                body.append(
+                    '<li>... and %d more</li>'
+                    % (len(audit['blocking_employees']) - 50),
+                )
+            body.append('</ul>')
+        if audit['blocking_structures']:
+            body.append('<b>Blocking structures:</b><ul>')
+            for struct, missing in audit['blocking_structures'][:50]:
+                body.append('<li>%s &mdash; %s</li>' % (struct.name, '; '.join(missing)))
+            body.append('</ul>')
+        if audit['warnings']:
+            body.append('<b>Warnings:</b><ul>')
+            for emp, problems in audit['warnings'][:50]:
+                body.append(
+                    '<li>%s &mdash; %s</li>'
+                    % (emp.name, '; '.join(problems['warnings'])),
+                )
+            body.append('</ul>')
+        self.message_post(
+            body='\n'.join(body),
+            subject='QuickBooks Payroll %s' % verb,
+            subtype_xmlid='mail.mt_note',
+        )
+
+    def _attach_ks_sit_to_us_structures(self):
+        """Replicate l10n_us_hr_payroll_ks.hooks._create_salary_rule across
+        every US-country payroll structure that originated from QuickBooks.
+        """
+        if 'hr.payroll.structure' not in self.env:
+            return
+        Structure = self.env['hr.payroll.structure'].sudo()
+        Rule = self.env['hr.salary.rule'].sudo()
+        Category = (
+            self.env['hr.salary.rule.category'].sudo()
+            if 'hr.salary.rule.category' in self.env else False
+        )
+        if not Category:
+            return
+
+        category = Category.search([('code', '=', 'DED')], limit=1)
+        if not category:
+            return
+
+        us_country = self.env.ref('base.us', raise_if_not_found=False)
+        structures = Structure.search([
+            ('qb_pay_schedule_id', '!=', False),
+        ])
+        structures |= Structure.search([
+            ('country_id', '=', us_country.id),
+        ]) if us_country else Structure.browse()
+
+        for struct in structures:
+            existing = Rule.search([
+                ('code', '=', 'KS_SIT'),
+                ('struct_id', '=', struct.id),
+            ], limit=1)
+            if existing:
+                continue
+            Rule.create({
+                'name': 'Kansas State Income Tax',
+                'code': 'KS_SIT',
+                'sequence': 155,
+                'category_id': category.id,
+                'struct_id': struct.id,
+                'condition_select': 'none',
+                'amount_select': 'code',
+                'amount_python_compute': (
+                    'result = employee._l10n_ks_compute_sit_line(payslip, categories)\n'
+                ),
+                'appears_on_payslip': True,
+            })
+
+    @staticmethod
+    def _notification(title, message, notification_type, sticky=False):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': title,
+                'message': message,
+                'type': notification_type,
+                'sticky': sticky,
+            },
+        }
 
     def action_test_connection(self):
         self.ensure_one()

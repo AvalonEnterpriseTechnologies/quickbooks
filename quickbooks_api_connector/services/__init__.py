@@ -42,6 +42,7 @@ from . import sync_payroll_employees
 from . import sync_payroll_pay_items
 from . import sync_payroll_schedules
 from . import sync_payroll_checks
+from . import sync_payroll_orchestrator
 from . import sync_work_locations
 from . import sync_inventory_adjustments
 from . import sync_reports
