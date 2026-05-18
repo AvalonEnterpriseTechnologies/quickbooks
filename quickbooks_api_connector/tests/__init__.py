@@ -1,5 +1,6 @@
 from . import common
 from . import test_oauth
+from . import test_sync_accounts_map_only
 from . import test_sync_customers
 from . import test_sync_products
 from . import test_sync_invoices

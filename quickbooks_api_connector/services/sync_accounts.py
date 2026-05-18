@@ -86,6 +86,9 @@ class QBSyncAccounts(models.AbstractModel):
             matcher.link_odoo_record(existing, 'account', qb_data)
             update_vals = self._existing_account_update_vals(existing, vals, config)
             existing.with_context(skip_qb_sync=True).write(update_vals)
+        elif self._account_strategy(config) == 'map_only':
+            self._log_unmapped_account(config, qb_data, qb_id)
+            return {'qb_id': qb_id, 'unmapped': True}
         else:
             vals = self._prepare_new_account_vals(vals, config.company_id)
             existing = self.env['account.account'].with_context(
@@ -143,7 +146,11 @@ class QBSyncAccounts(models.AbstractModel):
         records = client.query_all('Account', where_clause='Active IN (true, false)')
         Account = self.env['account.account']
         matcher = self.env['qb.record.matcher']
-        stats = {'matched': 0, 'created': 0, 'updated': 0, 'failed': 0}
+        strategy = self._account_strategy(config)
+        stats = {
+            'matched': 0, 'created': 0, 'updated': 0, 'failed': 0, 'unmapped': 0,
+        }
+        unmapped_rows = []
 
         for qb_data in records:
             qb_id = str(qb_data.get('Id') or '')
@@ -161,12 +168,17 @@ class QBSyncAccounts(models.AbstractModel):
                     if update_vals:
                         existing.with_context(skip_qb_sync=True).write(update_vals)
                         stats['updated'] += 1
+                    self._log_reconciliation(config, qb_data, existing, decision)
+                elif strategy == 'map_only':
+                    stats['unmapped'] += 1
+                    self._log_unmapped_account(config, qb_data, qb_id)
+                    unmapped_rows.append(qb_data)
                 else:
                     vals = self._prepare_new_account_vals(vals, config.company_id)
                     existing = Account.with_context(skip_qb_sync=True).create(vals)
                     decision = 'created'
                     stats['created'] += 1
-                self._log_reconciliation(config, qb_data, existing, decision)
+                    self._log_reconciliation(config, qb_data, existing, decision)
             except Exception as exc:
                 stats['failed'] += 1
                 _logger.exception(
@@ -184,10 +196,25 @@ class QBSyncAccounts(models.AbstractModel):
                 )
 
         self.env['qb.sync.journals'].ensure_journals_for_accounts(config)
+        try:
+            config.sudo().write({
+                'qb_account_last_discovery': fields.Datetime.now(),
+                'qb_account_discovered_count': len(records),
+                'qb_account_mapped_count': stats['matched'],
+                'qb_account_unmapped_count': stats['unmapped'],
+            })
+        except Exception:
+            _logger.warning(
+                'Could not write CoA discovery counters on quickbooks.config %s',
+                config.id,
+            )
+        if unmapped_rows:
+            self._raise_unmapped_account_activity(config, unmapped_rows)
         _logger.info(
-            'CoA pull: total=%d, matched=%d, created=%d, updated=%d, failed=%d',
-            len(records), stats['matched'], stats['created'],
-            stats['updated'], stats['failed'],
+            'CoA pull (%s): total=%d, matched=%d, created=%d, updated=%d, '
+            'unmapped=%d, failed=%d',
+            strategy, len(records), stats['matched'], stats['created'],
+            stats['updated'], stats['unmapped'], stats['failed'],
         )
 
     def push_all(self, client, config, entity_type):
@@ -293,3 +320,69 @@ class QBSyncAccounts(models.AbstractModel):
     def _log_reconciliation(self, config, qb_data, account, decision):
         if account and hasattr(account, '_record_qb_link_decision'):
             account.sudo()._record_qb_link_decision(config, qb_data, decision)
+
+    @staticmethod
+    def _account_strategy(config):
+        return getattr(config, 'account_strategy', 'map_only') or 'map_only'
+
+    def _log_unmapped_account(self, config, qb_data, qb_id):
+        qb_name = qb_data.get('Name') or ''
+        qb_code = (qb_data.get('AcctNum') or '').strip() or '(no code)'
+        qb_type = qb_data.get('AccountType') or ''
+        message = (
+            'QBO account %s [%s] %s of type "%s" has no matching Odoo '
+            'account. Strategy=map_only, so no Odoo account was created. '
+            'Map it manually: open the matching Odoo account, set "QB '
+            'Account ID" to %s, and save. Then re-run the sync.'
+        ) % (qb_code, qb_id, qb_name, qb_type, qb_id)
+        self.env['quickbooks.sync.log'].log_sync(
+            company_id=config.company_id.id,
+            entity_type='account',
+            direction='pull',
+            operation='read',
+            qb_entity_id=qb_id,
+            state='warning',
+            error_message=message,
+        )
+
+    def _raise_unmapped_account_activity(self, config, unmapped_rows):
+        manager_group = self.env.ref(
+            'quickbooks_api_connector.group_qb_manager',
+            raise_if_not_found=False,
+        )
+        responsible = self.env.user
+        if manager_group:
+            users = manager_group.users.filtered(lambda u: u.active)
+            if users:
+                responsible = users[0]
+        summary = (
+            '%d QuickBooks accounts could not be mapped (strategy=map_only)'
+        ) % len(unmapped_rows)
+        sample = ', '.join(
+            '%s %s' % (
+                (row.get('AcctNum') or '').strip() or '(no code)',
+                row.get('Name') or '',
+            )
+            for row in unmapped_rows[:5]
+        )
+        if len(unmapped_rows) > 5:
+            sample += ' (+%d more)' % (len(unmapped_rows) - 5)
+        note = (
+            'The last QBO chart of accounts pull skipped %d account(s) '
+            'because no matching Odoo account exists. Sample: %s. See the '
+            'connector sync log entries with state=warning for the full '
+            'list, then map each one by pasting its QBO ID onto the '
+            'corresponding Odoo account.'
+        ) % (len(unmapped_rows), sample)
+        try:
+            config.activity_schedule(
+                'mail.mail_activity_data_warning',
+                summary=summary,
+                note=note,
+                user_id=responsible.id,
+            )
+        except Exception:
+            _logger.warning(
+                'Could not raise unmapped-account activity on quickbooks.config %s',
+                config.id,
+            )
