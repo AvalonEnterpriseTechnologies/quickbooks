@@ -9,10 +9,22 @@ class QBSyncJournals(models.AbstractModel):
 
     @api.model
     def ensure_journals_for_accounts(self, config):
-        self.ensure_general_journal(config, key='qbo:general:default',
-                                    name='QuickBooks Journal Entries')
-        self.ensure_general_journal(config, key='qbo:general:opening',
-                                    name='QuickBooks Opening Balances')
+        # Legacy "default" general journal kept as a safety fallback for JEs
+        # whose dominant line we cannot resolve to a per-account journal.
+        # Renamed from "QuickBooks Journal Entries" so it is no longer the
+        # destination of every QBO JE — the per-account routing in
+        # sync_journal_entries handles that now.
+        self.ensure_general_journal(
+            config, key='qbo:general:default',
+            name='Migrated Adjustments (legacy fallback)',
+        )
+        # Opening-balances landing journal. Renamed from the legacy
+        # "QuickBooks Opening Balances" to plain "Opening Balances" so the
+        # journal list no longer reads as a QBO-only artifact.
+        self.ensure_general_journal(
+            config, key='qbo:general:opening',
+            name='Opening Balances',
+        )
         accounts = self._linked_financial_accounts(config)
         for account in accounts:
             journal_type = self._journal_type_for_account(account)
@@ -22,7 +34,7 @@ class QBSyncJournals(models.AbstractModel):
 
     @api.model
     def ensure_general_journal(self, config, key='qbo:general:default',
-                               name='QuickBooks Journal Entries'):
+                               name='Migrated Adjustments (legacy fallback)'):
         Journal = self.env['account.journal'].sudo()
         journal = Journal.search([
             ('company_id', '=', config.company_id.id),
@@ -34,6 +46,47 @@ class QBSyncJournals(models.AbstractModel):
             'name': name,
             'type': 'general',
             'code': self._available_journal_code('QBOG', config.company_id),
+            'company_id': config.company_id.id,
+            'qb_journal_key': key,
+        })
+
+    @api.model
+    def ensure_general_journal_for_account(self, config, account):
+        """Return a dedicated general journal for ``account``, creating it if needed.
+
+        Used by sync_journal_entries to route each QBO JournalEntry into a
+        per-account general journal (based on its dominant debit/credit
+        line) instead of dumping everything into the legacy single
+        "QuickBooks Journal Entries" bucket. The journal is keyed by
+        qb_journal_key = 'qbo:general:account:<qb_account_id|odoo_id>',
+        so the lookup is idempotent across re-syncs.
+        """
+        Journal = self.env['account.journal'].sudo()
+        if not account:
+            return self.ensure_general_journal(config)
+        anchor = account.qb_account_id or str(account.id)
+        key = 'qbo:general:account:%s' % anchor
+        existing = Journal.search([
+            ('company_id', '=', config.company_id.id),
+            ('qb_journal_key', '=', key),
+        ], limit=1)
+        if existing:
+            return existing
+
+        code_seed = account.code or account.qb_account_code or anchor
+        code_base = re.sub(r'[^A-Za-z0-9]', '', str(code_seed).upper())[:5] or 'JE'
+        name_parts = []
+        if account.code:
+            name_parts.append(str(account.code))
+        if account.name:
+            name_parts.append(account.name)
+        display_name = ' '.join(name_parts) or 'QuickBooks JE Bucket'
+        journal_name = ('JE: %s' % display_name)[:64]
+
+        return Journal.create({
+            'name': journal_name,
+            'type': 'general',
+            'code': self._available_journal_code(code_base, config.company_id),
             'company_id': config.company_id.id,
             'qb_journal_key': key,
         })

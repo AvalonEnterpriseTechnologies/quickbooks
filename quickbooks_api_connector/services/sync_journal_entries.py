@@ -74,7 +74,14 @@ class QBSyncJournalEntries(models.AbstractModel):
     # ---- QBO → Odoo ----
 
     def _qb_je_to_odoo(self, qb_data, config):
-        """Map QBO JournalEntry to Odoo account.move vals."""
+        """Map QBO JournalEntry to Odoo account.move vals.
+
+        Routes each JE to a per-account Odoo general journal based on the
+        dominant (largest |amount|) debit-or-credit line, instead of
+        dumping every QBO JE into the legacy "QuickBooks Journal Entries"
+        bucket. See qb.sync.journals.ensure_general_journal_for_account
+        for the per-account journal lookup / creation rules.
+        """
         vals = {
             'move_type': 'entry',
             'qb_je_id': str(qb_data.get('Id', '')),
@@ -83,11 +90,6 @@ class QBSyncJournalEntries(models.AbstractModel):
             'qb_sync_error': False,
             'company_id': config.company_id.id,
         }
-        journal = self.env['qb.sync.journals'].ensure_general_journal(
-            config, key='qbo:general:default',
-            name='QuickBooks Journal Entries',
-        )
-        vals['journal_id'] = journal.id
 
         if qb_data.get('TxnDate'):
             vals['date'] = qb_data['TxnDate']
@@ -98,9 +100,12 @@ class QBSyncJournalEntries(models.AbstractModel):
 
         vals.update(self.env['qb.currency.helper'].currency_vals(qb_data, config))
 
-        # Journal entry lines
+        # Journal entry lines (also tracks the dominant account so we can
+        # choose the per-account journal below).
         move_lines = []
         missing_accounts = []
+        dominant_account = self.env['account.account'].browse()
+        dominant_amount = 0.0
         for qb_line in qb_data.get('Line', []):
             if qb_line.get('DetailType') != 'JournalEntryLineDetail':
                 continue
@@ -122,6 +127,13 @@ class QBSyncJournalEntries(models.AbstractModel):
                 )
                 if account:
                     line_vals['account_id'] = account.id
+                    try:
+                        line_amount = abs(float(amount or 0.0))
+                    except (TypeError, ValueError):
+                        line_amount = 0.0
+                    if line_amount > dominant_amount:
+                        dominant_amount = line_amount
+                        dominant_account = account
                 else:
                     missing_accounts.append(account_qb_id)
                     continue
@@ -160,6 +172,20 @@ class QBSyncJournalEntries(models.AbstractModel):
                 ),
                 '_qb_skip_create': True,
             }
+
+        # Route to a per-account general journal so QBO JEs land in
+        # meaningful Odoo journals (one per anchor account) instead of a
+        # single "QuickBooks Journal Entries" pile. Falls back to the
+        # legacy default journal when no dominant account could be
+        # determined (e.g. an empty Line list).
+        SyncJournals = self.env['qb.sync.journals']
+        if dominant_account:
+            journal = SyncJournals.ensure_general_journal_for_account(
+                config, dominant_account,
+            )
+        else:
+            journal = SyncJournals.ensure_general_journal(config)
+        vals['journal_id'] = journal.id
 
         if move_lines:
             vals['line_ids'] = move_lines

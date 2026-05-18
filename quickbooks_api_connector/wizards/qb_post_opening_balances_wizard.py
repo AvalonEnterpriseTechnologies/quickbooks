@@ -212,7 +212,7 @@ class QBPostOpeningBalancesWizard(models.TransientModel):
         if config:
             return self.env['qb.sync.journals'].ensure_general_journal(
                 config, key='qbo:general:opening',
-                name='QuickBooks Opening Balances',
+                name='Opening Balances',
             )
         return self.env['account.journal'].search([
             ('company_id', '=', self.env.company.id),
