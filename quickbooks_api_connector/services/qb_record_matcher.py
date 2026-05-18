@@ -434,12 +434,31 @@ class QBRecordMatcher(models.AbstractModel):
             email = ((qb_data.get('PrimaryEmailAddr') or {}).get('Address') or '').strip()
             if email and 'email' in Model._fields:
                 candidates = Model.search(base_domain + [('email', 'ilike', email)], limit=5)
-                return candidates.filtered(lambda rec: (rec.email or '').lower() == email.lower())[:1]
+                hit = candidates.filtered(
+                    lambda rec: (rec.email or '').lower() == email.lower()
+                )[:1]
+                if hit:
+                    return hit
+            phone = ((qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber') or '').strip()
+            if phone and 'phone' in Model._fields:
+                normalized = self._normalize_phone(phone)
+                if normalized:
+                    candidates = Model.search(
+                        base_domain + [('phone', '!=', False)], limit=200,
+                    )
+                    hit = candidates.filtered(
+                        lambda rec: self._normalize_phone(rec.phone) == normalized
+                    )[:1]
+                    if hit:
+                        return hit
 
         if entity_type == 'product':
             sku = (qb_data.get('Sku') or '').strip()
             if sku and 'default_code' in Model._fields:
                 return Model.search(base_domain + [('default_code', '=', sku)], limit=1)
+
+        if entity_type == 'employee':
+            return self._find_employee_by_natural_key(Model, qb_data, base_domain)
 
         if meta.get('model') == 'account.move':
             return self._find_move_by_document(Model, meta, qb_data, base_domain)
@@ -448,6 +467,103 @@ class QBRecordMatcher(models.AbstractModel):
         if name and meta.get('name_field') in Model._fields:
             return Model.search(base_domain + [(meta['name_field'], '=', name)], limit=1)
         return Model.browse()
+
+    def _find_employee_by_natural_key(self, Model, qb_data, base_domain):
+        """Find an existing hr.employee by stronger keys than just DisplayName.
+
+        Used by sync_payroll_employees and sync_employees to stop the
+        migration creating duplicate hr.employee rows for the same person
+        that already exists in Odoo. Match priority (returns the first hit):
+          1. work_email exact-normalized match (most stable cross-system key).
+          2. qb_ssn_last4 match (last four digits of QBO ssn).
+          3. work_phone / mobile_phone normalized match (digits only).
+          4. Normalized full name (casefold + collapsed whitespace) match
+             against hr.employee.name, then private/legal_name when present.
+        """
+        empty = Model.browse()
+
+        email = ((qb_data.get('PrimaryEmailAddr') or {}).get('Address') or '').strip()
+        if email and 'work_email' in Model._fields:
+            candidates = Model.search(
+                base_domain + [('work_email', 'ilike', email)], limit=10,
+            )
+            hit = candidates.filtered(
+                lambda rec: (rec.work_email or '').lower() == email.lower()
+            )[:1]
+            if hit:
+                return hit
+
+        ssn_raw = qb_data.get('SSN') or qb_data.get('ssn') or ''
+        ssn_last4 = ''.join(ch for ch in str(ssn_raw) if ch.isdigit())[-4:]
+        if ssn_last4 and 'qb_ssn_last4' in Model._fields:
+            hit = Model.search(
+                base_domain + [('qb_ssn_last4', '=', ssn_last4)], limit=1,
+            )
+            if hit:
+                return hit
+
+        phone_sources = [
+            ((qb_data.get('PrimaryPhone') or {}).get('FreeFormNumber') or ''),
+            ((qb_data.get('Mobile') or {}).get('FreeFormNumber') or ''),
+            (qb_data.get('phone') or ''),
+        ]
+        for raw_phone in phone_sources:
+            normalized = self._normalize_phone(raw_phone)
+            if not normalized:
+                continue
+            for fname in ('work_phone', 'mobile_phone'):
+                if fname not in Model._fields:
+                    continue
+                candidates = Model.search(
+                    base_domain + [(fname, '!=', False)], limit=200,
+                )
+                hit = candidates.filtered(
+                    lambda rec: self._normalize_phone(getattr(rec, fname, '')) == normalized
+                )[:1]
+                if hit:
+                    return hit
+
+        display = (
+            qb_data.get('DisplayName')
+            or qb_data.get('displayName')
+            or ' '.join(
+                filter(None, [
+                    qb_data.get('GivenName') or qb_data.get('givenName'),
+                    qb_data.get('FamilyName') or qb_data.get('familyName'),
+                ])
+            )
+        )
+        normalized_name = self._normalize(display)
+        if normalized_name and 'name' in Model._fields:
+            candidates = Model.search(
+                base_domain + [('name', 'ilike', display or '')], limit=10,
+            )
+            hit = candidates.filtered(
+                lambda rec: self._normalize(rec.name) == normalized_name
+            )[:1]
+            if hit:
+                return hit
+            if 'legal_name' in Model._fields:
+                candidates = Model.search(
+                    base_domain + [('legal_name', 'ilike', display or '')], limit=10,
+                )
+                hit = candidates.filtered(
+                    lambda rec: self._normalize(getattr(rec, 'legal_name', '')) == normalized_name
+                )[:1]
+                if hit:
+                    return hit
+
+        return empty
+
+    @staticmethod
+    def _normalize_phone(raw):
+        digits = ''.join(ch for ch in str(raw or '') if ch.isdigit())
+        if not digits:
+            return ''
+        # Strip a leading US country-code 1 so '+1 555-...' matches '555-...'.
+        if len(digits) == 11 and digits.startswith('1'):
+            digits = digits[1:]
+        return digits
 
     def _find_move_by_document(self, Model, meta, qb_data, base_domain):
         doc_number = (qb_data.get('DocNumber') or '').strip()

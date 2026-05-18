@@ -132,6 +132,14 @@ class QBSyncPayrollEmployees(models.AbstractModel):
         return index
 
     def _find_or_create_employee(self, payload, config):
+        """Match-or-create an hr.employee for a QBO payroll employee payload.
+
+        Routes through qb.record.matcher.find_odoo_match so existing Odoo
+        employees are linked instead of duplicated. The QBO payroll
+        GraphQL field names differ from the REST Employee schema, so the
+        payload is first translated to the QBO REST shape the matcher
+        understands.
+        """
         if 'hr.employee' not in self.env:
             return False
         Employee = self.env['hr.employee'].sudo()
@@ -140,13 +148,35 @@ class QBSyncPayrollEmployees(models.AbstractModel):
         qb_id = str(payload.get('id') or '')
         if not qb_id:
             return False
-        employee = Employee.search([
-            ('qb_employee_id', '=', qb_id),
-        ], limit=1)
-        if employee:
-            return employee
+
         name_parts = [payload.get('givenName'), payload.get('familyName')]
         name = ' '.join(p for p in name_parts if p) or payload.get('displayName') or qb_id
+
+        # Already linked to this QBO payroll id? Adopt it directly.
+        linked = Employee.search([('qb_employee_id', '=', qb_id)], limit=1)
+        if linked:
+            return linked
+
+        matcher_payload = {
+            'Id': qb_id,
+            'DisplayName': payload.get('displayName') or name,
+            'GivenName': payload.get('givenName'),
+            'FamilyName': payload.get('familyName'),
+            'PrimaryEmailAddr': {'Address': payload.get('email')} if payload.get('email') else {},
+            'PrimaryPhone': {'FreeFormNumber': payload.get('phone')} if payload.get('phone') else {},
+            'SSN': payload.get('ssn'),
+        }
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_odoo_match('employee', matcher_payload, config.company_id)
+        if existing:
+            matcher.link_odoo_record(existing, 'employee', matcher_payload)
+            _logger.info(
+                'Linked existing Odoo employee %s (id=%s) to QBO payroll '
+                'employee %s instead of creating a duplicate.',
+                existing.name, existing.id, qb_id,
+            )
+            return existing
+
         return Employee.create({
             'name': name,
             'qb_employee_id': qb_id,

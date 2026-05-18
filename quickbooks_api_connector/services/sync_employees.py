@@ -169,9 +169,14 @@ class QBSyncEmployees(models.AbstractModel):
         existing = matcher.find_odoo_match('employee', qb_data, config.company_id)
         if existing:
             matcher.link_odoo_record(existing, 'employee', qb_data)
-            existing.write(vals)
+            resolver = self.env['qb.conflict.resolver']
+            decision = resolver.resolve(config, existing, qb_data, 'employee')
+            if decision == 'qbo':
+                existing.with_context(skip_qb_sync=True).write(vals)
+            elif decision == 'conflict':
+                job.write({'state': 'conflict'})
         else:
-            self.env['hr.employee'].create(vals)
+            self.env['hr.employee'].with_context(skip_qb_sync=True).create(vals)
         return {'qb_id': str(qb_data.get('Id', ''))}
 
     def pull_all(self, client, config, entity_type):
@@ -191,9 +196,11 @@ class QBSyncEmployees(models.AbstractModel):
             existing = matcher.find_odoo_match('employee', qb_data, config.company_id)
             if existing:
                 matcher.link_odoo_record(existing, 'employee', qb_data)
-                existing.write(vals)
+                resolver = self.env['qb.conflict.resolver']
+                if resolver.resolve(config, existing, qb_data, 'employee') == 'qbo':
+                    existing.with_context(skip_qb_sync=True).write(vals)
             else:
-                Employee.create(vals)
+                Employee.with_context(skip_qb_sync=True).create(vals)
 
     def push_all(self, client, config, entity_type):
         if not self._check_model():
