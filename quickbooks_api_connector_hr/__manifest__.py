@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector — HR Bridge',
-    'version': '19.0.1.0.1',
+    'version': '19.0.2.0.0',
     'category': 'Accounting',
     'summary': 'QuickBooks Employee and Department sync for Odoo HR',
     'description': """
@@ -13,7 +13,10 @@
     'website': 'https://github.com/AvalonEnterpriseTechnologies/quickbooks_odoo_module',
     'license': 'LGPL-3',
     'depends': ['quickbooks_api_connector', 'hr'],
-    'data': [],
+    'data': [
+        'security/ir.model.access.csv',
+        'wizards/qb_dedupe_employees_wizard_views.xml',
+    ],
     'installable': True,
     'auto_install': True,
     'application': False,

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_dedupe_employees_wizard_form" model="ir.ui.view">
+        <field name="name">qb.dedupe.employees.wizard.form</field>
+        <field name="model">qb.dedupe.employees.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Deduplicate QuickBooks Employees">
+                <group>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="only_active"/>
+                    <field name="dry_run"/>
+                </group>
+                <group string="Preview" invisible="not preview_message">
+                    <field name="preview_message" nolabel="1" widget="text"/>
+                </group>
+                <footer>
+                    <button name="action_scan"
+                            string="Scan For Duplicates"
+                            type="object"
+                            class="btn-secondary"/>
+                    <button name="action_merge"
+                            string="Merge Duplicates"
+                            type="object"
+                            class="btn-primary"
+                            confirm="Merge duplicate hr.employee rows into their oldest counterpart. Reparents Many2one references, copies missing QBO fields, and archives duplicates. Continue?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_dedupe_employees_wizard" model="ir.actions.act_window">
+        <field name="name">Deduplicate QuickBooks Employees</field>
+        <field name="res_model">qb.dedupe.employees.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="server_action_employee_dedupe_qb" model="ir.actions.server">
+        <field name="name">QuickBooks: Deduplicate Employees</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="group_ids" eval="[(4, ref('quickbooks_api_connector.group_qb_manager'))]"/>
+        <field name="code">action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Deduplicate QuickBooks Employees',
+    'res_model': 'qb.dedupe.employees.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'default_company_id': env.company.id},
+}
+        </field>
+    </record>
+</odoo>
