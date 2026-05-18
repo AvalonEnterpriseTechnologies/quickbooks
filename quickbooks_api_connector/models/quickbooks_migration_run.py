@@ -64,5 +64,25 @@ class QuickbooksMigrationRunStep(models.Model):
     )
     expected_count = fields.Integer()
     actual_count = fields.Integer()
+    linked_count = fields.Integer(
+        help='Number of Odoo records the relinker successfully connected '
+             'back to their QBO parent (Estimate, Invoice, or CreditMemo).',
+    )
+    orphan_link_count = fields.Integer(
+        help='Number of Odoo records whose QBO LinkedTxn parent could not '
+             'be resolved (parent missing in Odoo). Drives the data-integrity '
+             'block on the Settings panel.',
+    )
+    amount_total_qbo = fields.Monetary(
+        currency_field='currency_id',
+        help='Sum of TotalAmt over the QBO records processed in this step.',
+    )
+    amount_total_odoo = fields.Monetary(
+        currency_field='currency_id',
+        help='Sum of amount_total over the Odoo records produced by this step.',
+    )
+    currency_id = fields.Many2one(
+        'res.currency', related='run_id.company_id.currency_id', store=False,
+    )
     error_message = fields.Text()
     idempotency_key = fields.Char(index=True)
