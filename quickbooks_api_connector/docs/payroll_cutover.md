@@ -34,12 +34,20 @@ In Odoo:
 
 1. Install `hr`, `hr_contract`, `hr_payroll`, and `l10n_us_hr_payroll`. On a
    Kansas company also install `l10n_us_hr_payroll_ks`.
-2. Install `quickbooks_api_connector`. The HR + HR Payroll bridges
-   auto-install once their dependencies are present.
-3. `Settings > QuickBooks` > tick **Enable Payroll Sync**. Per-entity toggles
+2. Install `quickbooks_api_connector` and `quickbooks_api_connector_hr`. The
+   contact-level employee bridge auto-installs once `hr` is present.
+3. **(Enterprise only)** Open
+   `quickbooks_api_connector_hr_payroll/__manifest__.py` and set both
+   `installable` and `auto_install` to `True`, then restart Odoo with
+   `-u quickbooks_api_connector`. The bridge ships with `installable=False`
+   so Community deployments (or Enterprise images that do not load
+   `hr_contract`) are not broken by an attempted install. The `post_init_hook`
+   seeds the payroll data for every connected, payroll-enabled company on
+   the first install.
+4. `Settings > QuickBooks` > tick **Enable Payroll Sync**. Per-entity toggles
    (Pay Schedules, Pay Items, Payroll Employees, Tax Setup, Compensations,
    Checks history) appear under it; defaults are sensible.
-4. Re-run **Connect to QuickBooks** so Intuit returns the broader payroll
+5. Re-run **Connect to QuickBooks** so Intuit returns the broader payroll
    scopes.
 
 ## 3. Initial migration
