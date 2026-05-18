@@ -252,6 +252,13 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_payroll_checks_history = fields.Boolean(
         string='Sync Payroll Checks (history)', default=True,
     )
+    qb_sync_payroll_payslips = fields.Boolean(
+        string='Backfill Payslips From QBO Checks', default=True,
+        help='When enabled (and the hr_payroll bridge is installed), every '
+             'QBO paycheck is projected into hr.payslip + hr.payslip.run as '
+             'a posted (done) batch so historical pay runs show up in Odoo '
+             'Payroll. Idempotent on qb_check_id.',
+    )
     qb_payroll_post_archive_journal = fields.Boolean(
         string='Post Archive Journal Per QBO Paycheck',
         default=False,
@@ -601,6 +608,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_payroll_checks_history': getattr(
                     config, 'sync_payroll_checks', True,
                 ),
+                'qb_sync_payroll_payslips': getattr(
+                    config, 'sync_payroll_payslips', True,
+                ),
                 'qb_payroll_post_archive_journal': getattr(
                     config, 'qb_payroll_post_archive_journal', False,
                 ),
@@ -702,7 +712,8 @@ class ResConfigSettings(models.TransientModel):
             'payroll_create_draft_payslips', 'qbt_enabled',
             'sync_payroll_pay_schedules', 'sync_payroll_pay_items',
             'sync_payroll_tax_setup', 'sync_payroll_compensations',
-            'sync_payroll_checks', 'qb_payroll_post_archive_journal',
+            'sync_payroll_checks', 'sync_payroll_payslips',
+            'qb_payroll_post_archive_journal',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',
@@ -719,6 +730,7 @@ class ResConfigSettings(models.TransientModel):
             'sync_payroll_tax_setup': 'qb_sync_payroll_tax_setup',
             'sync_payroll_compensations': 'qb_sync_payroll_compensations',
             'sync_payroll_checks': 'qb_sync_payroll_checks_history',
+            'sync_payroll_payslips': 'qb_sync_payroll_payslips',
             'qb_payroll_post_archive_journal': 'qb_payroll_post_archive_journal',
             'qb_auto_push_transfers': 'qb_auto_push_transfers',
         }

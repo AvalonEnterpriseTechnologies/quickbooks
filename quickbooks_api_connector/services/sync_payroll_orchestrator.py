@@ -16,6 +16,10 @@ ORCHESTRATED_ORDER = [
     ('qb.sync.payroll.employees', 'payroll_tax_setup'),
     ('qb.sync.payroll', 'payroll_compensation'),
     ('qb.sync.payroll.checks', 'payroll_check'),
+    # Backfill native hr.payslip + hr.payslip.run from the qb.payroll.check
+    # archive populated by the previous step. Runs after the archive step
+    # so the source rows are guaranteed to exist.
+    ('qb.sync.payroll.payslips', 'payroll_payslip'),
     ('qb.sync.employee.benefits', 'employee_benefit'),
 ]
 
@@ -48,7 +52,9 @@ class QBSyncPayrollOrchestrator(models.AbstractModel):
         """
         archived = bool(getattr(config, 'qb_payroll_archived', False))
         for service_name, entity_type in ORCHESTRATED_ORDER:
-            if archived and entity_type in ('payroll_check', 'employee_benefit'):
+            if archived and entity_type in (
+                'payroll_check', 'payroll_payslip', 'employee_benefit',
+            ):
                 continue
             if not self._toggle_enabled(config, entity_type):
                 continue
@@ -74,6 +80,7 @@ class QBSyncPayrollOrchestrator(models.AbstractModel):
             'payroll_tax_setup': 'sync_payroll_tax_setup',
             'payroll_compensation': 'sync_payroll_compensations',
             'payroll_check': 'sync_payroll_checks',
+            'payroll_payslip': 'sync_payroll_payslips',
             'employee_benefit': 'sync_employee_benefits',
         }
         attribute = toggle_map.get(entity_type)

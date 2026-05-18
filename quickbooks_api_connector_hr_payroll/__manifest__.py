@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector — HR Payroll Bridge',
-    'version': '19.0.2.0.2',
+    'version': '19.0.3.0.0',
     'category': 'Accounting',
     'summary': 'QuickBooks Payroll sync fields and archive for Odoo Payroll',
     'description': """
@@ -49,10 +49,11 @@
         'security/ir.model.access.csv',
     ],
     'post_init_hook': '_post_init_seed_payroll',
-    # Enterprise-only. See the description above for the one-line flip
-    # needed on deployments where ``hr_payroll`` + ``hr_contract`` are
-    # actually present in the addons path.
-    'installable': False,
-    'auto_install': False,
+    # Enterprise-only, but auto-installable when both ``hr_payroll`` and
+    # ``hr_contract`` are present in the addons path (standard Odoo
+    # Enterprise stack). On Community deployments the manifest is simply
+    # ignored because the declared dependencies are missing.
+    'installable': True,
+    'auto_install': True,
     'application': False,
 }

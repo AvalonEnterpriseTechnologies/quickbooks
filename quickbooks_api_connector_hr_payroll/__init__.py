@@ -28,6 +28,7 @@ def _post_init_seed_payroll(env):
         'qb.sync.payroll.employees',
         'qb.sync.payroll',
         'qb.sync.payroll.checks',
+        'qb.sync.payroll.payslips',
         'qb.sync.employee.benefits',
     ]
     for config in configs:

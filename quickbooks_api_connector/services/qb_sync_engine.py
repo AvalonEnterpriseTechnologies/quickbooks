@@ -44,6 +44,7 @@ ENTITY_SERVICE_MAP = {
     'payroll_pay_item': 'qb.sync.payroll.pay.items',
     'payroll_schedule': 'qb.sync.payroll.schedules',
     'payroll_check': 'qb.sync.payroll.checks',
+    'payroll_payslip': 'qb.sync.payroll.payslips',
     'work_location': 'qb.sync.work.locations',
     'inventory_adjustment': 'qb.sync.inventory.adjustments',
     'timesheet': 'qb.sync.timesheets',
@@ -204,7 +205,12 @@ class QBSyncEngine(models.AbstractModel):
             'payroll_schedule', 'payroll_pay_item',
             'payroll_employee', 'payroll_tax_setup',
             'payroll_compensation',
-            'payroll_check', 'employee_benefit',
+            'payroll_check',
+            # Backfill native hr.payslip + hr.payslip.run from the archive
+            # populated by payroll_check. Must run AFTER payroll_check so the
+            # source qb.payroll.check rows exist.
+            'payroll_payslip',
+            'employee_benefit',
             'timesheet',
             'inventory_adjustment',
             'attachment',
@@ -263,6 +269,11 @@ class QBSyncEngine(models.AbstractModel):
                 getattr(config, 'payroll_enabled', False)
                 and not getattr(config, 'qb_payroll_archived', False)
                 and bool(getattr(config, 'sync_payroll_checks', True))
+            ),
+            'payroll_payslip': (
+                getattr(config, 'payroll_enabled', False)
+                and not getattr(config, 'qb_payroll_archived', False)
+                and bool(getattr(config, 'sync_payroll_payslips', True))
             ),
             'work_location': getattr(config, 'payroll_enabled', False),
             'timesheet': getattr(config, 'qbt_enabled', False),

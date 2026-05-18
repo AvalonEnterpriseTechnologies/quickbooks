@@ -233,6 +233,15 @@ class QuickbooksConfig(models.Model):
     sync_payroll_checks = fields.Boolean(
         default=True, string='Sync Payroll Checks (history)',
     )
+    sync_payroll_payslips = fields.Boolean(
+        default=True,
+        string='Backfill Payslips From QBO Checks',
+        help='When enabled (and the hr_payroll bridge is installed), every '
+             'QBO paycheck pulled by qb.sync.payroll.checks is also upserted '
+             'into hr.payslip + hr.payslip.run as a posted (done) batch so '
+             'the historical pay runs show up in Odoo Payroll. Idempotent on '
+             'qb_check_id / qb_payslip_run_id.',
+    )
     qb_payroll_post_archive_journal = fields.Boolean(
         string='Post Archive Journal Per QBO Paycheck',
         default=False,

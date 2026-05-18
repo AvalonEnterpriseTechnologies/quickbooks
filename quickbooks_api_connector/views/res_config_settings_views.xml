@@ -303,6 +303,7 @@
                                     <field name="qb_sync_payroll_tax_setup"/>
                                     <field name="qb_sync_payroll_compensations"/>
                                     <field name="qb_sync_payroll_checks_history"/>
+                                    <field name="qb_sync_payroll_payslips"/>
                                     <field name="qb_payroll_post_archive_journal"/>
                                 </div>
                                 <div class="content-group mt8"
