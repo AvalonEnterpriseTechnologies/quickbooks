@@ -352,7 +352,18 @@ class QBSyncAccounts(models.AbstractModel):
         )
         responsible = self.env.user
         if manager_group:
-            users = manager_group.users.filtered(lambda u: u.active)
+            # Odoo 19 dropped res.groups.users; fall back through user_ids /
+            # all_user_ids / explicit search so the helper stays portable.
+            members = None
+            for field in ('user_ids', 'users', 'all_user_ids'):
+                if field in manager_group._fields:
+                    members = manager_group[field]
+                    break
+            if members is None:
+                members = self.env['res.users'].sudo().search([
+                    ('groups_id', 'in', manager_group.id),
+                ])
+            users = members.filtered(lambda u: u.active)
             if users:
                 responsible = users[0]
         summary = (

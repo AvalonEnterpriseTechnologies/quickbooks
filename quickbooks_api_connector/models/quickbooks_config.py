@@ -716,7 +716,8 @@ class QuickbooksConfig(models.Model):
         )
         responsible = self.env.user
         if manager_group:
-            users = manager_group.users.filtered(lambda u: u.active)
+            members = self._qb_resolve_group_members(manager_group)
+            users = members.filtered(lambda u: u.active)
             if users:
                 responsible = users[0]
         summary = '%d QuickBooks accounts need manual mapping in Odoo' % len(unmatched)
@@ -729,6 +730,24 @@ class QuickbooksConfig(models.Model):
             note=note,
             user_id=responsible.id,
         )
+
+    @staticmethod
+    def _qb_resolve_group_members(group):
+        """Return the users in ``group`` across Odoo 17 / 18 / 19.
+
+        Odoo 19 dropped ``res.groups.users`` and replaced it with
+        ``user_ids`` (plus a computed ``all_user_ids`` for inherited
+        membership). Falling back to a search on ``groups_id`` keeps
+        the connector portable across versions.
+        """
+        if not group:
+            return group.env['res.users'].browse()
+        for field in ('user_ids', 'users', 'all_user_ids'):
+            if field in group._fields:
+                return group[field]
+        return group.env['res.users'].sudo().search([
+            ('groups_id', 'in', group.id),
+        ])
 
     # ------------------------------------------------------------------
     # Payroll cutover
