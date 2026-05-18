@@ -9,6 +9,7 @@ from . import qb_account_classifier
 from . import qb_reconciliation
 from . import qb_balance_reconciliation
 from . import qb_currency_helper
+from . import sync_post_helper
 from . import sync_customers
 from . import sync_products
 from . import sync_accounts

@@ -122,6 +122,15 @@ class ResConfigSettings(models.TransientModel):
         related='qb_config_id.qb_account_unmapped_count', readonly=True,
     )
     qb_verify_after_push = fields.Boolean(string='Verify QBO After Push', default=True)
+    qb_auto_post_pulled_records = fields.Boolean(
+        string='Auto-Post Pulled Records',
+        default=True,
+        help='Post invoices, bills, vendor credits, journal entries, and '
+             'payments immediately after they are pulled from QuickBooks, '
+             'so they arrive in Odoo in the same posted state they have in '
+             'QBO instead of staying draft. Turn off to import everything '
+             'as draft for manual review before posting.',
+    )
     qb_match_by_name = fields.Boolean(string='Allow Name-Based Matching', default=False)
     qb_auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
@@ -390,6 +399,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_webhook_verifier_token': config.webhook_verifier_token,
                 'qb_conflict_resolution': config.conflict_resolution,
                 'qb_verify_after_push': getattr(config, 'verify_after_push', True),
+                'qb_auto_post_pulled_records': getattr(
+                    config, 'auto_post_pulled_records', True,
+                ),
                 'qb_match_by_name': getattr(config, 'match_by_name', False),
                 'qb_account_strategy': getattr(
                     config, 'account_strategy', 'map_only',
@@ -517,6 +529,7 @@ class ResConfigSettings(models.TransientModel):
             'webhook_verifier_token': self.qb_webhook_verifier_token or '',
             'conflict_resolution': self.qb_conflict_resolution or 'odoo_wins',
             'verify_after_push': self.qb_verify_after_push,
+            'auto_post_pulled_records': self.qb_auto_post_pulled_records,
             'match_by_name': self.qb_match_by_name,
             'account_strategy': self.qb_account_strategy or 'map_only',
             'auto_sync_interval': interval,

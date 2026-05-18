@@ -200,6 +200,31 @@
                         <div class="col-12 o_setting_box"
                              invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane">
+                                <field name="qb_auto_post_pulled_records"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_auto_post_pulled_records"
+                                       string="Auto-Post Pulled Records"/>
+                                <div class="text-muted small mb8">
+                                    QBO transactions (invoices, bills, vendor
+                                    credits, journal entries, payments) are
+                                    always posted on the QuickBooks side. When
+                                    enabled, the connector posts each freshly
+                                    pulled record in Odoo so it lands in
+                                    state <b>Posted</b> instead of
+                                    <b>Draft</b>. Auto-post failures are
+                                    captured on the record's
+                                    <code>qb_sync_error</code> without
+                                    breaking the rest of the sync. Turn off
+                                    when you want to review every imported
+                                    record before posting.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane">
                                 <field name="qb_sync_reports"/>
                             </div>
                             <div class="o_setting_right_pane">

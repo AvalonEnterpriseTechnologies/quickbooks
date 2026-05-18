@@ -355,6 +355,7 @@ class QBSyncPayments(models.AbstractModel):
 
         matcher = self.env['qb.record.matcher']
         existing = matcher.find_odoo_match(job.entity_type, qb_data, config.company_id)
+        post_helper = self.env['qb.sync.post.helper']
 
         if existing:
             matcher.link_odoo_record(existing, job.entity_type, qb_data)
@@ -362,12 +363,14 @@ class QBSyncPayments(models.AbstractModel):
             decision = resolver.resolve(config, existing, qb_data, job.entity_type)
             if decision == 'qbo':
                 existing.with_context(skip_qb_sync=True).write(vals)
+                post_helper.post(existing, config)
             elif decision == 'conflict':
                 job.write({'state': 'conflict'})
         else:
-            self.env['account.payment'].with_context(
+            new_payment = self.env['account.payment'].with_context(
                 skip_qb_sync=True,
             ).create(vals)
+            post_helper.post(new_payment, config)
 
         return {'qb_id': qb_id}
 
@@ -389,6 +392,7 @@ class QBSyncPayments(models.AbstractModel):
             )
         records = client.query_all(qb_name, where_clause=where)
         Payment = self.env['account.payment']
+        post_helper = self.env['qb.sync.post.helper']
 
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
@@ -402,8 +406,10 @@ class QBSyncPayments(models.AbstractModel):
                 resolver = self.env['qb.conflict.resolver']
                 if resolver.resolve(config, existing, qb_data, entity_type) == 'qbo':
                     existing.with_context(skip_qb_sync=True).write(vals)
+                    post_helper.post(existing, config)
             else:
-                Payment.with_context(skip_qb_sync=True).create(vals)
+                new_payment = Payment.with_context(skip_qb_sync=True).create(vals)
+                post_helper.post(new_payment, config)
 
     def push_all(self, client, config, entity_type):
         is_customer = entity_type == 'payment'

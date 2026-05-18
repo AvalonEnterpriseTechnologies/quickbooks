@@ -221,6 +221,15 @@ class QuickbooksConfig(models.Model):
         default=True,
         help='Read the QBO record after push and log a warning if key fields drift.',
     )
+    auto_post_pulled_records = fields.Boolean(
+        string='Auto-Post Pulled Records',
+        default=True,
+        help='Post invoices, bills, vendor credits, journal entries, and '
+             'payments immediately after they are pulled from QuickBooks, '
+             'so they land in Odoo in the same posted state they have in '
+             'QBO instead of staying draft. Turn off to import everything '
+             'as draft for manual review before posting.',
+    )
     match_by_name = fields.Boolean(
         string='Allow Name-Based Matching',
         default=False,
