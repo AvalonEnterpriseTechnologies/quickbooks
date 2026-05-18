@@ -111,6 +111,13 @@ class ResConfigSettings(models.TransientModel):
              'operator has hand-curated the Odoo CoA and wants every '
              'unmatched QBO account flagged for manual mapping.',
     )
+    qb_auto_apply_account_mapping = fields.Boolean(
+        string='Auto-Apply QBO Account Mapping On Sync',
+        default=True,
+        help='When on, every Sync Now also runs Apply QBO Account Mapping '
+             'right after the chart of accounts is pulled, so line '
+             'resolvers always find a destination Odoo account.',
+    )
     qb_account_last_discovery = fields.Datetime(
         related='qb_config_id.qb_account_last_discovery', readonly=True,
     )
@@ -447,6 +454,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_account_strategy': getattr(
                     config, 'account_strategy', 'create_missing',
                 ),
+                'qb_auto_apply_account_mapping': getattr(
+                    config, 'qb_auto_apply_account_mapping', True,
+                ),
                 'qb_auto_sync_interval': config.auto_sync_interval,
                 'qb_auto_sync_interval_type': getattr(
                     config, 'auto_sync_interval_type', 'minutes',
@@ -597,6 +607,7 @@ class ResConfigSettings(models.TransientModel):
             'auto_post_pulled_records': self.qb_auto_post_pulled_records,
             'match_by_name': self.qb_match_by_name,
             'account_strategy': self.qb_account_strategy or 'create_missing',
+            'qb_auto_apply_account_mapping': self.qb_auto_apply_account_mapping,
             'auto_sync_interval': interval,
             'auto_sync_interval_type': interval_type,
             'sync_customers': self.qb_sync_customers,

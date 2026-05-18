@@ -312,6 +312,16 @@ class QuickbooksConfig(models.Model):
              'created. create_missing falls back to creating a new Odoo '
              'account whenever no match is found.',
     )
+    qb_auto_apply_account_mapping = fields.Boolean(
+        string='Auto-Apply QBO Account Mapping On Sync',
+        default=True,
+        help='When enabled (default), every Sync Now / cron full sync runs '
+             'the equivalent of "Apply QBO Account Mapping" right after the '
+             'CoA pull so unmapped QBO accounts are linked to existing '
+             'Odoo accounts (or created, depending on account_strategy) '
+             'before bills, invoices, payments, journal entries, and '
+             'payroll line resolvers run.',
+    )
     qb_account_last_discovery = fields.Datetime(
         string='Last QBO Account Discovery',
         readonly=True,

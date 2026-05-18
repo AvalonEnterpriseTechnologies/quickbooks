@@ -180,6 +180,20 @@
                                 </div>
                                 <field name="qb_account_strategy"/>
                                 <div class="content-group mt8">
+                                    <field name="qb_auto_apply_account_mapping"/>
+                                </div>
+                                <div class="text-muted small mb8">
+                                    When <b>Auto-Apply QBO Account Mapping On
+                                    Sync</b> is on (default), every Sync Now
+                                    automatically runs <i>Apply QBO Account
+                                    Mapping</i> after the chart of accounts
+                                    pull, so bills, invoices, payments, and
+                                    journal entries always find a destination
+                                    Odoo account. Disable only when you want
+                                    to review the discovery report before
+                                    linking.
+                                </div>
+                                <div class="content-group mt8">
                                     <field name="qb_account_last_discovery" readonly="1"/>
                                     <field name="qb_account_discovered_count" readonly="1"/>
                                     <field name="qb_account_mapped_count" readonly="1"/>

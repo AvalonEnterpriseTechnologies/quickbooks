@@ -304,6 +304,23 @@ class QBSyncEngine(models.AbstractModel):
                     entity_type, config.company_id.name,
                 )
 
+            # After the CoA stage, auto-apply the QBO account mapping so
+            # every downstream stage (bill / invoice / journal entry /
+            # payroll line resolvers) finds an Odoo account by qb_account_id.
+            # See quickbooks.config.qb_auto_apply_account_mapping (default True).
+            if (
+                entity_type == 'account'
+                and getattr(config, 'qb_auto_apply_account_mapping', True)
+            ):
+                try:
+                    config._run_account_discovery(write_links=True)
+                except Exception:
+                    total_errors += 1
+                    _logger.exception(
+                        'Auto-apply QBO account mapping failed for company %s',
+                        config.company_id.name,
+                    )
+
         config.write({'last_sync_date': fields.Datetime.now()})
 
         duration_ms = int((time.time() - full_start) * 1000)
