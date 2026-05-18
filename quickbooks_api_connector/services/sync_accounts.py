@@ -9,6 +9,93 @@ class QBSyncAccounts(models.AbstractModel):
     _name = 'qb.sync.accounts'
     _description = 'QuickBooks Account Sync'
 
+    # ---- Public on-the-fly resolver used by every line resolver ----
+
+    @api.model
+    def get_or_create_from_qb_id(self, config, qb_account_id, client=None):
+        """Resolve an Odoo account from a QBO Account.Id, creating it if needed.
+
+        Used by JournalEntry / Bill / VendorCredit / Payroll Pay Item line
+        resolvers so a single missing CoA row never silently drops a line.
+
+        Behaviour:
+          * If an Odoo account already carries ``qb_account_id == qb_account_id``
+            for ``config.company_id``, return it directly.
+          * Otherwise, fetch the Account from QBO (lazily, only when needed)
+            and:
+              - if ``config.account_strategy == 'create_missing'`` (the new
+                default), match-or-create using the same logic the bulk CoA
+                pull uses, then return the Odoo account.
+              - if ``config.account_strategy == 'map_only'``, return an empty
+                recordset and let the caller raise its existing unmapped-
+                account error.
+          * Never raises on the network call: a failed fetch returns
+            an empty recordset so the caller can log + skip the line.
+        """
+        Account = self.env['account.account']
+        if not qb_account_id:
+            return Account.browse()
+        qb_account_id = str(qb_account_id).strip()
+        if not qb_account_id:
+            return Account.browse()
+
+        matcher = self.env['qb.record.matcher']
+        existing = matcher.find_account_by_qb_id(qb_account_id, config.company_id)
+        if existing:
+            return existing
+
+        strategy = self._account_strategy(config)
+        try:
+            if client is None:
+                client = self.env['qb.api.client'].get_client(config)
+        except Exception:
+            _logger.exception(
+                'qb.sync.accounts.get_or_create_from_qb_id: could not get '
+                'QBO client for company %s', config.company_id.name,
+            )
+            return Account.browse()
+
+        try:
+            response = client.read('Account', qb_account_id)
+        except Exception:
+            _logger.exception(
+                'qb.sync.accounts.get_or_create_from_qb_id: failed to read '
+                'QBO Account %s', qb_account_id,
+            )
+            return Account.browse()
+        qb_data = response.get('Account', {})
+        if not qb_data:
+            _logger.warning(
+                'qb.sync.accounts.get_or_create_from_qb_id: QBO Account %s '
+                'does not exist (deleted?). Cannot resolve.', qb_account_id,
+            )
+            return Account.browse()
+
+        existing, decision = matcher.find_odoo_match_for_account(
+            qb_data, config.company_id, return_reason=True,
+        )
+        if existing:
+            matcher.link_odoo_record(existing, 'account', qb_data)
+            self._log_reconciliation(config, qb_data, existing, decision)
+            return existing
+
+        if strategy == 'map_only':
+            self._log_unmapped_account(config, qb_data, qb_account_id)
+            return Account.browse()
+
+        vals = self._qb_account_to_odoo(qb_data)
+        vals = self._prepare_new_account_vals(vals, config.company_id)
+        try:
+            account = Account.with_context(skip_qb_sync=True).create(vals)
+        except Exception:
+            _logger.exception(
+                'qb.sync.accounts.get_or_create_from_qb_id: failed to create '
+                'Odoo account for QBO Account %s', qb_account_id,
+            )
+            return Account.browse()
+        self._log_reconciliation(config, qb_data, account, 'created')
+        return account
+
     def _qb_account_to_odoo(self, qb_data):
         """Map a QBO Account to Odoo account.account vals."""
         classification = self.env['qb.account.classifier'].classify(qb_data)

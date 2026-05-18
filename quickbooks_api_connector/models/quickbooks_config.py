@@ -282,8 +282,10 @@ class QuickbooksConfig(models.Model):
     )
     match_by_name = fields.Boolean(
         string='Allow Name-Based Matching',
-        default=False,
-        help='Use exact normalized names as a final deduplication fallback.',
+        default=True,
+        help='Use exact normalized names as a final deduplication fallback. '
+             'Enabled by default to prevent duplicate Odoo records during '
+             'a QBO -> Odoo migration where the matcher has no QBO ID yet.',
     )
     account_name_strategy = fields.Selection(
         [
@@ -300,7 +302,7 @@ class QuickbooksConfig(models.Model):
             ('map_only', 'Map Only (Never Create)'),
             ('create_missing', 'Create Missing Accounts From QBO'),
         ],
-        default='map_only',
+        default='create_missing',
         required=True,
         string='Chart Of Accounts Strategy',
         help='map_only keeps the existing Odoo chart of accounts intact: QBO '

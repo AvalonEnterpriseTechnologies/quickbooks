@@ -103,11 +103,13 @@ class ResConfigSettings(models.TransientModel):
             ('create_missing', 'Create Missing Accounts From QBO'),
         ],
         string='Chart Of Accounts Strategy',
-        default='map_only',
-        help='map_only preserves the Odoo chart of accounts: unmatched QBO '
-             'accounts are logged for manual mapping instead of created. '
-             'create_missing falls back to creating a new Odoo account when '
-             'no match is found.',
+        default='create_missing',
+        help='create_missing brings the QBO chart of accounts into Odoo: '
+             'unmatched QBO accounts are created on the fly so journal '
+             'entries, bills, and payroll line resolvers always find a '
+             'destination account. Switch to map_only only when an '
+             'operator has hand-curated the Odoo CoA and wants every '
+             'unmatched QBO account flagged for manual mapping.',
     )
     qb_account_last_discovery = fields.Datetime(
         related='qb_config_id.qb_account_last_discovery', readonly=True,
@@ -131,7 +133,7 @@ class ResConfigSettings(models.TransientModel):
              'QBO instead of staying draft. Turn off to import everything '
              'as draft for manual review before posting.',
     )
-    qb_match_by_name = fields.Boolean(string='Allow Name-Based Matching', default=False)
+    qb_match_by_name = fields.Boolean(string='Allow Name-Based Matching', default=True)
     qb_auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
     )
@@ -441,9 +443,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_auto_post_pulled_records': getattr(
                     config, 'auto_post_pulled_records', True,
                 ),
-                'qb_match_by_name': getattr(config, 'match_by_name', False),
+                'qb_match_by_name': getattr(config, 'match_by_name', True),
                 'qb_account_strategy': getattr(
-                    config, 'account_strategy', 'map_only',
+                    config, 'account_strategy', 'create_missing',
                 ),
                 'qb_auto_sync_interval': config.auto_sync_interval,
                 'qb_auto_sync_interval_type': getattr(
@@ -594,7 +596,7 @@ class ResConfigSettings(models.TransientModel):
             'verify_after_push': self.qb_verify_after_push,
             'auto_post_pulled_records': self.qb_auto_post_pulled_records,
             'match_by_name': self.qb_match_by_name,
-            'account_strategy': self.qb_account_strategy or 'map_only',
+            'account_strategy': self.qb_account_strategy or 'create_missing',
             'auto_sync_interval': interval,
             'auto_sync_interval_type': interval_type,
             'sync_customers': self.qb_sync_customers,

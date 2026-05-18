@@ -117,8 +117,8 @@ class QBSyncJournalEntries(models.AbstractModel):
             account_ref = detail.get('AccountRef', {})
             account_qb_id = account_ref.get('value')
             if account_qb_id:
-                account = self.env['qb.record.matcher'].find_account_by_qb_id(
-                    account_qb_id, config.company_id,
+                account = self.env['qb.sync.accounts'].get_or_create_from_qb_id(
+                    config, account_qb_id,
                 )
                 if account:
                     line_vals['account_id'] = account.id

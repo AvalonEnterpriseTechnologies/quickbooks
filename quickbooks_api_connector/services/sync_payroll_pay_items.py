@@ -105,15 +105,14 @@ class QBSyncPayrollPayItems(models.AbstractModel):
     def _resolve_account(self, account_ref, config):
         if not account_ref or 'account.account' not in self.env:
             return False
-        ref = str(account_ref)
-        Account = self.env['account.account'].sudo()
-        domain = [('qb_account_id', '=', ref)]
-        if 'company_ids' in Account._fields:
-            domain.append(('company_ids', 'in', config.company_id.id))
-        elif 'company_id' in Account._fields:
-            domain.append(('company_id', '=', config.company_id.id))
-        match = Account.search(domain, limit=1)
-        return match.id if match else False
+        # Route through the central get_or_create helper so a payroll pay
+        # item referencing a not-yet-imported QBO account auto-creates the
+        # Odoo account (when account_strategy=create_missing) instead of
+        # silently dropping the link.
+        account = self.env['qb.sync.accounts'].get_or_create_from_qb_id(
+            config, account_ref,
+        )
+        return account.id if account else False
 
     def _resolve_vendor(self, vendor_ref, config):
         if not vendor_ref or 'res.partner' not in self.env:
