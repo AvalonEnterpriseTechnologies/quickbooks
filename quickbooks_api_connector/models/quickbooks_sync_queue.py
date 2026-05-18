@@ -186,6 +186,24 @@ class QuickbooksSyncQueue(models.Model):
                 'error_message': error_msg,
             })
 
+    @staticmethod
+    def _qb_group_members(group):
+        """Return the users in ``group`` across Odoo 17 / 18 / 19.
+
+        Odoo 19 dropped the ``res.groups.users`` Many2many and replaced it
+        with ``user_ids`` (direct) plus ``all_user_ids`` (computed,
+        including inherited memberships). Falling back to a search on
+        ``groups_id`` keeps the helper portable.
+        """
+        if not group:
+            return group.env['res.users'].browse()
+        for field in ('user_ids', 'users', 'all_user_ids'):
+            if field in group._fields:
+                return group[field]
+        return group.env['res.users'].sudo().search([
+            ('groups_id', 'in', group.id),
+        ])
+
     def _raise_failure_activity(self, error_msg):
         """Surface a permanent sync failure on the underlying Odoo record.
 
@@ -208,10 +226,11 @@ class QuickbooksSyncQueue(models.Model):
             'quickbooks_api_connector.group_qb_manager',
             raise_if_not_found=False,
         )
-        responsible = (
-            manager_group.users[:1] if manager_group and manager_group.users
-            else self.env.user
-        )
+        responsible = self.env.user
+        if manager_group:
+            members = self._qb_group_members(manager_group)
+            if members:
+                responsible = members[:1]
         try:
             record.activity_schedule(
                 'mail.mail_activity_data_warning',
