@@ -311,9 +311,14 @@
                                     <field name="qb_payroll_archived" readonly="1"/>
                                     <field name="qb_payroll_cutover_date" readonly="1"/>
                                 </div>
+                                <button name="action_qb_enable_payroll_all"
+                                        string="Enable QuickBooks Payroll (All Features)"
+                                        type="object" class="btn-primary me-2 mt8"
+                                        icon="fa-bolt"
+                                        confirm="Install hr_payroll + l10n_us_hr_payroll + l10n_us_hr_payroll_ks + the QBO HR bridges, enable every payroll sync toggle, and run the orchestrator pull immediately. Continue?"/>
                                 <button name="action_qb_cutover_payroll"
                                         string="Cutover To Odoo Payroll"
-                                        type="object" class="btn-primary me-2 mt8"
+                                        type="object" class="btn-secondary me-2 mt8"
                                         icon="fa-flag-checkered"
                                         invisible="not qb_payroll_enabled or qb_payroll_archived"
                                         confirm="Run pre-cutover audit and (if clean) seal QuickBooks Payroll as a read-only archive. Continue?"/>

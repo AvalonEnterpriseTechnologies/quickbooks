@@ -789,6 +789,111 @@ class QuickbooksConfig(models.Model):
         'l10n_ks_filing_status', 'l10n_ks_form_effective_date',
     )
 
+    def action_qb_enable_payroll_all(self):
+        """One-click: install the Odoo payroll stack + flip every QBO payroll
+        toggle on and run the orchestrator immediately.
+
+        Steps (each guarded so a single failure does not abort the rest):
+
+          1. Install ``hr_payroll`` and (if available) ``l10n_us_hr_payroll``
+             and ``l10n_us_hr_payroll_ks``. Re-installs of an already-installed
+             module are no-ops in Odoo.
+          2. Auto-install (re-trigger) the bridge addons
+             ``quickbooks_api_connector_hr`` and
+             ``quickbooks_api_connector_hr_payroll`` so their post-init
+             hooks seed payroll reference data.
+          3. Flip ``payroll_enabled`` and every ``sync_payroll_*`` toggle on
+             this config to True.
+          4. Kick off ``qb.sync.payroll.orchestrator.pull_for_config`` so the
+             pull happens immediately instead of waiting for the next cron.
+
+        Manual-only; never called automatically (cutover stays operator-driven).
+        """
+        self.ensure_one()
+        Module = self.env['ir.module.module'].sudo()
+        wanted = [
+            'hr_payroll',
+            'l10n_us_hr_payroll',
+            'l10n_us_hr_payroll_ks',
+            'quickbooks_api_connector_hr',
+            'quickbooks_api_connector_hr_payroll',
+        ]
+        installed = []
+        skipped = []
+        for tech_name in wanted:
+            module = Module.search([('name', '=', tech_name)], limit=1)
+            if not module:
+                skipped.append('%s (not in addons path)' % tech_name)
+                continue
+            if module.state in ('installed', 'to upgrade'):
+                installed.append('%s (already installed)' % tech_name)
+                continue
+            try:
+                module.button_immediate_install()
+                installed.append(tech_name)
+            except Exception as exc:
+                _logger.exception(
+                    'action_qb_enable_payroll_all: install of %s failed', tech_name,
+                )
+                skipped.append('%s (install failed: %s)' % (tech_name, exc))
+
+        toggle_vals = {
+            'payroll_enabled': True,
+            'sync_payroll_pay_schedules': True,
+            'sync_payroll_pay_items': True,
+            'sync_payroll_employees': True,
+            'sync_payroll_tax_setup': True,
+            'sync_payroll_compensations': True,
+            'sync_payroll_checks': True,
+            'sync_payroll_payslips': True,
+            'sync_payroll_settings': True,
+            'sync_employee_benefits': True,
+        }
+        toggle_vals = {
+            k: v for k, v in toggle_vals.items() if k in self._fields
+        }
+        if toggle_vals:
+            self.with_context(skip_qb_sync=True).write(toggle_vals)
+
+        Orchestrator = self.env.get('qb.sync.payroll.orchestrator')
+        orchestrator_ran = False
+        if Orchestrator is not None and self.state == 'connected':
+            try:
+                Orchestrator.pull_for_config(self)
+                orchestrator_ran = True
+            except Exception:
+                _logger.exception(
+                    'action_qb_enable_payroll_all: orchestrator pull failed '
+                    'for %s', self.company_id.name,
+                )
+
+        message = []
+        if installed:
+            message.append('Installed / verified: %s.' % ', '.join(installed))
+        if skipped:
+            message.append('Skipped: %s.' % ', '.join(skipped))
+        if toggle_vals:
+            message.append(
+                'Enabled %d payroll sync toggle(s).' % len(toggle_vals)
+            )
+        if orchestrator_ran:
+            message.append('Ran the payroll orchestrator pull.')
+        elif self.state != 'connected':
+            message.append(
+                'QuickBooks is not connected; skipped the orchestrator pull '
+                '(run "Pull Now" once the connection is restored).'
+            )
+
+        self.message_post(
+            body='<b>QuickBooks Payroll enabled.</b><br/>' + '<br/>'.join(message),
+            subject='Enable QuickBooks Payroll (all features)',
+        )
+        return self._notification(
+            'QuickBooks Payroll',
+            ' '.join(message) or 'Nothing to do.',
+            'success',
+        )
+
     def action_qb_cutover_payroll(self):
         """Run the pre-cutover audit and (if clean) seal QBO as archive.
 

@@ -816,6 +816,11 @@ class ResConfigSettings(models.TransientModel):
         config = self._get_or_create_qb_config()
         return config.action_apply_qbo_account_mapping()
 
+    def action_qb_enable_payroll_all(self):
+        """Install Odoo payroll modules and enable every QBO payroll feature."""
+        config = self._get_or_create_qb_config()
+        return config.action_qb_enable_payroll_all()
+
     def action_qb_cutover_payroll(self):
         """Run the payroll cutover audit + flip via quickbooks.config."""
         config = self._get_or_create_qb_config()
