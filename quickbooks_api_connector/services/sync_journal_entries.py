@@ -168,12 +168,56 @@ class QBSyncJournalEntries(models.AbstractModel):
 
     # ---- Push ----
 
+    @staticmethod
+    def _validate_je_payload(payload, move):
+        """QBO JournalEntry requires every line to carry AccountRef.value.
+
+        Refuses to POST a payload that QBO will reject. Same pre-validation
+        pattern as sync_transfers.push and sync_bills.push.
+        """
+        errors = []
+        lines = payload.get('Line') or []
+        if not lines:
+            errors.append('No exportable JournalEntry lines (every line missing AccountRef)')
+        else:
+            debit_total = 0.0
+            credit_total = 0.0
+            for idx, line in enumerate(lines, start=1):
+                detail = line.get('JournalEntryLineDetail') or {}
+                ref = (detail.get('AccountRef') or {}).get('value')
+                if not ref:
+                    errors.append(
+                        'JE line %d missing AccountRef.value — set qb_account_id '
+                        'on the Odoo account' % idx
+                    )
+                amount = float(line.get('Amount') or 0)
+                if detail.get('PostingType') == 'Debit':
+                    debit_total += amount
+                elif detail.get('PostingType') == 'Credit':
+                    credit_total += amount
+            if abs(debit_total - credit_total) > 0.005:
+                errors.append(
+                    'Unbalanced JournalEntry: debits %.2f != credits %.2f'
+                    % (debit_total, credit_total)
+                )
+        return errors
+
     def push(self, client, config, job):
         move = self.env['account.move'].browse(job.odoo_record_id)
         if not move.exists() or move.move_type != 'entry':
             return {}
 
         payload = self._odoo_je_to_qb(move)
+        errors = self._validate_je_payload(payload, move)
+        if errors:
+            error_msg = 'JournalEntry push aborted before API call: %s' % '; '.join(errors)
+            _logger.warning(
+                'Skipping QBO JournalEntry push for move %s: %s',
+                move.id, error_msg,
+            )
+            move.with_context(skip_qb_sync=True).write({'qb_sync_error': error_msg})
+            return {'skipped': True, 'error': error_msg}
+
         qb_id = move.qb_je_id
 
         matcher = self.env['qb.record.matcher']

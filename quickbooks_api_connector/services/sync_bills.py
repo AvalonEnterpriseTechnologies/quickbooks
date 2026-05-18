@@ -172,12 +172,50 @@ class QBSyncBills(models.AbstractModel):
 
     # ---- Push ----
 
+    @staticmethod
+    def _validate_bill_payload(payload, move):
+        """Return a list of human-readable reasons the payload is invalid for QBO.
+
+        Prevents the same "Required param missing" 400 loop that hit
+        Transfer pushes before 19.0.8.0.0. QBO Bill requires VendorRef
+        plus at least one line with an AccountRef / ItemRef.
+        """
+        errors = []
+        if not (payload.get('VendorRef') or {}).get('value'):
+            errors.append(
+                'VendorRef missing — set qb_vendor_id on partner %s'
+                % (move.partner_id.display_name if move.partner_id else '(none)')
+            )
+        lines = payload.get('Line') or []
+        if not lines:
+            errors.append('No exportable Bill lines (every line missing AccountRef/ItemRef)')
+        else:
+            for idx, line in enumerate(lines, start=1):
+                detail_type = line.get('DetailType')
+                detail = line.get(detail_type, {}) if detail_type else {}
+                has_ref = (
+                    (detail.get('AccountRef') or {}).get('value')
+                    or (detail.get('ItemRef') or {}).get('value')
+                )
+                if not has_ref:
+                    errors.append(
+                        'Bill line %d missing AccountRef and ItemRef' % idx
+                    )
+        return errors
+
     def push(self, client, config, job):
         move = self.env['account.move'].browse(job.odoo_record_id)
         if not move.exists() or move.move_type != 'in_invoice':
             return {}
 
         payload = self._odoo_bill_to_qb(move)
+        errors = self._validate_bill_payload(payload, move)
+        if errors:
+            error_msg = 'Bill push aborted before API call: %s' % '; '.join(errors)
+            _logger.warning('Skipping QBO Bill push for move %s: %s', move.id, error_msg)
+            move.with_context(skip_qb_sync=True).write({'qb_sync_error': error_msg})
+            return {'skipped': True, 'error': error_msg}
+
         qb_id = move.qb_bill_id
 
         matcher = self.env['qb.record.matcher']

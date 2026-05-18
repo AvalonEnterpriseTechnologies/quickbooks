@@ -281,6 +281,35 @@ class QBSyncPayments(models.AbstractModel):
 
     # ---- Push ----
 
+    @staticmethod
+    def _validate_payment_payload(payload, payment, is_customer):
+        """QBO Payment requires CustomerRef + TotalAmt; BillPayment requires VendorRef + bank ref."""
+        errors = []
+        if not (payload.get('TotalAmt') or 0):
+            errors.append('TotalAmt is zero — refusing empty payment')
+        if is_customer:
+            if not (payload.get('CustomerRef') or {}).get('value'):
+                errors.append(
+                    'CustomerRef missing — set qb_customer_id on partner %s'
+                    % (payment.partner_id.display_name if payment.partner_id else '(none)')
+                )
+        else:
+            if not (payload.get('VendorRef') or {}).get('value'):
+                errors.append(
+                    'VendorRef missing — set qb_vendor_id on partner %s'
+                    % (payment.partner_id.display_name if payment.partner_id else '(none)')
+                )
+            check = payload.get('CheckPayment') or {}
+            if not (check.get('BankAccountRef') or {}).get('value'):
+                errors.append(
+                    'BankAccountRef missing — set qb_account_id on the bank '
+                    'account behind journal %s' % (
+                        payment.journal_id.display_name
+                        if payment.journal_id else '(none)'
+                    )
+                )
+        return errors
+
     def push(self, client, config, job):
         payment = self.env['account.payment'].browse(job.odoo_record_id)
         if not payment.exists():
@@ -295,6 +324,18 @@ class QBSyncPayments(models.AbstractModel):
         )
 
         payload = mapper(payment)
+        errors = self._validate_payment_payload(payload, payment, is_customer)
+        if errors:
+            error_msg = '%s push aborted before API call: %s' % (
+                qb_name, '; '.join(errors),
+            )
+            _logger.warning(
+                'Skipping QBO %s push for payment %s: %s',
+                qb_name, payment.id, error_msg,
+            )
+            payment.with_context(skip_qb_sync=True).write({'qb_sync_error': error_msg})
+            return {'skipped': True, 'error': error_msg}
+
         qb_id = getattr(payment, qb_id_field)
 
         matcher = self.env['qb.record.matcher']

@@ -156,12 +156,44 @@ class QBSyncVendorCredits(models.AbstractModel):
             if tax:
                 line_vals['tax_ids'] = [(6, 0, [tax.id])]
 
+    @staticmethod
+    def _validate_vendorcredit_payload(payload, move):
+        errors = []
+        if not (payload.get('VendorRef') or {}).get('value'):
+            errors.append(
+                'VendorRef missing — set qb_vendor_id on partner %s'
+                % (move.partner_id.display_name if move.partner_id else '(none)')
+            )
+        lines = payload.get('Line') or []
+        if not lines:
+            errors.append('No exportable VendorCredit lines (every line missing AccountRef/ItemRef)')
+        else:
+            for idx, line in enumerate(lines, start=1):
+                detail_type = line.get('DetailType')
+                detail = line.get(detail_type, {}) if detail_type else {}
+                has_ref = (
+                    (detail.get('AccountRef') or {}).get('value')
+                    or (detail.get('ItemRef') or {}).get('value')
+                )
+                if not has_ref:
+                    errors.append(
+                        'VendorCredit line %d missing AccountRef and ItemRef' % idx
+                    )
+        return errors
+
     def push(self, client, config, job):
         move = self.env['account.move'].browse(job.odoo_record_id)
         if not move.exists() or move.move_type != 'in_refund':
             return {}
 
         payload = self._odoo_to_qb_vendorcredit(move)
+        errors = self._validate_vendorcredit_payload(payload, move)
+        if errors:
+            error_msg = 'VendorCredit push aborted before API call: %s' % '; '.join(errors)
+            _logger.warning('Skipping QBO VendorCredit push for move %s: %s', move.id, error_msg)
+            move.with_context(skip_qb_sync=True).write({'qb_sync_error': error_msg})
+            return {'skipped': True, 'error': error_msg}
+
         qb_id = move.qb_vendorcredit_id
 
         matcher = self.env['qb.record.matcher']
