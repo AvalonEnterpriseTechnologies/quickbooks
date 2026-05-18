@@ -97,6 +97,30 @@ class ResConfigSettings(models.TransientModel):
          ('manual', 'Manual Review')],
         string='Conflict Resolution', default='odoo_wins',
     )
+    qb_account_strategy = fields.Selection(
+        [
+            ('map_only', 'Map Only (Never Create)'),
+            ('create_missing', 'Create Missing Accounts From QBO'),
+        ],
+        string='Chart Of Accounts Strategy',
+        default='map_only',
+        help='map_only preserves the Odoo chart of accounts: unmatched QBO '
+             'accounts are logged for manual mapping instead of created. '
+             'create_missing falls back to creating a new Odoo account when '
+             'no match is found.',
+    )
+    qb_account_last_discovery = fields.Datetime(
+        related='qb_config_id.qb_account_last_discovery', readonly=True,
+    )
+    qb_account_discovered_count = fields.Integer(
+        related='qb_config_id.qb_account_discovered_count', readonly=True,
+    )
+    qb_account_mapped_count = fields.Integer(
+        related='qb_config_id.qb_account_mapped_count', readonly=True,
+    )
+    qb_account_unmapped_count = fields.Integer(
+        related='qb_config_id.qb_account_unmapped_count', readonly=True,
+    )
     qb_verify_after_push = fields.Boolean(string='Verify QBO After Push', default=True)
     qb_match_by_name = fields.Boolean(string='Allow Name-Based Matching', default=False)
     qb_auto_sync_interval = fields.Integer(
@@ -367,6 +391,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_conflict_resolution': config.conflict_resolution,
                 'qb_verify_after_push': getattr(config, 'verify_after_push', True),
                 'qb_match_by_name': getattr(config, 'match_by_name', False),
+                'qb_account_strategy': getattr(
+                    config, 'account_strategy', 'map_only',
+                ),
                 'qb_auto_sync_interval': config.auto_sync_interval,
                 'qb_auto_sync_interval_type': getattr(
                     config, 'auto_sync_interval_type', 'minutes',
@@ -491,6 +518,7 @@ class ResConfigSettings(models.TransientModel):
             'conflict_resolution': self.qb_conflict_resolution or 'odoo_wins',
             'verify_after_push': self.qb_verify_after_push,
             'match_by_name': self.qb_match_by_name,
+            'account_strategy': self.qb_account_strategy or 'map_only',
             'auto_sync_interval': interval,
             'auto_sync_interval_type': interval_type,
             'sync_customers': self.qb_sync_customers,
@@ -592,6 +620,25 @@ class ResConfigSettings(models.TransientModel):
     def action_qb_run_pending_jobs_now(self):
         config = self._get_or_create_qb_config()
         return config.action_run_pending_jobs_now()
+
+    def action_qb_preview_accounts(self):
+        """Pull the QBO chart of accounts and post a discovery summary.
+
+        No Odoo accounts are written. Use after Connect to confirm what
+        the map_only strategy will and won't be able to link before
+        running the actual sync.
+        """
+        config = self._get_or_create_qb_config()
+        return config.action_preview_qbo_accounts()
+
+    def action_qb_apply_account_mapping(self):
+        """Pull the QBO CoA and link matched accounts onto the existing Odoo CoA.
+
+        Never creates new Odoo accounts. Unmapped QBO accounts raise a
+        warning activity for the QuickBooks Manager group.
+        """
+        config = self._get_or_create_qb_config()
+        return config.action_apply_qbo_account_mapping()
 
     def action_qb_run_initial_migration(self):
         """Queue a full bidirectional initial migration in dependency order.

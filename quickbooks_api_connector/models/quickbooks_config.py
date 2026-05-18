@@ -236,6 +236,41 @@ class QuickbooksConfig(models.Model):
         string='Account Name Strategy',
         help='Controls how QBO account names update an existing Odoo chart of accounts.',
     )
+    account_strategy = fields.Selection(
+        [
+            ('map_only', 'Map Only (Never Create)'),
+            ('create_missing', 'Create Missing Accounts From QBO'),
+        ],
+        default='map_only',
+        required=True,
+        string='Chart Of Accounts Strategy',
+        help='map_only keeps the existing Odoo chart of accounts intact: QBO '
+             'accounts are linked to existing Odoo accounts by code, '
+             'compatible code, name, or compatible name, and rows that fail '
+             'to match are logged for manual mapping instead of being '
+             'created. create_missing falls back to creating a new Odoo '
+             'account whenever no match is found.',
+    )
+    qb_account_last_discovery = fields.Datetime(
+        string='Last QBO Account Discovery',
+        readonly=True,
+        copy=False,
+    )
+    qb_account_discovered_count = fields.Integer(
+        string='QBO Accounts Discovered',
+        readonly=True,
+        copy=False,
+    )
+    qb_account_mapped_count = fields.Integer(
+        string='QBO Accounts Mapped To Odoo',
+        readonly=True,
+        copy=False,
+    )
+    qb_account_unmapped_count = fields.Integer(
+        string='QBO Accounts Unmapped',
+        readonly=True,
+        copy=False,
+    )
     auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
     )
@@ -497,6 +532,152 @@ class QuickbooksConfig(models.Model):
             'oauth_state': False,
             'state': 'draft',
         })
+
+    def action_preview_qbo_accounts(self):
+        """Fetch the QBO chart of accounts and report planned matches without writing.
+
+        Posts a summary message to the config's chatter and updates the
+        discovery counters so operators can review what map_only will link,
+        what it will leave unmapped (requiring manual mapping), and what
+        create_missing would create, BEFORE the actual sync runs.
+        """
+        self.ensure_one()
+        if self.state != 'connected':
+            raise UserError('QuickBooks is not connected for this company.')
+        return self._run_account_discovery(write_links=False)
+
+    def action_apply_qbo_account_mapping(self):
+        """Fetch the QBO chart of accounts and link existing Odoo accounts by code/name.
+
+        Never creates new Odoo accounts. Use this after Preview to commit the
+        suggested links onto the existing Odoo chart of accounts.
+        """
+        self.ensure_one()
+        if self.state != 'connected':
+            raise UserError('QuickBooks is not connected for this company.')
+        return self._run_account_discovery(write_links=True)
+
+    def _run_account_discovery(self, write_links):
+        client = self.env['qb.api.client'].get_client(self)
+        matcher = self.env['qb.record.matcher']
+        try:
+            records = client.query_all('Account', where_clause='Active IN (true, false)')
+        except Exception as exc:
+            _logger.exception('QBO account discovery failed for company %s',
+                              self.company_id.name)
+            raise UserError('Failed to fetch the QuickBooks chart of accounts: %s' % exc)
+
+        matched = []
+        unmatched = []
+        already_linked = []
+        for qb_data in records:
+            qb_id = str(qb_data.get('Id') or '')
+            qb_name = qb_data.get('Name') or ''
+            qb_code = (qb_data.get('AcctNum') or '').strip()
+            existing, decision = matcher.find_odoo_match_for_account(
+                qb_data, self.company_id, return_reason=True,
+            )
+            if existing and decision == 'linked_by_id':
+                already_linked.append((qb_id, qb_code, qb_name, existing, decision))
+            elif existing:
+                matched.append((qb_id, qb_code, qb_name, existing, decision))
+                if write_links and not existing.qb_account_id:
+                    matcher.link_odoo_record(existing, 'account', qb_data)
+                    if hasattr(existing, '_record_qb_link_decision'):
+                        existing.sudo()._record_qb_link_decision(
+                            self, qb_data, decision,
+                        )
+            else:
+                unmatched.append((qb_id, qb_code, qb_name))
+
+        self.write({
+            'qb_account_last_discovery': fields.Datetime.now(),
+            'qb_account_discovered_count': len(records),
+            'qb_account_mapped_count': len(already_linked) + len(matched),
+            'qb_account_unmapped_count': len(unmatched),
+        })
+        self._post_account_discovery_summary(
+            records, matched, unmatched, already_linked, write_links,
+        )
+        action_label = 'applied' if write_links else 'previewed'
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'QuickBooks Chart Of Accounts Discovery',
+                'message': (
+                    'Discovery %s: %d QBO accounts, %d already linked, '
+                    '%d newly mapped, %d unmapped (require manual mapping).'
+                ) % (
+                    action_label, len(records),
+                    len(already_linked), len(matched), len(unmatched),
+                ),
+                'type': 'success' if not unmatched else 'warning',
+                'sticky': True,
+            },
+        }
+
+    def _post_account_discovery_summary(self, records, matched, unmatched,
+                                        already_linked, write_links):
+        verb = 'Applied' if write_links else 'Preview'
+        body_lines = [
+            '<b>QuickBooks Chart Of Accounts Discovery — %s</b>' % verb,
+            '<ul>',
+            '<li>%d QBO accounts read from realm %s</li>' % (
+                len(records), self.realm_id or '',
+            ),
+            '<li>%d already linked to Odoo (qb_account_id set)</li>' % len(already_linked),
+            '<li>%d %s mapped to existing Odoo accounts</li>' % (
+                len(matched), 'newly' if write_links else 'will be',
+            ),
+            '<li>%d unmapped — must be mapped manually before the next pull</li>' % len(
+                unmatched,
+            ),
+            '</ul>',
+        ]
+        if unmatched:
+            body_lines.append('<b>Unmapped QBO accounts:</b><ul>')
+            for qb_id, qb_code, qb_name in unmatched[:50]:
+                body_lines.append(
+                    '<li>QBO ID %s — %s — %s</li>' % (qb_id, qb_code or '(no code)', qb_name),
+                )
+            if len(unmatched) > 50:
+                body_lines.append('<li>... and %d more</li>' % (len(unmatched) - 50))
+            body_lines.append('</ul>')
+            body_lines.append(
+                '<p>To map: open the Odoo account, paste the QBO ID into '
+                '"QB Account ID", and save. Then re-run Apply to refresh '
+                'the counters, or run a Sync Now to pull data using the '
+                'manually mapped accounts.</p>'
+            )
+        self.message_post(
+            body='\n'.join(body_lines),
+            subject='QuickBooks Chart Of Accounts Discovery',
+            subtype_xmlid='mail.mt_note',
+        )
+        if unmatched and write_links:
+            self._raise_unmapped_account_activity(unmatched)
+
+    def _raise_unmapped_account_activity(self, unmatched):
+        manager_group = self.env.ref(
+            'quickbooks_api_connector.group_qb_manager',
+            raise_if_not_found=False,
+        )
+        responsible = self.env.user
+        if manager_group:
+            users = manager_group.users.filtered(lambda u: u.active)
+            if users:
+                responsible = users[0]
+        summary = '%d QuickBooks accounts need manual mapping in Odoo' % len(unmatched)
+        note = 'See the most recent chatter message on this QuickBooks ' \
+               'configuration record for the full list of unmapped QBO accounts. ' \
+               'Map each by pasting its QBO ID into the matching Odoo account.'
+        self.activity_schedule(
+            'mail.mail_activity_data_warning',
+            summary=summary,
+            note=note,
+            user_id=responsible.id,
+        )
 
     def action_test_connection(self):
         self.ensure_one()

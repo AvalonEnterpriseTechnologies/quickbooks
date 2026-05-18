@@ -162,6 +162,43 @@
 
                         <div class="col-12 o_setting_box"
                              invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Chart Of Accounts Strategy</span>
+                                <div class="text-muted small mb8">
+                                    <b>Map Only</b> keeps the existing Odoo
+                                    chart of accounts intact: QBO accounts are
+                                    linked to existing Odoo accounts by code,
+                                    then by name; anything that fails to match
+                                    is logged on this configuration's chatter
+                                    and raises a warning activity for the
+                                    QuickBooks Manager group. Map the
+                                    remaining accounts manually by pasting
+                                    the QBO ID onto the matching Odoo account.
+                                    Use <b>Create Missing</b> only if you want
+                                    QBO to seed the Odoo chart of accounts.
+                                </div>
+                                <field name="qb_account_strategy"/>
+                                <div class="content-group mt8">
+                                    <field name="qb_account_last_discovery" readonly="1"/>
+                                    <field name="qb_account_discovered_count" readonly="1"/>
+                                    <field name="qb_account_mapped_count" readonly="1"/>
+                                    <field name="qb_account_unmapped_count" readonly="1"/>
+                                </div>
+                                <button name="action_qb_preview_accounts"
+                                        string="Preview QBO Account Mapping"
+                                        type="object" class="btn-secondary me-2 mt8"
+                                        icon="fa-search"/>
+                                <button name="action_qb_apply_account_mapping"
+                                        string="Apply QBO Account Mapping"
+                                        type="object" class="btn-primary me-2 mt8"
+                                        icon="fa-link"
+                                        confirm="Link matched QBO accounts onto the existing Odoo chart of accounts now. No new Odoo accounts will be created. Continue?"/>
+                            </div>
+                        </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_reports"/>
                             </div>
