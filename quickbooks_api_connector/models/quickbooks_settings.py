@@ -301,6 +301,15 @@ class ResConfigSettings(models.TransientModel):
              'Generated from the live sync engine registry plus any manual '
              'coverage rows.',
     )
+    qb_sales_doc_integrity_summary = fields.Text(
+        string='Sales Document Migration Integrity',
+        compute='_compute_qb_sales_doc_integrity_summary',
+        help='Per-sales-doc summary from the most recent migration run: '
+             'imported / linked / orphan counts and QBO-vs-Odoo totals for '
+             'Estimates, Invoices, Credit Memos, Sales Receipts, and Refund '
+             'Receipts. Refreshed by qb.sales.doc.relinker at the end of '
+             'every Initial Migration run.',
+    )
 
     def _compute_qb_config_id(self):
         Config = self.env['quickbooks.config']
@@ -360,6 +369,59 @@ class ResConfigSettings(models.TransientModel):
         )
         for rec in self:
             rec.qb_coverage_summary = summary
+
+    def _compute_qb_sales_doc_integrity_summary(self):
+        """Latest qb.sales.doc.relinker counters formatted as a fixed-width table."""
+        Step = self.env['quickbooks.migration.run.step'].sudo()
+        Run = self.env['quickbooks.migration.run'].sudo()
+        sales_entities = (
+            'estimate', 'invoice', 'credit_memo',
+            'sales_receipt', 'refund_receipt',
+        )
+        for rec in self:
+            run = Run.search(
+                [('company_id', '=', rec.company_id.id)],
+                order='started_at desc', limit=1,
+            )
+            if not run:
+                rec.qb_sales_doc_integrity_summary = (
+                    'No migration runs yet. Open the Initial Migration '
+                    'wizard to import QuickBooks sales documents.'
+                )
+                continue
+            lines = [
+                '%-15s %8s %8s %8s %15s %15s' % (
+                    'Type', 'Pulled', 'Linked', 'Orphan', 'QBO Total', 'Odoo Total',
+                ),
+                '-' * 75,
+            ]
+            any_step = False
+            for entity in sales_entities:
+                step = Step.search([
+                    ('run_id', '=', run.id),
+                    ('entity_type', '=', entity),
+                    ('direction', '=', 'pull'),
+                ], order='id desc', limit=1)
+                if not step:
+                    continue
+                any_step = True
+                lines.append(
+                    '%-15s %8d %8d %8d %15.2f %15.2f' % (
+                        entity,
+                        step.actual_count or 0,
+                        step.linked_count or 0,
+                        step.orphan_link_count or 0,
+                        step.amount_total_qbo or 0.0,
+                        step.amount_total_odoo or 0.0,
+                    )
+                )
+            if not any_step:
+                rec.qb_sales_doc_integrity_summary = (
+                    'Last migration run %s did not include any sales-document '
+                    'imports.'
+                ) % run.started_at
+            else:
+                rec.qb_sales_doc_integrity_summary = '\n'.join(lines)
 
     @api.depends_context('uid')
     def _compute_qb_module_status(self):

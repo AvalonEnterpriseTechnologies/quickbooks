@@ -31,7 +31,31 @@ class QuickbooksMigrationWizard(models.TransientModel):
     migrate_vendors = fields.Boolean(default=True, string='Vendors')
     migrate_projects = fields.Boolean(default=True, string='Projects')
     migrate_products = fields.Boolean(default=True, string='Products / Items')
+    migrate_estimates = fields.Boolean(
+        default=True,
+        string='Estimates / Quotations',
+        help='Pull QBO Estimates as Odoo Sales Orders (sale.order). '
+             'Required so Invoice -> Estimate links can be rebuilt.',
+    )
     migrate_invoices = fields.Boolean(default=True, string='Invoices')
+    migrate_credit_memos = fields.Boolean(
+        default=True,
+        string='Credit Memos',
+        help='Pull QBO CreditMemos as Odoo refund invoices, with their '
+             'LinkedTxn -> Invoice reversal preserved.',
+    )
+    migrate_sales_receipts = fields.Boolean(
+        default=False,
+        string='Sales Receipts',
+        help='Pull QBO SalesReceipts as posted Odoo invoices + auto-reconciled '
+             'payments against the deposit account.',
+    )
+    migrate_refund_receipts = fields.Boolean(
+        default=False,
+        string='Refund Receipts',
+        help='Pull QBO RefundReceipts as Odoo refund invoices, with their '
+             'LinkedTxn -> CreditMemo link preserved.',
+    )
     migrate_bills = fields.Boolean(default=True, string='Bills')
     migrate_payments = fields.Boolean(default=True, string='Payments')
     migrate_journal_entries = fields.Boolean(default=False, string='Journal Entries')
@@ -102,8 +126,19 @@ class QuickbooksMigrationWizard(models.TransientModel):
             ordered_entities.append('recurring_transaction')
         if self.migrate_custom_fields:
             ordered_entities.append('custom_field_definition')
+        # Sales-document chain (parents before children so LinkedTxn
+        # references resolve in a single pass; relinker still runs at
+        # the end to mop up out-of-order arrivals from CDC / retries).
+        if self.migrate_estimates:
+            ordered_entities.append('estimate')
         if self.migrate_invoices:
             ordered_entities.append('invoice')
+        if self.migrate_credit_memos:
+            ordered_entities.append('credit_memo')
+        if self.migrate_sales_receipts:
+            ordered_entities.append('sales_receipt')
+        if self.migrate_refund_receipts:
+            ordered_entities.append('refund_receipt')
         if self.migrate_bills:
             ordered_entities.append('bill')
         if self.migrate_payments:
@@ -181,6 +216,46 @@ class QuickbooksMigrationWizard(models.TransientModel):
                     step.status = 'skipped'
                 count += 1
             priority -= 5
+
+        # Sales-document relink synthetic step. Always queued (live) /
+        # planned (dry-run) when any sales doc was imported, since the
+        # parent / child resolution must run after every per-record
+        # pull has settled — including out-of-order CDC arrivals.
+        sales_doc_imports = {
+            'estimate', 'invoice', 'credit_memo',
+            'sales_receipt', 'refund_receipt',
+        } & set(ordered_entities)
+        if sales_doc_imports and self.direction in ('import', 'both'):
+            relink_step = self.env['quickbooks.migration.run.step'].create({
+                'run_id': run.id,
+                'sequence': 100 - (priority - 5),
+                'entity_type': 'sales_doc_relink',
+                'direction': 'pull',
+                'status': 'pending',
+                'idempotency_key': 'migration_%s_sales_doc_relink_%s' % (
+                    run.id, self.company_id.id,
+                ),
+            })
+            if self.mode == 'live':
+                try:
+                    counters = self.env['qb.sales.doc.relinker'].relink_all(
+                        config, run=run,
+                    )
+                    relink_step.write({
+                        'status': 'completed',
+                        'actual_count': sum(c['imported'] for c in counters.values()),
+                        'linked_count': sum(c['linked'] for c in counters.values()),
+                        'orphan_link_count': sum(c['orphan'] for c in counters.values()),
+                    })
+                except Exception as exc:
+                    _logger.exception('Sales-doc relinker failed')
+                    relink_step.write({
+                        'status': 'failed',
+                        'error_message': str(exc),
+                    })
+            else:
+                relink_step.status = 'skipped'
+            count += 1
 
         if self.mode == 'dry_run':
             run.write({
@@ -263,7 +338,9 @@ class QuickbooksMigrationWizard(models.TransientModel):
             'expense': 'expenses',
             'purchase_order': 'purchase_orders',
             'estimate': 'estimates',
+            'credit_memo': 'credit_memos',
             'sales_receipt': 'sales_receipts',
+            'refund_receipt': 'refund_receipts',
             'attachment': 'attachments',
             'class': 'classes',
             'department': 'departments',

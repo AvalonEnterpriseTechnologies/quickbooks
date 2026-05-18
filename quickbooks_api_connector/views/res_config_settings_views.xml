@@ -337,6 +337,23 @@
                             </div>
                         </div>
 
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Sales Document Migration Integrity</span>
+                                <div class="text-muted small mb8">
+                                    Latest counters from qb.sales.doc.relinker — Estimate, Invoice,
+                                    Credit Memo, Sales Receipt, and Refund Receipt records pulled
+                                    from QBO, how many were linked back to their parent doc, how
+                                    many remain orphan, and total amounts on both sides for
+                                    reconciliation.
+                                </div>
+                                <field name="qb_sales_doc_integrity_summary"
+                                       readonly="1" widget="text" nolabel="1"/>
+                            </div>
+                        </div>
+
                     </div>
 
                 </app>
