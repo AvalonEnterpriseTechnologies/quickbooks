@@ -567,6 +567,23 @@ class QuickbooksConfig(models.Model):
         if self.state != 'connected':
             raise UserError('QuickBooks is not connected for this company.')
         self.env['qb.sync.engine'].run_full_sync(self)
+        # run_full_sync may have flipped the config to error state if
+        # Intuit returned 003100 ApplicationAuthorizationFailed. Refresh
+        # the in-memory record and surface a clear remediation notice
+        # instead of a misleading "sync completed" toast.
+        self.invalidate_recordset(['state', 'error_message'])
+        if self.state == 'error':
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'QuickBooks Sync',
+                    'message': self.error_message
+                    or 'QuickBooks sync aborted; see Settings > QuickBooks.',
+                    'type': 'danger',
+                    'sticky': True,
+                },
+            }
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -1162,6 +1179,10 @@ class QuickbooksConfig(models.Model):
 
     def action_test_connection(self):
         self.ensure_one()
+        # Imported here to avoid a cycle: qb_api_client defines the
+        # exception class, but importing it at module level would pull
+        # the whole API client into this models module.
+        from ..services.qb_api_client import QBApiAuthorizationRevokedError
         client = self.env['qb.api.client'].get_client(self)
         try:
             info = client.get('companyinfo/%s' % self.realm_id)
@@ -1171,6 +1192,11 @@ class QuickbooksConfig(models.Model):
                 'state': 'connected',
                 'error_message': False,
             })
+        except QBApiAuthorizationRevokedError:
+            # qb_api_client._mark_authorization_revoked already wrote
+            # the state + chatter notice; re-raise as a UserError that
+            # the operator can act on (open the QBO connect flow).
+            raise UserError(QBApiAuthorizationRevokedError.REMEDIATION)
         except Exception as e:
             self.write({'state': 'error', 'error_message': str(e)})
             raise UserError(str(e))

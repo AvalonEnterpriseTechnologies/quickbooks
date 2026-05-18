@@ -10,6 +10,8 @@ try:
 except ImportError:
     pg_errors = None
 
+from ..services.qb_api_client import QBApiAuthorizationRevokedError
+
 _logger = logging.getLogger(__name__)
 
 QB_ENTITY_TYPES = [
@@ -256,12 +258,33 @@ class QuickbooksSyncQueue(models.Model):
         ], limit=batch_size)
 
         engine = self.env['qb.sync.engine']
+        # Per-batch cache so a single QBO 003100 hit stops us from running
+        # every remaining job for the same company in the same batch
+        # (otherwise a 50-job batch yields 50 identical "QuickBooks not
+        # connected" errors).
+        revoked_company_ids = set()
         for job in jobs:
+            if job.company_id.id in revoked_company_ids:
+                self.env.cr.rollback()
+                job._mark_failed(
+                    QBApiAuthorizationRevokedError.REMEDIATION,
+                )
+                self.env.cr.commit()
+                continue
             job.state = 'processing'
             self.env.cr.commit()
             try:
                 engine.execute_job(job)
                 job.state = 'done'
+            except QBApiAuthorizationRevokedError as e:
+                _logger.error(
+                    'Sync job %s aborted: QBO authorization revoked for '
+                    'company %s. Skipping remaining jobs in this batch.',
+                    job.id, job.company_id.name,
+                )
+                self.env.cr.rollback()
+                revoked_company_ids.add(job.company_id.id)
+                job._mark_failed(QBApiAuthorizationRevokedError.REMEDIATION)
             except Exception as e:
                 _logger.exception('Sync job %s failed', job.id)
                 self.env.cr.rollback()

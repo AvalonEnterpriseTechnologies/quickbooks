@@ -162,6 +162,20 @@ class _QBClient:
         if resp.status_code >= 400:
             error_detail = resp.text[:2000]
             _logger.error('QBO API error %s %s: %s', method, url, error_detail)
+            # Intuit error 003100 ("ApplicationAuthorizationFailed") means the
+            # OAuth grant for this realm has been revoked or invalidated on
+            # Intuit's side. Token refresh cannot recover from this — only
+            # the operator going through the connect flow again can. Detect
+            # it once, flip the config to error state, post a remediation
+            # note to the chatter, and raise a dedicated exception so
+            # run_full_sync (and any other caller) can stop bashing the
+            # other entities instead of generating one identical 403 per
+            # endpoint.
+            if resp.status_code == 403 and self._is_application_auth_failed(resp):
+                self._mark_authorization_revoked(error_detail)
+                raise QBApiAuthorizationRevokedError(
+                    resp.status_code, error_detail, url,
+                )
             if resp.status_code == 400 and self._is_duplicate_error(resp):
                 raise QBApiDuplicateError(resp.status_code, error_detail, url)
             raise QBApiError(resp.status_code, error_detail, url)
@@ -270,6 +284,84 @@ class _QBClient:
                 return True
         return 'duplicate' in resp.text.lower()
 
+    @staticmethod
+    def _is_application_auth_failed(resp):
+        """True iff the response carries Intuit error code 3100
+        ('ApplicationAuthorizationFailed').
+
+        Intuit returns this under two casings depending on endpoint
+        family (capital 'Fault' for v3 REST, lowercase 'fault' for some
+        batch/CDC responses) — handle both. Also fall back to a text
+        search for 'ApplicationAuthorizationFailed' in case the JSON
+        body has been mangled by a proxy.
+        """
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {}
+        for fault_key in ('Fault', 'fault'):
+            fault = payload.get(fault_key) or {}
+            errors = fault.get('Error') or fault.get('error') or []
+            for error in errors:
+                code = str(error.get('code') or error.get('Code') or '')
+                message = '%s %s %s' % (
+                    error.get('message') or '',
+                    error.get('Message') or '',
+                    error.get('Detail') or '',
+                )
+                if code == '3100' or 'ApplicationAuthorizationFailed' in message:
+                    return True
+        return 'ApplicationAuthorizationFailed' in (resp.text or '')
+
+    def _mark_authorization_revoked(self, error_detail):
+        """Flip the config to error state once and post a remediation
+        notice to the chatter.
+
+        Guarded so a storm of 25 sequential 403 calls only writes the
+        state + posts to the chatter on the first hit; the rest are
+        no-ops at the SQL level.
+        """
+        config = self.config
+        if not config or not config.exists():
+            return
+        remediation = (
+            'QuickBooks revoked this company\'s OAuth grant '
+            '(error 003100: ApplicationAuthorizationFailed). '
+            'No further sync calls can succeed until you re-authorize. '
+            'Open Settings > QuickBooks and click "Connect to QuickBooks" '
+            'to issue a fresh OAuth grant for realm %s.'
+        ) % (config.realm_id or '(unknown)')
+        try:
+            already_marked = (
+                config.state == 'error'
+                and (config.error_message or '').startswith(
+                    'QuickBooks revoked this company\'s OAuth grant'
+                )
+            )
+            if already_marked:
+                _logger.debug(
+                    'QBO 003100 already recorded on config %s; not '
+                    're-writing state.', config.id,
+                )
+                return
+            config.sudo().write({
+                'state': 'error',
+                'error_message': remediation,
+            })
+            if hasattr(config, 'message_post'):
+                config.sudo().message_post(
+                    body=(
+                        '<b>QuickBooks authorization revoked.</b><br/>'
+                        '%s<br/><br/><i>Last QBO response: %s</i>'
+                    ) % (remediation, (error_detail or '')[:500]),
+                    subject='QuickBooks Authorization Revoked',
+                )
+        except Exception:
+            _logger.exception(
+                'Failed to record QBO 003100 ApplicationAuthorizationFailed '
+                'on config %s; will continue raising.', config.id,
+            )
+
 
 class QBApiError(Exception):
     """Raised when the QBO API returns an error response."""
@@ -283,3 +375,22 @@ class QBApiError(Exception):
 
 class QBApiDuplicateError(QBApiError):
     """Raised when QBO rejects a create because a matching record already exists."""
+
+
+class QBApiAuthorizationRevokedError(QBApiError):
+    """Raised when QBO returns 403 + error code 3100
+    (ApplicationAuthorizationFailed).
+
+    Token refresh cannot recover from this — only the operator going
+    through the connect flow again can. Callers (run_full_sync, the
+    queue runner, action_test_connection) should treat this as a
+    terminal error for the current run and surface the remediation
+    message instead of retrying.
+    """
+
+    REMEDIATION = (
+        'QuickBooks revoked the OAuth grant for this company '
+        '(error 003100: ApplicationAuthorizationFailed). Open '
+        'Settings > QuickBooks and click "Connect to QuickBooks" '
+        'to re-authorize.'
+    )

@@ -5,6 +5,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from ..compat import fire_integration_event
+from .qb_api_client import QBApiAuthorizationRevokedError
 
 _logger = logging.getLogger(__name__)
 
@@ -292,8 +293,21 @@ class QBSyncEngine(models.AbstractModel):
             ),
             'payroll_settings': getattr(config, 'sync_payroll_settings', False),
         }
-        cdc_records = self._collect_cdc_records(client, config, entity_order)
+        try:
+            cdc_records = self._collect_cdc_records(client, config, entity_order)
+        except QBApiAuthorizationRevokedError:
+            _logger.error(
+                'Full sync aborted for company %s before entity loop: '
+                'QBO authorization revoked (003100) during CDC fetch. '
+                'Operator must reconnect.', config.company_id.name,
+            )
+            self._fire_full_sync_event(
+                full_start, len(entity_order), total_errors=1,
+                auth_revoked=True,
+            )
+            return
 
+        auth_revoked = False
         for entity_type in entity_order:
             if not toggle_map.get(entity_type, False):
                 continue
@@ -308,6 +322,19 @@ class QBSyncEngine(models.AbstractModel):
                     service.pull_all(client, config, entity_type)
                 if entity_type not in PULL_ONLY_ENTITIES:
                     service.push_all(client, config, entity_type)
+            except QBApiAuthorizationRevokedError:
+                # Intuit revoked the OAuth grant. qb_api_client already
+                # flipped the config to error state and posted to the
+                # chatter; firing the other 24 entities would just queue
+                # 24 more identical 403s. Stop the run cleanly.
+                total_errors += 1
+                auth_revoked = True
+                _logger.error(
+                    'Full sync aborted for company %s: QBO authorization '
+                    'revoked (003100). Operator must reconnect.',
+                    config.company_id.name,
+                )
+                break
             except Exception:
                 total_errors += 1
                 _logger.exception(
@@ -332,18 +359,42 @@ class QBSyncEngine(models.AbstractModel):
                         config.company_id.name,
                     )
 
-        config.write({'last_sync_date': fields.Datetime.now()})
+        # Don't bump last_sync_date if the run aborted on a revoked grant
+        # — the operator hasn't actually had a successful sync, and bumping
+        # would prevent CDC from re-pulling the missed window after they
+        # reconnect.
+        if not auth_revoked:
+            config.write({'last_sync_date': fields.Datetime.now()})
 
+        self._fire_full_sync_event(
+            full_start, len(entity_order), total_errors,
+            auth_revoked=auth_revoked,
+        )
+
+    def _fire_full_sync_event(self, full_start, entities_processed,
+                              total_errors, auth_revoked=False):
         duration_ms = int((time.time() - full_start) * 1000)
-        event_type = 'sync_completed' if total_errors == 0 else 'sync_failed'
+        if auth_revoked:
+            event_type = 'sync_failed'
+            error_message = (
+                'QuickBooks authorization revoked (003100). '
+                + QBApiAuthorizationRevokedError.REMEDIATION
+            )
+            status = 'error'
+        else:
+            event_type = 'sync_completed' if total_errors == 0 else 'sync_failed'
+            error_message = (
+                f'{total_errors} entity type(s) failed' if total_errors else ''
+            )
+            status = 'success' if total_errors == 0 else 'warning'
         fire_integration_event(
             self.env, 'quickbooks', event_type,
             entity_type='full_sync',
             direction='push',
             duration_ms=duration_ms,
-            records_processed=len(entity_order),
-            status='success' if total_errors == 0 else 'warning',
-            error_message=f'{total_errors} entity type(s) failed' if total_errors else '',
+            records_processed=entities_processed,
+            status=status,
+            error_message=error_message,
         )
 
     def enqueue_full_entity_sync(self, config, entity_type, direction, priority=10):
@@ -373,6 +424,11 @@ class QBSyncEngine(models.AbstractModel):
                 ).items()
                 if qbo_name in CDC_QBO_TO_ENTITY
             }
+        except QBApiAuthorizationRevokedError:
+            # Don't swallow auth-revoked: re-raise so run_full_sync exits
+            # immediately instead of falling back to per-entity queries
+            # that will all fail with the same 003100.
+            raise
         except Exception:
             _logger.exception(
                 'CDC incremental sync failed for company %s; falling back to query sync',

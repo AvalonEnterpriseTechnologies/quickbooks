@@ -29,3 +29,4 @@ from . import test_payroll_bridge_fields_load
 from . import test_payroll_extended
 from . import test_payroll_cutover
 from . import test_qbo_migration_fixes
+from . import test_qbo_auth_revoked
