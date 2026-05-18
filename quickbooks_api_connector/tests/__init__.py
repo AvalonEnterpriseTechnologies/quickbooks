@@ -6,6 +6,7 @@ from . import test_sync_products
 from . import test_sync_invoices
 from . import test_sync_bills
 from . import test_sync_payments
+from . import test_sync_payments_bank_journal
 from . import test_sync_journal_entries
 from . import test_webhook_handler
 from . import test_conflict_resolution

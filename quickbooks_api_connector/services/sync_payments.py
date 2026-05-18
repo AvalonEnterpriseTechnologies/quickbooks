@@ -169,6 +169,8 @@ class QBSyncPayments(models.AbstractModel):
         if note_field and qb_data.get('PrivateNote'):
             vals[note_field] = qb_data['PrivateNote']
 
+        self._apply_bank_journal(vals, qb_data, config, kind='customer')
+
         return vals
 
     def _qb_billpayment_to_odoo(self, qb_data, config):
@@ -201,7 +203,81 @@ class QBSyncPayments(models.AbstractModel):
         if note_field and qb_data.get('PrivateNote'):
             vals[note_field] = qb_data['PrivateNote']
 
+        self._apply_bank_journal(vals, qb_data, config, kind='bill')
+
         return vals
+
+    # ---- Bank journal resolution ----
+
+    def _extract_qbo_bank_ref(self, qb_data, kind):
+        """Return the QBO Account id referenced by a Payment / BillPayment payload.
+
+        Customer Payment: ``DepositToAccountRef.value``.
+        Vendor BillPayment: ``CheckPayment.BankAccountRef.value`` (Check pay type)
+        or ``CreditCardPayment.CCAccountRef.value`` (Credit Card pay type).
+        """
+        if kind == 'customer':
+            deposit = qb_data.get('DepositToAccountRef') or {}
+            return (deposit.get('value') or '').strip()
+        check = qb_data.get('CheckPayment') or {}
+        bank_ref = (check.get('BankAccountRef') or {}).get('value')
+        if bank_ref:
+            return str(bank_ref).strip()
+        cc = qb_data.get('CreditCardPayment') or {}
+        cc_ref = (cc.get('CCAccountRef') or {}).get('value')
+        if cc_ref:
+            return str(cc_ref).strip()
+        return ''
+
+    def _resolve_bank_journal(self, qb_data, config, kind):
+        """Resolve the Odoo bank/cash journal for a QBO payment payload.
+
+        Returns the journal record or an empty recordset. Honors operator
+        intent in two ways:
+          - Journal pre-linked via ``account.journal.qb_account_id`` is
+            adopted directly.
+          - Otherwise, find the Odoo account by ``qb_account_id`` and pick
+            the journal whose ``default_account_id`` points at it.
+        """
+        Journal = self.env['account.journal'].sudo()
+        qbo_account_id = self._extract_qbo_bank_ref(qb_data, kind)
+        if not qbo_account_id:
+            return Journal.browse()
+        company_domain = [('company_id', '=', config.company_id.id)]
+        direct = Journal.search(
+            company_domain + [('qb_account_id', '=', qbo_account_id)], limit=1,
+        )
+        if direct:
+            return direct
+        Account = self.env['account.account'].sudo()
+        odoo_account = Account.search(
+            [('qb_account_id', '=', qbo_account_id)], limit=1,
+        )
+        if not odoo_account:
+            return Journal.browse()
+        return Journal.search(
+            company_domain + [('default_account_id', '=', odoo_account.id)],
+            limit=1,
+        )
+
+    def _apply_bank_journal(self, vals, qb_data, config, kind):
+        qbo_account_id = self._extract_qbo_bank_ref(qb_data, kind)
+        if not qbo_account_id:
+            return
+        journal = self._resolve_bank_journal(qb_data, config, kind)
+        if journal:
+            vals['journal_id'] = journal.id
+            return
+        message = (
+            'QBO %s payment %s references bank account id %s, but no Odoo '
+            'journal is linked to it. Either set '
+            'account.journal.qb_account_id on the matching Odoo bank '
+            'journal, or run "Apply QBO Account Mapping" in Settings to '
+            'link the underlying Odoo account.'
+        ) % (kind, qb_data.get('Id') or '?', qbo_account_id)
+        existing_err = vals.get('qb_sync_error')
+        vals['qb_sync_error'] = (existing_err + ' | ' if existing_err else '') + message
+        _logger.warning(message)
 
     # ---- Push ----
 
