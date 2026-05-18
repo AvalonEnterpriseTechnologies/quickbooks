@@ -6,8 +6,7 @@ from . import wizards
 from . import services
 
 
-REQUIRED_MODULES = ('account',)
-OPTIONAL_AUTO_INSTALL_MODULES = ('account_accountant',)
+REQUIRED_MODULES = ('account', 'account_accountant')
 
 
 def _ensure_required_modules_installed(env):
@@ -33,25 +32,9 @@ def _ensure_required_modules_installed(env):
         )
 
 
-def _install_available_accountant_modules(env):
-    """Install the Enterprise Accountant app when it exists in this database.
-
-    `account_accountant` is an Enterprise addon and may be absent from staging
-    builds that only have Community addons in their addons path. Keeping it out
-    of manifest dependencies avoids a registry load failure in that case, while
-    still forcing the app to install automatically for Enterprise databases.
-    """
-    Module = env['ir.module.module'].sudo()
-    for tech_name in OPTIONAL_AUTO_INSTALL_MODULES:
-        record = Module.search([('name', '=', tech_name)], limit=1)
-        if record and record.state not in ('installed', 'to install', 'to upgrade'):
-            record.button_immediate_install()
-
-
 def _post_init_hook(env):
     """Grant QB groups to admin and optionally register with SLATE integration registry."""
     _ensure_required_modules_installed(env)
-    _install_available_accountant_modules(env)
 
     admin = env.ref('base.user_admin', raise_if_not_found=False)
     if not admin:
