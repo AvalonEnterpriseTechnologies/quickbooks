@@ -5,6 +5,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     qb_estimate_id = fields.Char(string='QB Estimate ID', index=True, copy=False)
+    qb_doc_number = fields.Char(string='QB DocNumber', index=True, copy=False)
     qb_sync_token = fields.Char(string='QB Sync Token', copy=False)
     qb_last_synced = fields.Datetime(string='Last QB Sync', copy=False)
     qb_sync_error = fields.Text(string='Last Sync Error', copy=False)
@@ -13,6 +14,13 @@ class SaleOrder(models.Model):
         string='QB Recurring Transaction ID', index=True, copy=False,
     )
     qb_raw_json = fields.Json(string='QB Raw JSON', copy=False)
+    qb_invoice_ids = fields.One2many(
+        'account.move', 'qb_source_sale_order_id',
+        string='QB-Imported Invoices',
+        copy=False,
+        help='Invoices that QuickBooks records as derived from this Estimate '
+             '(via LinkedTxn). Populated by the QBO pull and the relinker.',
+    )
 
     def write(self, vals):
         res = super().write(vals)
