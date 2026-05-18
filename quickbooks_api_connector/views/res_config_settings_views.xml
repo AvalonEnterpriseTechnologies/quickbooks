@@ -162,6 +162,68 @@
 
                         <div class="col-12 o_setting_box"
                              invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Chart Of Accounts Strategy</span>
+                                <div class="text-muted small mb8">
+                                    <b>Map Only</b> keeps the existing Odoo
+                                    chart of accounts intact: QBO accounts are
+                                    linked to existing Odoo accounts by code,
+                                    then by name; anything that fails to match
+                                    is logged on this configuration's chatter
+                                    and raises a warning activity for the
+                                    QuickBooks Manager group. Map the
+                                    remaining accounts manually by pasting
+                                    the QBO ID onto the matching Odoo account.
+                                    Use <b>Create Missing</b> only if you want
+                                    QBO to seed the Odoo chart of accounts.
+                                </div>
+                                <field name="qb_account_strategy"/>
+                                <div class="content-group mt8">
+                                    <field name="qb_account_last_discovery" readonly="1"/>
+                                    <field name="qb_account_discovered_count" readonly="1"/>
+                                    <field name="qb_account_mapped_count" readonly="1"/>
+                                    <field name="qb_account_unmapped_count" readonly="1"/>
+                                </div>
+                                <button name="action_qb_preview_accounts"
+                                        string="Preview QBO Account Mapping"
+                                        type="object" class="btn-secondary me-2 mt8"
+                                        icon="fa-search"/>
+                                <button name="action_qb_apply_account_mapping"
+                                        string="Apply QBO Account Mapping"
+                                        type="object" class="btn-primary me-2 mt8"
+                                        icon="fa-link"
+                                        confirm="Link matched QBO accounts onto the existing Odoo chart of accounts now. No new Odoo accounts will be created. Continue?"/>
+                            </div>
+                        </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_auto_post_pulled_records"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_auto_post_pulled_records"
+                                       string="Auto-Post Pulled Records"/>
+                                <div class="text-muted small mb8">
+                                    QBO transactions (invoices, bills, vendor
+                                    credits, journal entries, payments) are
+                                    always posted on the QuickBooks side. When
+                                    enabled, the connector posts each freshly
+                                    pulled record in Odoo so it lands in
+                                    state <b>Posted</b> instead of
+                                    <b>Draft</b>. Auto-post failures are
+                                    captured on the record's
+                                    <code>qb_sync_error</code> without
+                                    breaking the rest of the sync. Turn off
+                                    when you want to review every imported
+                                    record before posting.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane">
                                 <field name="qb_sync_reports"/>
                             </div>
@@ -179,6 +241,48 @@
                                 <field name="qb_custom_fields_enabled"/>
                                 <field name="qb_sync_employee_benefits"/>
                                 <field name="qb_sync_payroll_settings"/>
+                            </div>
+                        </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane">
+                                <field name="qb_payroll_enabled"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_payroll_enabled" string="QuickBooks Payroll"/>
+                                <div class="text-muted small mb8">
+                                    Pull employees, pay schedules, pay items, tax setup,
+                                    compensations, and historical paychecks from the QBO
+                                    Payroll GraphQL API. Paychecks land in the read-only
+                                    qb.payroll.check archive so Odoo Payroll can take over
+                                    as the live system of record without colliding.
+                                </div>
+                                <div class="content-group" invisible="not qb_payroll_enabled">
+                                    <field name="qb_sync_payroll_pay_schedules"/>
+                                    <field name="qb_sync_payroll_pay_items"/>
+                                    <field name="qb_sync_payroll_employees_detail"/>
+                                    <field name="qb_sync_payroll_tax_setup"/>
+                                    <field name="qb_sync_payroll_compensations"/>
+                                    <field name="qb_sync_payroll_checks_history"/>
+                                    <field name="qb_payroll_post_archive_journal"/>
+                                </div>
+                                <div class="content-group mt8"
+                                     invisible="not qb_payroll_enabled">
+                                    <field name="qb_payroll_archived" readonly="1"/>
+                                    <field name="qb_payroll_cutover_date" readonly="1"/>
+                                </div>
+                                <button name="action_qb_cutover_payroll"
+                                        string="Cutover To Odoo Payroll"
+                                        type="object" class="btn-primary me-2 mt8"
+                                        icon="fa-flag-checkered"
+                                        invisible="not qb_payroll_enabled or qb_payroll_archived"
+                                        confirm="Run pre-cutover audit and (if clean) seal QuickBooks Payroll as a read-only archive. Continue?"/>
+                                <button name="action_qb_payroll_audit_only"
+                                        string="Pre-Cutover Audit"
+                                        type="object" class="btn-secondary me-2 mt8"
+                                        icon="fa-stethoscope"
+                                        invisible="not qb_payroll_enabled or qb_payroll_archived"/>
                             </div>
                         </div>
 

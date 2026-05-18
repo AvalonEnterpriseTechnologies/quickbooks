@@ -1,6 +1,6 @@
 {
     'name': 'QuickBooks API Connector',
-    'version': '19.0.6.0.2',
+    'version': '19.0.7.0.0',
     'category': 'Accounting',
     'summary': 'Full QuickBooks Online connector for Odoo 19 — Accounting, Payroll, Time',
     'description': """
@@ -37,8 +37,13 @@
         Requirements:
         - The Odoo Accounting module (`account`) is a hard prerequisite
           and is installed automatically with this module. The Enterprise
-          Accountant app (`account_accountant`) is installed automatically
-          when it is available in the Odoo environment.
+          Accountant app (`account_accountant`) is also a hard
+          prerequisite — Odoo's dependency resolver installs it before
+          this module loads, guaranteeing the full Accounting UI is
+          available on every deploy. The connector therefore requires
+          an Odoo Enterprise environment (or a community deploy whose
+          addons path includes `account_accountant`); it will refuse to
+          install otherwise.
 
         Features:
         - One-time OAuth 2.0 setup, sync controls, and live status all in
@@ -68,6 +73,7 @@
     'license': 'LGPL-3',
     'depends': [
         'base', 'base_setup', 'mail', 'account',
+        'account_accountant',
         'contacts',
     ],
     'external_dependencies': {

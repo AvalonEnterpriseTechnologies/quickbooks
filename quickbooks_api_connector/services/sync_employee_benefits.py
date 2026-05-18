@@ -1,6 +1,6 @@
 import logging
 
-from odoo import fields, models
+from odoo import models
 
 _logger = logging.getLogger(__name__)
 
@@ -27,17 +27,48 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
         return {}
 
     def _upsert_benefits(self, config, data):
+        if 'qb.payroll.check' not in self.env:
+            _logger.warning(
+                "QuickBooks payroll archive model not loaded - skipping benefit "
+                "sync (install hr_payroll + hr_contract)"
+            )
+            return 0
+        Check = self.env['qb.payroll.check'].sudo()
+        Line = self.env['qb.payroll.check.line'].sudo()
         count = 0
-        for check in data.get('payrollChecks') or []:
-            lines = self._benefit_lines(check)
-            for line in lines:
-                self._upsert_line(config, check, line)
+        for payload in data.get('payrollChecks') or []:
+            qb_id = str(payload.get('id') or '')
+            if not qb_id:
+                continue
+            check = Check.search([
+                ('company_id', '=', config.company_id.id),
+                ('qb_check_id', '=', qb_id),
+            ], limit=1)
+            if not check:
+                continue
+            for raw_line in self._benefit_lines(payload):
+                Line.create({
+                    'check_id': check.id,
+                    'line_type': 'benefit',
+                    'is_employer_side': bool(raw_line.get('employer')),
+                    'qb_pay_item_id': str(raw_line.get('payItemId') or '') or False,
+                    'name': raw_line.get('name') or raw_line.get('type') or 'Benefit',
+                    'code': (raw_line.get('name') or '')[:64] or False,
+                    'qb_benefit_type': self._benefit_type(
+                        raw_line.get('name'), raw_line.get('type'),
+                    ),
+                    'amount': self._amount(raw_line.get('amount')),
+                    'qb_raw_json': raw_line,
+                })
                 count += 1
         return count
 
     def _benefit_lines(self, check):
         lines = []
-        for key in ('deductions', 'benefits', 'employeeDeductions', 'employeeBenefits'):
+        for key in (
+            'benefits', 'employeeBenefits',
+            'deductions', 'employeeDeductions',
+        ):
             value = check.get(key) or []
             if isinstance(value, dict):
                 value = value.get('items') or value.get('nodes') or []
@@ -45,58 +76,6 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
                 if isinstance(line, dict):
                     lines.append(line)
         return lines
-
-    def _upsert_line(self, config, check, line):
-        if 'hr.payslip.input' not in self.env:
-            _logger.warning("hr_payroll module not installed — skipping benefit line")
-            return False
-        Benefit = self.env['hr.payslip.input'].sudo()
-        if 'qb_source_check_id' not in Benefit._fields:
-            _logger.warning(
-                "QuickBooks payroll bridge fields are not loaded — skipping benefit line"
-            )
-            return False
-        amount = self._amount(line.get('amount') or line.get('Amount'))
-        name = line.get('name') or line.get('Name') or line.get('type') or 'Benefit'
-        payslip = self._payslip(check, config)
-        vals = {
-            'payslip_id': payslip.id if payslip else False,
-            'qb_employee_id': check.get('employeeId') or '',
-            'qb_benefit_type': self._benefit_type(name, line.get('type')),
-            'name': name,
-            'code': name[:64],
-            'amount': amount,
-            'qb_source_check_id': check.get('id') or '',
-            'qb_raw_json': line,
-        }
-        vals = {key: value for key, value in vals.items() if key in Benefit._fields}
-        existing = Benefit.search([
-            ('qb_source_check_id', '=', vals.get('qb_source_check_id')),
-            ('qb_employee_id', '=', vals['qb_employee_id']),
-            ('name', '=', vals['name']),
-            ('amount', '=', vals['amount']),
-        ], limit=1)
-        if existing:
-            existing.write(vals)
-            return existing
-        return Benefit.create(vals)
-
-    def _payslip(self, check, config):
-        if 'hr.payslip' not in self.env:
-            return False
-        qb_check_id = check.get('id') or ''
-        return self.env['hr.payslip'].sudo().search([
-            ('company_id', '=', config.company_id.id),
-            ('qb_check_id', '=', qb_check_id),
-        ], limit=1)
-
-    def _employee_id(self, check):
-        if 'qb_employee_id' not in self.env['hr.employee']._fields:
-            return False
-        employee = self.env['hr.employee'].sudo().search([
-            ('qb_employee_id', '=', check.get('employeeId') or ''),
-        ], limit=1)
-        return employee.id if employee else False
 
     @staticmethod
     def _amount(value):
@@ -109,8 +88,7 @@ class QBSyncEmployeeBenefits(models.AbstractModel):
 
     @staticmethod
     def _benefit_type(name, line_type=None):
-        text = '%s %s' % (name or '', line_type or '')
-        text = text.lower()
+        text = ('%s %s' % (name or '', line_type or '')).lower()
         if any(token in text for token in ('health', 'medical', 'dental', 'vision')):
             return 'health'
         if any(token in text for token in ('401', 'retirement', 'ira', 'simple')):

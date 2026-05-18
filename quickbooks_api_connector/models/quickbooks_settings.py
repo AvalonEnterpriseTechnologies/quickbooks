@@ -97,7 +97,40 @@ class ResConfigSettings(models.TransientModel):
          ('manual', 'Manual Review')],
         string='Conflict Resolution', default='odoo_wins',
     )
+    qb_account_strategy = fields.Selection(
+        [
+            ('map_only', 'Map Only (Never Create)'),
+            ('create_missing', 'Create Missing Accounts From QBO'),
+        ],
+        string='Chart Of Accounts Strategy',
+        default='map_only',
+        help='map_only preserves the Odoo chart of accounts: unmatched QBO '
+             'accounts are logged for manual mapping instead of created. '
+             'create_missing falls back to creating a new Odoo account when '
+             'no match is found.',
+    )
+    qb_account_last_discovery = fields.Datetime(
+        related='qb_config_id.qb_account_last_discovery', readonly=True,
+    )
+    qb_account_discovered_count = fields.Integer(
+        related='qb_config_id.qb_account_discovered_count', readonly=True,
+    )
+    qb_account_mapped_count = fields.Integer(
+        related='qb_config_id.qb_account_mapped_count', readonly=True,
+    )
+    qb_account_unmapped_count = fields.Integer(
+        related='qb_config_id.qb_account_unmapped_count', readonly=True,
+    )
     qb_verify_after_push = fields.Boolean(string='Verify QBO After Push', default=True)
+    qb_auto_post_pulled_records = fields.Boolean(
+        string='Auto-Post Pulled Records',
+        default=True,
+        help='Post invoices, bills, vendor credits, journal entries, and '
+             'payments immediately after they are pulled from QuickBooks, '
+             'so they arrive in Odoo in the same posted state they have in '
+             'QBO instead of staying draft. Turn off to import everything '
+             'as draft for manual review before posting.',
+    )
     qb_match_by_name = fields.Boolean(string='Allow Name-Based Matching', default=False)
     qb_auto_sync_interval = fields.Integer(
         string='Auto Sync Interval', default=30,
@@ -184,6 +217,38 @@ class ResConfigSettings(models.TransientModel):
     qb_payroll_enabled = fields.Boolean(string='Enable Payroll Sync', default=False)
     qb_payroll_create_draft_payslips = fields.Boolean(
         string='Create Draft Payslips From Payroll Checks', default=False,
+    )
+    qb_sync_payroll_pay_schedules = fields.Boolean(
+        string='Sync Pay Schedules', default=True,
+    )
+    qb_sync_payroll_pay_items = fields.Boolean(
+        string='Sync Pay Items', default=True,
+    )
+    qb_sync_payroll_employees_detail = fields.Boolean(
+        string='Sync Payroll Employees', default=True,
+    )
+    qb_sync_payroll_tax_setup = fields.Boolean(
+        string='Sync Payroll Tax Setup (W-4 / state)', default=True,
+    )
+    qb_sync_payroll_compensations = fields.Boolean(
+        string='Sync Payroll Compensations', default=True,
+    )
+    qb_sync_payroll_checks_history = fields.Boolean(
+        string='Sync Payroll Checks (history)', default=True,
+    )
+    qb_payroll_post_archive_journal = fields.Boolean(
+        string='Post Archive Journal Per QBO Paycheck',
+        default=False,
+    )
+    qb_payroll_archived = fields.Boolean(
+        string='QuickBooks Payroll Archived',
+        related='qb_config_id.qb_payroll_archived',
+        readonly=True,
+    )
+    qb_payroll_cutover_date = fields.Datetime(
+        string='QuickBooks Payroll Cutover Date',
+        related='qb_config_id.qb_payroll_cutover_date',
+        readonly=True,
     )
 
     # --- QuickBooks Time / TSheets API (Phase 4) ---
@@ -366,7 +431,13 @@ class ResConfigSettings(models.TransientModel):
                 'qb_webhook_verifier_token': config.webhook_verifier_token,
                 'qb_conflict_resolution': config.conflict_resolution,
                 'qb_verify_after_push': getattr(config, 'verify_after_push', True),
+                'qb_auto_post_pulled_records': getattr(
+                    config, 'auto_post_pulled_records', True,
+                ),
                 'qb_match_by_name': getattr(config, 'match_by_name', False),
+                'qb_account_strategy': getattr(
+                    config, 'account_strategy', 'map_only',
+                ),
                 'qb_auto_sync_interval': config.auto_sync_interval,
                 'qb_auto_sync_interval_type': getattr(
                     config, 'auto_sync_interval_type', 'minutes',
@@ -427,6 +498,27 @@ class ResConfigSettings(models.TransientModel):
                 'qb_payroll_enabled': getattr(config, 'payroll_enabled', False),
                 'qb_payroll_create_draft_payslips': getattr(
                     config, 'payroll_create_draft_payslips', False,
+                ),
+                'qb_sync_payroll_pay_schedules': getattr(
+                    config, 'sync_payroll_pay_schedules', True,
+                ),
+                'qb_sync_payroll_pay_items': getattr(
+                    config, 'sync_payroll_pay_items', True,
+                ),
+                'qb_sync_payroll_employees_detail': getattr(
+                    config, 'sync_payroll_employees', True,
+                ),
+                'qb_sync_payroll_tax_setup': getattr(
+                    config, 'sync_payroll_tax_setup', True,
+                ),
+                'qb_sync_payroll_compensations': getattr(
+                    config, 'sync_payroll_compensations', True,
+                ),
+                'qb_sync_payroll_checks_history': getattr(
+                    config, 'sync_payroll_checks', True,
+                ),
+                'qb_payroll_post_archive_journal': getattr(
+                    config, 'qb_payroll_post_archive_journal', False,
                 ),
                 'qb_time_enabled': getattr(config, 'qbt_enabled', False),
             })
@@ -490,7 +582,9 @@ class ResConfigSettings(models.TransientModel):
             'webhook_verifier_token': self.qb_webhook_verifier_token or '',
             'conflict_resolution': self.qb_conflict_resolution or 'odoo_wins',
             'verify_after_push': self.qb_verify_after_push,
+            'auto_post_pulled_records': self.qb_auto_post_pulled_records,
             'match_by_name': self.qb_match_by_name,
+            'account_strategy': self.qb_account_strategy or 'map_only',
             'auto_sync_interval': interval,
             'auto_sync_interval_type': interval_type,
             'sync_customers': self.qb_sync_customers,
@@ -519,6 +613,9 @@ class ResConfigSettings(models.TransientModel):
             'sync_recurring_transactions', 'custom_fields_enabled',
             'sync_employee_benefits', 'sync_payroll_settings', 'payroll_enabled',
             'payroll_create_draft_payslips', 'qbt_enabled',
+            'sync_payroll_pay_schedules', 'sync_payroll_pay_items',
+            'sync_payroll_tax_setup', 'sync_payroll_compensations',
+            'sync_payroll_checks', 'qb_payroll_post_archive_journal',
         ]
         field_map = {
             'qbt_enabled': 'qb_time_enabled',
@@ -529,6 +626,13 @@ class ResConfigSettings(models.TransientModel):
             'reports_keep_n': 'qb_reports_keep_n',
             'reports_use_v2_now': 'qb_reports_use_v2_now',
             'custom_fields_enabled': 'qb_custom_fields_enabled',
+            'sync_payroll_pay_schedules': 'qb_sync_payroll_pay_schedules',
+            'sync_payroll_pay_items': 'qb_sync_payroll_pay_items',
+            'sync_payroll_employees': 'qb_sync_payroll_employees_detail',
+            'sync_payroll_tax_setup': 'qb_sync_payroll_tax_setup',
+            'sync_payroll_compensations': 'qb_sync_payroll_compensations',
+            'sync_payroll_checks': 'qb_sync_payroll_checks_history',
+            'qb_payroll_post_archive_journal': 'qb_payroll_post_archive_journal',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)
@@ -592,6 +696,35 @@ class ResConfigSettings(models.TransientModel):
     def action_qb_run_pending_jobs_now(self):
         config = self._get_or_create_qb_config()
         return config.action_run_pending_jobs_now()
+
+    def action_qb_preview_accounts(self):
+        """Pull the QBO chart of accounts and post a discovery summary.
+
+        No Odoo accounts are written. Use after Connect to confirm what
+        the map_only strategy will and won't be able to link before
+        running the actual sync.
+        """
+        config = self._get_or_create_qb_config()
+        return config.action_preview_qbo_accounts()
+
+    def action_qb_apply_account_mapping(self):
+        """Pull the QBO CoA and link matched accounts onto the existing Odoo CoA.
+
+        Never creates new Odoo accounts. Unmapped QBO accounts raise a
+        warning activity for the QuickBooks Manager group.
+        """
+        config = self._get_or_create_qb_config()
+        return config.action_apply_qbo_account_mapping()
+
+    def action_qb_cutover_payroll(self):
+        """Run the payroll cutover audit + flip via quickbooks.config."""
+        config = self._get_or_create_qb_config()
+        return config.action_qb_cutover_payroll()
+
+    def action_qb_payroll_audit_only(self):
+        """Run only the pre-cutover audit and post results to the chatter."""
+        config = self._get_or_create_qb_config()
+        return config.action_qb_payroll_audit_only()
 
     def action_qb_run_initial_migration(self):
         """Queue a full bidirectional initial migration in dependency order.

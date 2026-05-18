@@ -106,3 +106,45 @@ class TestSyncJournalEntries(QuickbooksTestCommon):
         ], limit=1)
         self.assertTrue(move)
         self.assertEqual(move.move_type, 'entry')
+
+    def test_pull_parks_je_with_unmapped_account_line(self):
+        """A QBO JE referencing a CoA row that has no Odoo equivalent must
+        be parked (job state=failed) rather than partially imported.
+
+        Importing only the matched lines would leave the entry unbalanced.
+        The map_only chart-of-accounts strategy guarantees that some QBO
+        accounts will be unmapped at first, so this behavior must survive.
+        """
+        Account = self.env['account.account']
+        Account.with_context(skip_qb_sync=True).create({
+            'name': 'QBO Cash (mapped)',
+            'code': '1099',
+            'account_type': 'asset_cash',
+            'qb_account_id': '10',
+        })
+        # NOTE: deliberately NOT creating an Odoo account for QBO id '20'
+        # so the credit line on the fixture JE has no mapping target.
+        unmapped_before = Account.search_count(
+            [('qb_account_id', '=', '20')],
+        )
+        self.assertEqual(unmapped_before, 0)
+
+        client = self._mock_client()
+        client.read.return_value = self._make_qb_journal_entry(qb_id='752')
+
+        job = MagicMock()
+        job.entity_type = 'journal_entry'
+        job.qb_entity_id = '752'
+        job.odoo_record_id = None
+
+        service = self.env['qb.sync.journal.entries']
+        service.pull(client, self.config, job)
+
+        move = self.env['account.move'].search([('qb_je_id', '=', '752')], limit=1)
+        self.assertFalse(move, 'JE with unmapped account line must not be created')
+        job.write.assert_called()
+        written_vals = job.write.call_args[0][0]
+        self.assertEqual(written_vals.get('state'), 'failed',
+                         'Parked JE must mark the queue row as failed')
+        self.assertIn('20', written_vals.get('last_error', ''),
+                      'Failure note must identify the missing QBO account id(s)')

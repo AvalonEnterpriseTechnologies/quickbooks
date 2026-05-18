@@ -48,13 +48,48 @@ class QBSyncJournals(models.AbstractModel):
         return Account.search(domain)
 
     def _ensure_account_journal(self, config, account, journal_type):
+        """Locate, adopt, or create the Odoo journal that backs a QBO bank/cash account.
+
+        Lookup order:
+          1. Journal already tagged by the connector via qb_journal_key.
+          2. Journal pre-linked by the operator via qb_account_id (the
+             keep-existing-Odoo-journals path: the operator pastes the QBO
+             account id onto BNK1/BNK2/etc. so the connector reuses them
+             instead of seeding parallel QBO-derived journals).
+          3. Journal whose default_account_id already equals the linked
+             Odoo account (defensive adoption for environments where the
+             operator linked via the account rather than the journal).
+          4. Create a fresh journal.
+        """
         Journal = self.env['account.journal'].sudo()
+        company_domain = [('company_id', '=', config.company_id.id)]
         key = 'qbo:%s:%s' % (journal_type, account.qb_account_id)
-        journal = Journal.search([
-            ('company_id', '=', config.company_id.id),
-            ('qb_journal_key', '=', key),
-        ], limit=1)
-        vals = {
+
+        journal = Journal.search(
+            company_domain + [('qb_journal_key', '=', key)], limit=1,
+        )
+        if not journal and account.qb_account_id:
+            journal = Journal.search(
+                company_domain + [('qb_account_id', '=', account.qb_account_id)],
+                limit=1,
+            )
+        if not journal:
+            journal = Journal.search(
+                company_domain + [('default_account_id', '=', account.id)],
+                limit=1,
+            )
+
+        if journal:
+            write_vals = {
+                'qb_journal_key': key,
+                'qb_account_id': account.qb_account_id,
+            }
+            if not journal.default_account_id:
+                write_vals['default_account_id'] = account.id
+            journal.write(write_vals)
+            return journal
+
+        return Journal.create({
             'name': account.name,
             'type': journal_type,
             'code': self._journal_code(account, config.company_id),
@@ -62,16 +97,7 @@ class QBSyncJournals(models.AbstractModel):
             'default_account_id': account.id,
             'qb_journal_key': key,
             'qb_account_id': account.qb_account_id,
-        }
-        if journal:
-            write_vals = {
-                'name': vals['name'],
-                'default_account_id': vals['default_account_id'],
-                'qb_account_id': vals['qb_account_id'],
-            }
-            journal.write(write_vals)
-            return journal
-        return Journal.create(vals)
+        })
 
     def _journal_type_for_account(self, account):
         qb_type = account.qb_account_type or ''

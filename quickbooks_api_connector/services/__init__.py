@@ -9,6 +9,7 @@ from . import qb_account_classifier
 from . import qb_reconciliation
 from . import qb_balance_reconciliation
 from . import qb_currency_helper
+from . import sync_post_helper
 from . import sync_customers
 from . import sync_products
 from . import sync_accounts
@@ -41,6 +42,7 @@ from . import sync_payroll_employees
 from . import sync_payroll_pay_items
 from . import sync_payroll_schedules
 from . import sync_payroll_checks
+from . import sync_payroll_orchestrator
 from . import sync_work_locations
 from . import sync_inventory_adjustments
 from . import sync_reports

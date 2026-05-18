@@ -230,6 +230,8 @@ class QBSyncInvoices(models.AbstractModel):
         matcher = self.env['qb.record.matcher']
         existing = matcher.find_odoo_match(job.entity_type, qb_data, config.company_id)
 
+        post_helper = self.env['qb.sync.post.helper']
+
         if existing:
             matcher.link_odoo_record(existing, job.entity_type, qb_data)
             resolver = self.env['qb.conflict.resolver']
@@ -242,12 +244,14 @@ class QBSyncInvoices(models.AbstractModel):
                     existing.with_context(skip_qb_sync=True).write({
                         'invoice_line_ids': line_vals,
                     })
+                post_helper.post(existing, config)
             elif decision == 'conflict':
                 job.write({'state': 'conflict'})
         else:
             new_move = self.env['account.move'].with_context(
                 skip_qb_sync=True,
             ).create(vals)
+            post_helper.post(new_move, config)
 
         return {'qb_id': qb_id}
 
@@ -265,6 +269,7 @@ class QBSyncInvoices(models.AbstractModel):
             )
         records = client.query_all(qb_name, where_clause=where)
         Move = self.env['account.move']
+        post_helper = self.env['qb.sync.post.helper']
 
         for qb_data in records:
             qb_id = str(qb_data.get('Id', ''))
@@ -279,8 +284,10 @@ class QBSyncInvoices(models.AbstractModel):
                 if resolver.resolve(config, existing, qb_data, entity_type) == 'qbo':
                     line_vals = vals.pop('invoice_line_ids', [])
                     existing.with_context(skip_qb_sync=True).write(vals)
+                    post_helper.post(existing, config)
             else:
-                Move.with_context(skip_qb_sync=True).create(vals)
+                new_move = Move.with_context(skip_qb_sync=True).create(vals)
+                post_helper.post(new_move, config)
 
     def push_all(self, client, config, entity_type):
         meta = self._get_meta(entity_type)
