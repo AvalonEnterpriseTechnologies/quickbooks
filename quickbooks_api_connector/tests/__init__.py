@@ -17,6 +17,10 @@ from . import test_sync_departments
 from . import test_sync_time_activities
 from . import test_sync_purchase_orders
 from . import test_sync_sales_receipts
+from . import test_sync_estimates
+from . import test_sync_credit_memos
+from . import test_sales_doc_relinker
+from . import test_migration_wizard_sales_docs
 from . import test_sync_terms
 from . import test_sync_classes
 from . import test_sync_deposits

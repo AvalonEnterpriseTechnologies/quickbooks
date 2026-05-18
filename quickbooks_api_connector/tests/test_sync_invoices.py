@@ -143,3 +143,28 @@ class TestSyncInvoices(QuickbooksTestCommon):
         meta = service._get_meta('credit_memo')
         self.assertEqual(meta['qb_name'], 'CreditMemo')
         self.assertEqual(meta['move_type'], 'out_refund')
+
+    def test_qb_invoice_to_odoo_captures_linked_estimate_qb_id(self):
+        """Invoice carrying LinkedTxn[Estimate] must persist qb_source_estimate_qb_id."""
+        service = self.env['qb.sync.invoices']
+        meta = service._get_meta('invoice')
+        payload = self._make_qb_invoice()['Invoice']
+        payload['LinkedTxn'] = [{'TxnId': '9876', 'TxnType': 'Estimate'}]
+        vals = service._qb_invoice_to_odoo(payload, meta, self.config)
+        self.assertEqual(vals.get('qb_source_estimate_qb_id'), '9876')
+
+    def test_qb_invoice_to_odoo_stamps_qb_line_id_on_each_line(self):
+        service = self.env['qb.sync.invoices']
+        meta = service._get_meta('invoice')
+        payload = self._make_qb_invoice()['Invoice']
+        # Set explicit Line.Id values so we can assert verbatim preservation.
+        for idx, line in enumerate(payload['Line'], start=1):
+            line['Id'] = str(100 + idx)
+        vals = service._qb_invoice_to_odoo(payload, meta, self.config)
+        commands = vals['invoice_line_ids']
+        for cmd in commands:
+            _, _, line_vals = cmd
+            # Only item / discount / shipping / note rows that came from a
+            # QBO line with an Id will carry qb_line_id; the test invoice
+            # has Ids on every line, so every command must have it.
+            self.assertTrue(line_vals.get('qb_line_id'))
