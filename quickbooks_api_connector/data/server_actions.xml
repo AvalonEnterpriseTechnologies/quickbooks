@@ -46,6 +46,16 @@
         <field name="code">action = records.action_sync_to_qb()</field>
     </record>
 
+    <record id="server_action_move_push_qb_transfer" model="ir.actions.server">
+        <field name="name">QuickBooks: Push Transfer to QuickBooks</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">form,list</field>
+        <field name="state">code</field>
+        <field name="group_ids" eval="[(4, ref('quickbooks_api_connector.group_qb_manager'))]"/>
+        <field name="code">action = records.action_qb_push_transfer()</field>
+    </record>
+
     <record id="server_action_account_view_qbo_balances" model="ir.actions.server">
         <field name="name">QuickBooks: View QBO Balances</field>
         <field name="model_id" ref="account.model_account_account"/>

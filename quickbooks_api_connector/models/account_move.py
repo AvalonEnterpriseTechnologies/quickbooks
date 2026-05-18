@@ -1,6 +1,7 @@
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -112,6 +113,76 @@ class AccountMove(models.Model):
                 'title': 'QuickBooks Sync',
                 'message': 'Move sync queued.',
                 'type': 'info',
+                'sticky': False,
+            },
+        }
+
+    def action_qb_push_transfer(self):
+        """Manual: enqueue this journal entry as a QBO Transfer push.
+
+        Validates that both line accounts have ``qb_account_id`` set
+        before enqueueing. Refuses with a clear UserError when either is
+        missing, so we never produce the empty-FromAccountRef / empty-
+        ToAccountRef payload that QBO rejects with validation error 2020.
+        """
+        Queue = self.env['quickbooks.sync.queue']
+        Config = self.env['quickbooks.config']
+        for move in self:
+            if move.move_type != 'entry':
+                raise UserError(_(
+                    'Only journal entries (move_type=entry) can be '
+                    'pushed as a QuickBooks Transfer. %s is %s.'
+                ) % (move.display_name, move.move_type))
+
+            debit_line = move.line_ids.filtered(lambda l: l.debit > 0)[:1]
+            credit_line = move.line_ids.filtered(lambda l: l.credit > 0)[:1]
+            missing = []
+            if (
+                not credit_line
+                or not credit_line.account_id
+                or not getattr(credit_line.account_id, 'qb_account_id', False)
+            ):
+                missing.append(_('source bank account (FromAccountRef)'))
+            if (
+                not debit_line
+                or not debit_line.account_id
+                or not getattr(debit_line.account_id, 'qb_account_id', False)
+            ):
+                missing.append(_('destination bank account (ToAccountRef)'))
+            if missing:
+                raise UserError(_(
+                    'Cannot push %s to QuickBooks: missing %s. Open '
+                    'Settings > QuickBooks, run "Apply QBO Account '
+                    'Mapping", then retry.'
+                ) % (move.display_name, ', '.join(missing)))
+
+            config = Config.search(
+                [('company_id', '=', move.company_id.id)], limit=1,
+            )
+            if not config:
+                raise UserError(_(
+                    'QuickBooks is not configured for company %s.'
+                ) % move.company_id.display_name)
+            if config.state != 'connected':
+                raise UserError(_(
+                    'QuickBooks is not connected for company %s.'
+                ) % move.company_id.display_name)
+
+            Queue.enqueue(
+                entity_type='transfer',
+                direction='push',
+                operation='update' if move.qb_transfer_id else 'create',
+                odoo_record_id=move.id,
+                odoo_model='account.move',
+                company=move.company_id,
+            )
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('QuickBooks Transfer Push'),
+                'message': _('Queued %d transfer push job(s).') % len(self),
+                'type': 'success',
                 'sticky': False,
             },
         }

@@ -25,17 +25,64 @@ class QBSyncTransfers(models.AbstractModel):
         debit_line = move.line_ids.filtered(lambda l: l.debit > 0)[:1]
         credit_line = move.line_ids.filtered(lambda l: l.credit > 0)[:1]
 
+        # Pre-validate: refuse to POST when either bank account is unmapped.
+        # Without this guard the request becomes
+        #   { "Amount": ..., "TxnDate": ... }
+        # which Intuit rejects with error 2020 ("FromAccountRef missing,
+        # ToAccountRef missing"), the queue re-enqueues, and the cron loops
+        # forever burning API quota. See migrations/19.0.8.0.0.
+        from_ref = (
+            credit_line.account_id.qb_account_id
+            if credit_line and credit_line.account_id
+            and hasattr(credit_line.account_id, 'qb_account_id')
+            else False
+        )
+        to_ref = (
+            debit_line.account_id.qb_account_id
+            if debit_line and debit_line.account_id
+            and hasattr(debit_line.account_id, 'qb_account_id')
+            else False
+        )
+        if not from_ref or not to_ref:
+            missing = []
+            if not from_ref:
+                missing.append(
+                    'FromAccountRef (%s)' % (
+                        credit_line.account_id.code
+                        if credit_line and credit_line.account_id
+                        else 'no credit line'
+                    )
+                )
+            if not to_ref:
+                missing.append(
+                    'ToAccountRef (%s)' % (
+                        debit_line.account_id.code
+                        if debit_line and debit_line.account_id
+                        else 'no debit line'
+                    )
+                )
+            error_msg = (
+                'Transfer push aborted before API call: missing %s. '
+                'Map the bank accounts in QBO and re-run "Apply QBO '
+                'Account Mapping", then retry the push.'
+                % ', '.join(missing)
+            )
+            _logger.warning(
+                'Skipping QBO Transfer push for move %s: %s',
+                move.id, error_msg,
+            )
+            move.with_context(skip_qb_sync=True).write({
+                'qb_sync_error': error_msg,
+            })
+            return {'skipped': True, 'error': error_msg}
+
         payload = {
             'Amount': debit_line.debit if debit_line else 0,
+            'FromAccountRef': {'value': from_ref},
+            'ToAccountRef': {'value': to_ref},
         }
         if move.date:
             payload['TxnDate'] = move.date.isoformat()
-        if debit_line and debit_line.account_id and hasattr(debit_line.account_id, 'qb_account_id'):
-            if debit_line.account_id.qb_account_id:
-                payload['ToAccountRef'] = {'value': debit_line.account_id.qb_account_id}
-        if credit_line and credit_line.account_id and hasattr(credit_line.account_id, 'qb_account_id'):
-            if credit_line.account_id.qb_account_id:
-                payload['FromAccountRef'] = {'value': credit_line.account_id.qb_account_id}
 
         qb_id = move.qb_transfer_id
         matcher = self.env['qb.record.matcher']
@@ -96,6 +143,13 @@ class QBSyncTransfers(models.AbstractModel):
                 existing.with_context(skip_qb_sync=True).write(vals)
 
     def push_all(self, client, config, entity_type):
+        # Transfer pushes are manual-only by default to prevent the runaway
+        # 400-error loop that hit the queue before 19.0.8.0.0. Operators
+        # opt in either by flipping ``qb_auto_push_transfers`` on the
+        # config or by clicking the "Push Transfer to QuickBooks" action
+        # on a specific account.move (see account_move.action_qb_push_transfer).
+        if not getattr(config, 'qb_auto_push_transfers', False):
+            return
         moves = self.env['account.move'].search([
             ('move_type', '=', 'entry'),
             ('state', '=', 'posted'),

@@ -119,6 +119,14 @@ class QuickbooksConfig(models.Model):
     sync_expenses = fields.Boolean(default=True, string='Sync Expenses')
     sync_deposits = fields.Boolean(default=True, string='Sync Deposits')
     sync_transfers = fields.Boolean(default=True, string='Sync Transfers')
+    qb_auto_push_transfers = fields.Boolean(
+        default=False,
+        string='Auto-push Transfers to QBO',
+        help='Off during QBO -> Odoo migration. When off, transfers are '
+             'pushed only when an operator clicks "Push Transfer to '
+             'QuickBooks" on the journal entry. Prevents runaway 400 '
+             'errors when bank accounts are not yet mapped to QBO.',
+    )
     sync_employees = fields.Boolean(default=True, string='Sync Employees')
     sync_departments = fields.Boolean(default=True, string='Sync Departments')
     sync_time_activities = fields.Boolean(default=True, string='Sync Time Activities')

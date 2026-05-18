@@ -161,6 +161,13 @@ class ResConfigSettings(models.TransientModel):
     qb_sync_expenses = fields.Boolean(string='Sync Expenses', default=True)
     qb_sync_deposits = fields.Boolean(string='Sync Deposits', default=True)
     qb_sync_transfers = fields.Boolean(string='Sync Transfers', default=True)
+    qb_auto_push_transfers = fields.Boolean(
+        string='Auto-push Transfers to QBO',
+        default=False,
+        help='Off during QBO -> Odoo migration. When off, transfers are '
+             'pushed only when an operator clicks "Push Transfer to '
+             'QuickBooks" on the journal entry.',
+    )
     qb_sync_employees = fields.Boolean(string='Sync Employees', default=True)
     qb_sync_departments = fields.Boolean(string='Sync Departments', default=True)
     qb_sync_time_activities = fields.Boolean(string='Sync Time Activities', default=True)
@@ -457,6 +464,9 @@ class ResConfigSettings(models.TransientModel):
                 'qb_sync_expenses': getattr(config, 'sync_expenses', True),
                 'qb_sync_deposits': getattr(config, 'sync_deposits', True),
                 'qb_sync_transfers': getattr(config, 'sync_transfers', True),
+                'qb_auto_push_transfers': getattr(
+                    config, 'qb_auto_push_transfers', False,
+                ),
                 'qb_sync_employees': getattr(config, 'sync_employees', True),
                 'qb_sync_departments': getattr(config, 'sync_departments', True),
                 'qb_sync_time_activities': getattr(config, 'sync_time_activities', True),
@@ -603,7 +613,9 @@ class ResConfigSettings(models.TransientModel):
 
         toggle_fields = [
             'sync_tax_codes', 'sync_purchase_orders', 'sync_sales_receipts',
-            'sync_expenses', 'sync_deposits', 'sync_transfers', 'sync_employees',
+            'sync_expenses', 'sync_deposits', 'sync_transfers',
+            'qb_auto_push_transfers',
+            'sync_employees',
             'sync_departments', 'sync_time_activities', 'sync_projects',
             'sync_classes', 'sync_terms', 'sync_attachments', 'sync_inventory_qty',
             'sync_inventory_adjustments', 'sync_inventory_valuation_accounts',
@@ -633,6 +645,7 @@ class ResConfigSettings(models.TransientModel):
             'sync_payroll_compensations': 'qb_sync_payroll_compensations',
             'sync_payroll_checks': 'qb_sync_payroll_checks_history',
             'qb_payroll_post_archive_journal': 'qb_payroll_post_archive_journal',
+            'qb_auto_push_transfers': 'qb_auto_push_transfers',
         }
         for f in toggle_fields:
             settings_field = field_map.get(f, 'qb_' + f)

@@ -200,6 +200,30 @@
                         <div class="col-12 o_setting_box"
                              invisible="qb_state != 'connected'">
                             <div class="o_setting_left_pane">
+                                <field name="qb_auto_push_transfers"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="qb_auto_push_transfers"
+                                       string="Auto-push Transfers to QBO"/>
+                                <div class="text-muted small mb8">
+                                    Leave <b>off</b> while migrating from
+                                    QuickBooks to Odoo. When off, the
+                                    connector never automatically enqueues
+                                    a Transfer push job — operators trigger
+                                    each push from the journal entry's
+                                    <i>Action &#9662; QuickBooks: Push Transfer
+                                    to QuickBooks</i> menu, which refuses
+                                    if either bank account is unmapped.
+                                    This prevents the runaway "FromAccountRef
+                                    missing" 400-error loop that QBO returns
+                                    when bank accounts are not yet linked.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 o_setting_box"
+                             invisible="qb_state != 'connected'">
+                            <div class="o_setting_left_pane">
                                 <field name="qb_auto_post_pulled_records"/>
                             </div>
                             <div class="o_setting_right_pane">
