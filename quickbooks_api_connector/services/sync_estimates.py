@@ -6,8 +6,24 @@ _logger = logging.getLogger(__name__)
 
 
 class QBSyncEstimates(models.AbstractModel):
+    """QuickBooks Estimate <-> Odoo sale.order sync.
+
+    QBO has no SalesOrder entity, so its Estimates are imported as Odoo
+    Quotations / Sales Orders. The pull side is the load-bearing path for
+    historical migration: every QBO Estimate must produce an Odoo SO
+    with matching DocNumber, customer, dates, payment terms, addresses,
+    currency, and line items (including discount / shipping / subtotal /
+    note rows). Each Odoo ``sale.order.line`` keeps the originating
+    ``Line.Id`` in ``qb_line_id`` so ``qb.sales.doc.relinker`` can later
+    rebuild Invoice-line -> Estimate-line links.
+    """
+
     _name = 'qb.sync.estimates'
     _description = 'QuickBooks Estimate Sync'
+
+    # ------------------------------------------------------------------
+    # Capability checks
+    # ------------------------------------------------------------------
 
     def _check_model(self):
         if 'sale.order' not in self.env:
@@ -16,11 +32,15 @@ class QBSyncEstimates(models.AbstractModel):
         if 'qb_estimate_id' not in self.env['sale.order']._fields:
             _logger.warning(
                 'sale.order is missing QuickBooks fields '
-                '(quickbooks_api_connector sale_order extension did not load). '
+                '(quickbooks_api_connector_sale bridge did not load). '
                 'Skipping Estimate sync.'
             )
             return False
         return True
+
+    # ------------------------------------------------------------------
+    # Odoo -> QBO mapping (push)
+    # ------------------------------------------------------------------
 
     def _odoo_estimate_to_qb(self, order):
         lines = []
@@ -57,47 +77,134 @@ class QBSyncEstimates(models.AbstractModel):
             data['CurrencyRef'] = {'value': order.currency_id.name}
         return {key: value for key, value in data.items() if value is not None}
 
+    # ------------------------------------------------------------------
+    # QBO -> Odoo mapping (pull)
+    # ------------------------------------------------------------------
+
     def _qb_estimate_to_odoo(self, qb_data, config):
+        helpers = self.env['qb.sales.doc.helpers']
+        currency_helper = self.env['qb.currency.helper']
+        SaleOrder = self.env['sale.order']
+        company = config.company_id
+
+        partner_id = helpers.resolve_partner_id(qb_data, company)
+        partner = self.env['res.partner'].browse(partner_id) if partner_id else None
+
         vals = {
-            'company_id': config.company_id.id,
-            'qb_estimate_id': str(qb_data.get('Id', '')),
-            'qb_sync_token': str(qb_data.get('SyncToken', '')),
+            'company_id': company.id,
+            'qb_estimate_id': str(qb_data.get('Id') or ''),
+            'qb_sync_token': str(qb_data.get('SyncToken') or ''),
             'qb_last_synced': fields.Datetime.now(),
             'qb_sync_error': False,
-            'note': qb_data.get('PrivateNote') or False,
+            'qb_raw_json': qb_data,
         }
-        customer_ref = qb_data.get('CustomerRef') or {}
-        if customer_ref.get('value'):
-            partner = self.env['res.partner'].search([
-                ('qb_customer_id', '=', customer_ref['value']),
-            ], limit=1)
+
+        doc_number = (qb_data.get('DocNumber') or '').strip()
+        if doc_number:
+            vals['qb_doc_number'] = doc_number
+            vals['client_order_ref'] = doc_number
+
+        if partner_id:
+            vals['partner_id'] = partner_id
             if partner:
-                vals['partner_id'] = partner.id
+                bill_addr = qb_data.get('BillAddr') or {}
+                ship_addr = qb_data.get('ShipAddr') or {}
+                vals['partner_invoice_id'] = helpers.resolve_address_partner(
+                    partner, bill_addr, 'invoice',
+                )
+                vals['partner_shipping_id'] = helpers.resolve_address_partner(
+                    partner, ship_addr, 'delivery',
+                )
+
         if qb_data.get('TxnDate'):
             vals['date_order'] = qb_data['TxnDate']
         if qb_data.get('ExpirationDate'):
             vals['validity_date'] = qb_data['ExpirationDate']
-        lines = []
-        for qb_line in qb_data.get('Line', []):
-            if qb_line.get('DetailType') != 'SalesItemLineDetail':
-                continue
-            detail = qb_line.get('SalesItemLineDetail') or {}
-            line_vals = {
-                'name': qb_line.get('Description') or '',
-                'product_uom_qty': detail.get('Qty', 1),
-                'price_unit': detail.get('UnitPrice', 0.0),
-            }
-            item_ref = detail.get('ItemRef') or {}
-            if item_ref.get('value'):
-                product = self.env['product.product'].search([
-                    ('qb_item_id', '=', item_ref['value']),
-                ], limit=1)
-                if product:
-                    line_vals['product_id'] = product.id
-            lines.append((0, 0, line_vals))
-        if lines:
-            vals['order_line'] = lines
+
+        note = qb_data.get('PrivateNote') or qb_data.get('CustomerMemo', {}).get('value')
+        if note:
+            vals['note'] = note
+
+        currency_vals = currency_helper.currency_vals(qb_data, config)
+        if 'currency_id' in SaleOrder._fields and currency_vals.get('currency_id'):
+            vals['pricelist_id'] = vals.get('pricelist_id') or False  # pricelist drives currency
+
+        if 'pricelist_id' in vals and not vals['pricelist_id']:
+            vals.pop('pricelist_id')
+
+        payment_term_id = helpers.resolve_payment_term_id(qb_data)
+        if payment_term_id and 'payment_term_id' in SaleOrder._fields:
+            vals['payment_term_id'] = payment_term_id
+
+        line_commands = self._build_order_lines(qb_data, company)
+        if line_commands:
+            vals['order_line'] = line_commands
+
         return vals
+
+    def _build_order_lines(self, qb_data, company):
+        helpers = self.env['qb.sales.doc.helpers']
+        parsed = helpers.parse_qb_lines(qb_data, company)
+        commands = []
+        for line in parsed:
+            line_vals = self._order_line_vals_for(line, helpers)
+            if line_vals:
+                commands.append((0, 0, line_vals))
+        return commands
+
+    def _order_line_vals_for(self, line, helpers):
+        qb_line_id = line.get('qb_line_id') or False
+        kind = line['kind']
+
+        if kind == 'item':
+            return {
+                'name': line.get('name') or '/',
+                'product_id': line.get('product_id') or False,
+                'product_uom_qty': line.get('qty') or 1.0,
+                'price_unit': line.get('price_unit') or 0.0,
+                'tax_id': [(6, 0, line.get('tax_ids') or [])],
+                'qb_line_id': qb_line_id,
+            }
+
+        if kind == 'discount':
+            product = helpers.get_or_create_qb_discount_product()
+            return {
+                'name': line.get('name') or 'Discount',
+                'product_id': product.id,
+                'product_uom_qty': 1.0,
+                'price_unit': line.get('amount') or 0.0,
+                'qb_line_id': qb_line_id,
+            }
+
+        if kind == 'shipping':
+            product = helpers.get_or_create_qb_shipping_product()
+            return {
+                'name': line.get('name') or 'Shipping',
+                'product_id': product.id,
+                'product_uom_qty': 1.0,
+                'price_unit': line.get('amount') or 0.0,
+                'qb_line_id': qb_line_id,
+            }
+
+        if kind == 'section':
+            return {
+                'display_type': 'line_section',
+                'name': line.get('name') or 'Subtotal',
+                'qb_line_id': qb_line_id,
+            }
+
+        if kind == 'note':
+            return {
+                'display_type': 'line_note',
+                'name': line.get('name') or '',
+                'qb_line_id': qb_line_id,
+            }
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Push
+    # ------------------------------------------------------------------
 
     def push(self, client, config, job):
         if not self._check_model():
@@ -131,15 +238,34 @@ class QBSyncEstimates(models.AbstractModel):
         })
         return {'qb_id': str(created.get('Id', ''))}
 
+    # ------------------------------------------------------------------
+    # Pull
+    # ------------------------------------------------------------------
+
     def pull(self, client, config, job):
-        if not self._check_model() or not job.qb_entity_id:
+        if not self._check_model():
             return {}
-        resp = client.read('Estimate', job.qb_entity_id)
-        qb_data = resp.get('Estimate', {})
+        qb_data = self._fetch_estimate(client, job)
         if not qb_data:
             return {}
+        return self._apply_pull(qb_data, config)
+
+    def _fetch_estimate(self, client, job):
+        if job.qb_entity_id:
+            resp = client.read('Estimate', job.qb_entity_id)
+            return resp.get('Estimate') or {}
+        if job.odoo_record_id and 'sale.order' in self.env:
+            order = self.env['sale.order'].browse(job.odoo_record_id)
+            if order.exists() and order.qb_estimate_id:
+                resp = client.read('Estimate', order.qb_estimate_id)
+                return resp.get('Estimate') or {}
+        return {}
+
+    def _apply_pull(self, qb_data, config):
         vals = self._qb_estimate_to_odoo(qb_data, config)
         matcher = self.env['qb.record.matcher']
+        SaleOrder = self.env['sale.order']
+
         existing = matcher.find_odoo_match('estimate', qb_data, config.company_id)
         if existing:
             matcher.link_odoo_record(existing, 'estimate', qb_data)
@@ -149,8 +275,12 @@ class QBSyncEstimates(models.AbstractModel):
                 existing.order_line.unlink()
                 existing.with_context(skip_qb_sync=True).write({'order_line': lines})
         else:
-            self.env['sale.order'].with_context(skip_qb_sync=True).create(vals)
+            SaleOrder.with_context(skip_qb_sync=True).create(vals)
         return {'qb_id': str(qb_data.get('Id', ''))}
+
+    # ------------------------------------------------------------------
+    # Bulk
+    # ------------------------------------------------------------------
 
     def pull_all(self, client, config, entity_type):
         if not self._check_model():
@@ -161,10 +291,13 @@ class QBSyncEstimates(models.AbstractModel):
                 self.env['qb.api.client'].format_qbo_datetime(config.last_sync_date)
             )
         for qb_data in client.query_all('Estimate', where_clause=where):
-            job = self.env['quickbooks.sync.queue'].new({
-                'qb_entity_id': str(qb_data.get('Id', '')),
-            })
-            self.pull(client, config, job)
+            try:
+                self._apply_pull(qb_data, config)
+            except Exception:
+                _logger.exception(
+                    'Failed to import QBO Estimate Id=%s',
+                    qb_data.get('Id'),
+                )
 
     def push_all(self, client, config, entity_type):
         if not self._check_model():
